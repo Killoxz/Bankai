@@ -9,17 +9,9 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.NODE_ENV !== "production",
     minimumCacheTTL: 86400,
     formats: ["image/webp"],
-    // Remote anime art comes from AniList/Jikan/TMDB CDNs. Add hosts as needed.
-    remotePatterns: [
-      { protocol: "https", hostname: "s4.anilist.co" },
-      { protocol: "https", hostname: "img.anili.st" },
-      { protocol: "https", hostname: "cdn.myanimelist.net" },
-      { protocol: "https", hostname: "media.kitsu.io" },
-      { protocol: "https", hostname: "image.tmdb.org" },
-      { protocol: "https", hostname: "artworks.thetvdb.com" },
-      { protocol: "https", hostname: "picsum.photos" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-    ],
+    // Episode thumbnails come from Miruro/AniPahe CDNs that can change — allow
+    // all HTTPS sources so thumbnails always load regardless of origin.
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],

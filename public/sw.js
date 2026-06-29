@@ -1,4 +1,4 @@
-const CACHE = 'bankai-v1.8.7';
+const CACHE = 'bankai-v1.8.8';
 const PRECACHE = ['/', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
