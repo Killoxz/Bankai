@@ -6,9 +6,11 @@ import { Sidebar } from "./sidebar";
 import { MobileNav } from "./mobile-nav";
 import { Footer } from "./footer";
 import { CommandPalette } from "@/components/search/command-palette";
+import { useDBSync } from "@/hooks/use-db-sync";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  useDBSync();
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />

@@ -33,6 +33,31 @@ interface WatchlistState {
   toggleFavorite: (anime: AnimeCard) => void;
   isFavorite: (animeId: string) => boolean;
   getEntry: (animeId: string) => ListEntry | undefined;
+  hydrate: (data: { entries: ListEntry[]; favorites: AnimeCard[] }) => void;
+}
+
+function userId(): string | null {
+  try {
+    const raw = localStorage.getItem("bankai-auth");
+    if (!raw) return null;
+    return JSON.parse(raw)?.state?.currentUser?.id ?? null;
+  } catch { return null; }
+}
+
+function syncPost(body: object) {
+  const uid = userId();
+  if (!uid) return;
+  fetch("/api/sync/watchlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: uid, ...body }),
+  }).catch(() => {});
+}
+
+function syncDelete(animeId: string) {
+  const uid = userId();
+  if (!uid) return;
+  fetch(`/api/sync/watchlist?userId=${uid}&animeId=${encodeURIComponent(animeId)}`, { method: "DELETE" }).catch(() => {});
 }
 
 export const useWatchlistStore = create<WatchlistState>()(
@@ -40,7 +65,8 @@ export const useWatchlistStore = create<WatchlistState>()(
     (set, get) => ({
       entries: [],
       favorites: [],
-      setStatus: (anime, status) =>
+
+      setStatus: (anime, status) => {
         set((s) => {
           const others = s.entries.filter((e) => e.anime.id !== anime.id);
           const existing = s.entries.find((e) => e.anime.id === anime.id);
@@ -50,20 +76,29 @@ export const useWatchlistStore = create<WatchlistState>()(
               ...others,
             ],
           };
-        }),
-      removeEntry: (animeId) =>
-        set((s) => ({ entries: s.entries.filter((e) => e.anime.id !== animeId) })),
-      toggleFavorite: (anime) =>
-        set((s) => {
-          const exists = s.favorites.some((a) => a.id === anime.id);
-          return {
-            favorites: exists
-              ? s.favorites.filter((a) => a.id !== anime.id)
-              : [anime, ...s.favorites],
-          };
-        }),
+        });
+        syncPost({ anime, action: "setStatus", status });
+      },
+
+      removeEntry: (animeId) => {
+        set((s) => ({ entries: s.entries.filter((e) => e.anime.id !== animeId) }));
+        syncDelete(animeId);
+      },
+
+      toggleFavorite: (anime) => {
+        const isFavorite = get().favorites.some((a) => a.id === anime.id);
+        set((s) => ({
+          favorites: isFavorite
+            ? s.favorites.filter((a) => a.id !== anime.id)
+            : [anime, ...s.favorites],
+        }));
+        syncPost({ anime, action: "toggleFavorite", isFavorite });
+      },
+
       isFavorite: (animeId) => get().favorites.some((a) => a.id === animeId),
       getEntry: (animeId) => get().entries.find((e) => e.anime.id === animeId),
+
+      hydrate: (data) => set({ entries: data.entries, favorites: data.favorites }),
     }),
     { name: "bankai-watchlist" }
   )
