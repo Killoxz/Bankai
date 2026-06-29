@@ -72,6 +72,50 @@ interface MiruroWatchResponse {
   outro?: { start: number; end: number } | null;
 }
 
+// ── AniSkip fallback ───────────────────────────────────────────────────────────
+// Used when Miruro doesn't return intro/outro timestamps.
+
+async function getMalId(anilistNumericId: string): Promise<number | null> {
+  try {
+    const res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "query($id:Int){Media(id:$id){idMal}}",
+        variables: { id: Number(anilistNumericId) },
+      }),
+      next: { revalidate: 86400 },
+    });
+    const data = await res.json();
+    return (data as any).data?.Media?.idMal ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getAniSkipTimes(
+  malId: number,
+  episode: number
+): Promise<{ intro?: { start: number; end: number }; outro?: { start: number; end: number } }> {
+  try {
+    const res = await fetch(
+      `https://api.aniskip.com/v2/skip-times/${malId}/${episode}?types[]=op&types[]=ed&episodeLength=0`,
+      { next: { revalidate: 86400 } }
+    );
+    if (!res.ok) return {};
+    const data = await res.json() as any;
+    if (!data.found) return {};
+    const op = data.results?.find((r: any) => r.skipType === "op");
+    const ed = data.results?.find((r: any) => r.skipType === "ed");
+    return {
+      intro: op ? { start: op.interval.startTime, end: op.interval.endTime } : undefined,
+      outro: ed ? { start: ed.interval.startTime, end: ed.interval.endTime } : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 // ── HTTP helper ────────────────────────────────────────────────────────────────
 
 async function get<T>(path: string): Promise<T> {
@@ -174,6 +218,19 @@ export async function getStream(
       );
       if (!hlsSources.length) continue;
 
+      let intro: StreamData["intro"] = data.intro ?? undefined;
+      let outro: StreamData["outro"] = data.outro ?? undefined;
+
+      // Miruro didn't supply timestamps — fall back to AniSkip community database
+      if (!intro && !outro) {
+        const malId = await getMalId(nid);
+        if (malId) {
+          const skip = await getAniSkipTimes(malId, episode);
+          intro = skip.intro;
+          outro = skip.outro;
+        }
+      }
+
       return {
         sources: hlsSources.map((s) => {
           const ref = s.referer ? `&ref=${encodeURIComponent(s.referer)}` : "";
@@ -188,8 +245,8 @@ export async function getStream(
           lang: s.label,
           default: s.label.toLowerCase().includes("english"),
         })),
-        intro: data.intro ?? undefined,
-        outro: data.outro ?? undefined,
+        intro,
+        outro,
       };
     } catch {
       // Provider failed — try the next one.

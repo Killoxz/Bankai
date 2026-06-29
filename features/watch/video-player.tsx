@@ -713,6 +713,34 @@ export function VideoPlayer({
         </div>
       </div>
 
+      {/* Thin persistent progress strip — always visible (replaces seekbar markers when controls hide) */}
+      {duration > 0 && playing && !showControls && (
+        <div className="pointer-events-none absolute bottom-0 inset-x-0 h-[3px] z-30 bg-white/10">
+          <div
+            className="absolute inset-y-0 left-0 bg-white/40"
+            style={{ width: `${(current / duration) * 100}%` }}
+          />
+          {intro && (
+            <div
+              className="absolute inset-y-0 bg-amber-400"
+              style={{
+                left: `${(intro.start / duration) * 100}%`,
+                width: `${Math.max(0.5, ((intro.end - intro.start) / duration) * 100)}%`,
+              }}
+            />
+          )}
+          {outro && (
+            <div
+              className="absolute inset-y-0 bg-sky-400"
+              style={{
+                left: `${(outro.start / duration) * 100}%`,
+                width: `${Math.max(0.5, ((outro.end - outro.start) / duration) * 100)}%`,
+              }}
+            />
+          )}
+        </div>
+      )}
+
       {/* Center play affordance when paused */}
       {!playing && !waiting && (
         <button
