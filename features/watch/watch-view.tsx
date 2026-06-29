@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Flag, Share2, Bookmark, ThumbsUp,
@@ -25,10 +25,11 @@ import type { AnimeDetail } from "@/types/anime";
 // User-facing server names → Anivexa provider IDs (see consumet.ts)
 const SERVERS = ["Kiwi", "Ally", "Bee", "Hop", "Bonk"] as const;
 
-export function WatchView({ detail }: { detail: AnimeDetail }) {
+type SeasonEntry = { id: string; slug: string; title: { english?: string | null; romaji?: string | null } };
+
+export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDetail; seasonChain: SeasonEntry[]; initialEp: number }) {
   const router = useRouter();
-  const params = useSearchParams();
-  const ep = Math.max(1, Number(params.get("ep") ?? "1"));
+  const ep = initialEp;
 
   const category  = usePlayerStore((s) => s.category);
   const server    = usePlayerStore((s) => s.server);
@@ -107,30 +108,17 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
   const episodeMeta = episodes?.find((e) => e.number === ep);
   episodeThumbnailRef.current = episodeMeta?.thumbnail;
 
-  // Build season list from PREQUEL/SEQUEL relations sorted by AniList ID
-  // (lower ID = published earlier = earlier season). Labels include "Season N:" so the
-  // dropdown clearly shows every entry even when titles are long/truncated.
+  // Complete season chain is built server-side via BFS traversal of AniList relations.
+  // Using the pre-built chain ensures all seasons are always visible from any season page.
   const seasons = useMemo(() => {
-    const numId = (id: string) => Number(id.replace("anilist:", "")) || 0;
-    const prequels = detail.relations
-      .filter((r) => r.relationType === "PREQUEL")
-      .sort((a, b) => numId(a.id) - numId(b.id));
-    const sequels = detail.relations
-      .filter((r) => r.relationType === "SEQUEL")
-      .sort((a, b) => numId(a.id) - numId(b.id));
-    const currentIdx = prequels.length + 1; // 1-based season number for current entry
-    return [
-      ...prequels.map((r, i) => ({
-        label: `Season ${i + 1}: ${r.title.english ?? r.title.romaji ?? "Prequel"}`,
-        value: `/watch/${r.slug}?ep=1`,
-      })),
-      { label: `Season ${currentIdx}: ${title}`, value: `/watch/${detail.slug}?ep=${ep}` },
-      ...sequels.map((r, i) => ({
-        label: `Season ${currentIdx + 1 + i}: ${r.title.english ?? r.title.romaji ?? "Sequel"}`,
-        value: `/watch/${r.slug}?ep=1`,
-      })),
-    ];
-  }, [detail.relations, detail.slug, title, ep]);
+    if (seasonChain.length <= 1) return [];
+    return seasonChain.map((s, i) => ({
+      label: `Season ${i + 1}: ${s.title.english ?? s.title.romaji ?? `Season ${i + 1}`}`,
+      value: s.id === detail.id
+        ? `/watch/${detail.slug}?ep=${ep}`
+        : `/watch/${s.slug}?ep=1`,
+    }));
+  }, [seasonChain, detail.id, detail.slug, ep]);
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-6">

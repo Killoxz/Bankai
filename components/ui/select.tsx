@@ -13,16 +13,6 @@ export interface SelectProps {
 
 export function Select({ value, onChange, options, className }: SelectProps) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
 
   const selected = options.find((o) => o.value === value);
 
@@ -32,7 +22,7 @@ export function Select({ value, onChange, options, className }: SelectProps) {
   };
 
   return (
-    <div ref={ref} className={cn("relative inline-flex", className)}>
+    <div className={cn("relative inline-flex", className)}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -48,26 +38,34 @@ export function Select({ value, onChange, options, className }: SelectProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-[200] w-max min-w-full max-w-[320px] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
-          <div className="max-h-[55vh] overflow-y-auto p-1">
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => pick(o.value)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
-                  o.value === value ? "text-primary" : "text-foreground"
-                )}
-              >
-                <span className="size-3.5 shrink-0">
-                  {o.value === value && <Check className="size-3.5" />}
-                </span>
-                <span className="flex-1 whitespace-normal leading-snug">{o.label}</span>
-              </button>
-            ))}
+        <>
+          {/* Invisible backdrop — click anywhere outside the dropdown to close */}
+          <div
+            className="fixed inset-0 z-[199]"
+            aria-hidden
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 top-[calc(100%+6px)] z-[200] w-max min-w-full max-w-[320px] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+            <div className="max-h-[55vh] overflow-y-auto p-1">
+              {options.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => pick(o.value)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
+                    o.value === value ? "text-primary" : "text-foreground"
+                  )}
+                >
+                  <span className="size-3.5 shrink-0">
+                    {o.value === value && <Check className="size-3.5" />}
+                  </span>
+                  <span className="flex-1 whitespace-normal leading-snug">{o.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
