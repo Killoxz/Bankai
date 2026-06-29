@@ -1,0 +1,47 @@
+{
+  "name": "Bankai — Watch Anime Online",
+  "short_name": "Bankai",
+  "description": "Modern anime streaming platform. Browse trending shows, track your watchlist, and pick up where you left off.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#13141a",
+  "theme_color": "#13141a",
+  "categories": ["entertainment"],
+  "icons": [
+    {
+      "src": "/bankai-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/Bankai Second Logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Anime",
+      "short_name": "Browse",
+      "url": "/browse",
+      "description": "Browse all anime"
+    },
+    {
+      "name": "My Watchlist",
+      "short_name": "Watchlist",
+      "url": "/watchlist",
+      "description": "View your saved anime"
+    },
+    {
+      "name": "Trending",
+      "short_name": "Trending",
+      "url": "/trending",
+      "description": "See what's trending"
+    }
+  ],
+  "prefer_related_applications": false
+}

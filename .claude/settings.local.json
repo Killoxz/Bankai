@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(pnpm -v)",
+      "Bash(docker -v)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell($p = Get-Process -Id 1588 -ErrorAction SilentlyContinue; if \\($p\\) { $p | Select-Object Id, ProcessName, Path | Format-List; Stop-Process -Id 1588 -Force; Start-Sleep -Milliseconds 500; Write-Output \"killed 1588\" } else { Write-Output \"1588 not running\" }; $still = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($still\\) { Write-Output \"port 3000 still listening \\(PID $\\($still.OwningProcess\\)\\)\" } else { Write-Output \"port 3000 free\" })",
+      "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"query{Page\\(page:1,perPage:2\\){media\\(type:ANIME,sort:TRENDING_DESC\\){id title{romaji english} coverImage{extraLarge color} bannerImage}}}\"}')",
+      "Bash(curl -s http://localhost:3000/api/anime/sections)",
+      "Bash(curl -s \"http://localhost:3000/api/search?q=naruto\")",
+      "Bash(curl -s -o /dev/null -w \"  status=%{http_code} time=%{time_total}s\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"dev server: status=%{http_code} time=%{time_total}s\\\\n\" http://localhost:3000/)",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(ls \"C:/Users/izzyn/Downloads/\" | head -20)",
+      "Bash(find \"C:/Users/izzyn/AppData/Local/Temp\" -name \"*.png\" -newer \"C:/Users/izzyn/Downloads/Website/package.json\" 2>/dev/null | head -10)",
+      "Bash(find \"C:/Users/izzyn/AppData/Roaming\" -name \"*.png\" -newer \"C:/Users/izzyn/Downloads/Website/package.json\" 2>/dev/null | head -10)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\izzyn\\\\Downloads\\\\Website\\\\app\" -Recurse | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\izzyn\\\\Downloads\\\\Website\\\\\", \"\"\\) })",
+      "WebSearch",
+      "Bash(gh api *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:miruro-api-production-c2e0.up.railway.app)",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" \"https://miruro-api-production-c2e0.up.railway.app/episodes/21\" -H \"User-Agent: Bankai/1.0\")",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" \"https://miruro-api-production-c2e0.up.railway.app/\" -H \"User-Agent: Bankai/1.0\")",
+      "Bash(curl -s -o - -w \"\\\\nHTTP_STATUS:%{http_code}\" \"https://miruro-api-production-c2e0.up.railway.app/episodes/21\" -H \"User-Agent: Mozilla/5.0\" -H \"Referer: https://www.miruro.to/\" -H \"Origin: https://www.miruro.to\")",
+      "Bash(curl -s \"https://miruro-api-production-c2e0.up.railway.app/episodes/21\" -H \"Referer: https://www.miruro.to/\" -H \"Origin: https://www.miruro.to\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); providers=d.get\\('providers',{}\\); print\\('Top keys:', list\\(d.keys\\(\\)\\)\\); print\\('Providers:', list\\(providers.keys\\(\\)\\)\\); kiwi=providers.get\\('kiwi',{}\\); eps=kiwi.get\\('episodes',{}\\); sub=eps.get\\('sub',[]\\); print\\('Kiwi sub episode count:', len\\(sub\\)\\); print\\('First ep:', json.dumps\\(sub[0] if sub else {}, indent=2\\)\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const p=j.providers||{};console.log\\('Keys:',Object.keys\\(j\\)\\);console.log\\('Providers:',Object.keys\\(p\\)\\);const sub=\\(p.kiwi||{}\\).episodes?.sub||[];console.log\\('Kiwi sub eps:',sub.length\\);console.log\\('First ep:',JSON.stringify\\(sub[0],null,2\\)\\);}\\)\")",
+      "Bash(curl -s \"https://miruro-api-production-c2e0.up.railway.app/watch/kiwi/21/sub/animepahe-1\" -H \"Referer: https://www.miruro.to/\" -H \"Origin: https://www.miruro.to\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('Keys:',Object.keys\\(j\\)\\);console.log\\('Streams:',JSON.stringify\\(\\(j.streams||[]\\).slice\\(0,2\\),null,2\\)\\);console.log\\('Subtitles:',JSON.stringify\\(\\(j.subtitles||[]\\).slice\\(0,2\\),null,2\\)\\);console.log\\('Intro:',j.intro\\);console.log\\('Outro:',j.outro\\);}\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).version\\)\")",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

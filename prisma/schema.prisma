@@ -1,0 +1,200 @@
+// Anizu — Prisma schema (PostgreSQL)
+// Run: npm run db:push   (dev)  |  npm run db:migrate (with migrations)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Auth.js (NextAuth v5) models
+// ----------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  banner        String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  watchHistory  WatchHistory[]
+  listEntries   ListEntry[]
+  favorites     Favorite[]
+  reviews       Review[]
+  comments      Comment[]
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ----------------------------------------------------------------------------
+// Domain models
+// ----------------------------------------------------------------------------
+
+// Cached/synced anime metadata. The canonical source is an external provider
+// (AniList/Jikan); this table memoizes it and anchors user relations.
+model Anime {
+  id          String   @id // provider id, e.g. "anilist:21"
+  slug        String   @unique
+  title       String
+  titleNative String?
+  description String?  @db.Text
+  coverImage  String?
+  bannerImage String?
+  format      String?  // TV, MOVIE, OVA, SPECIAL, ONA
+  status      String?  // FINISHED, RELEASING, NOT_YET_RELEASED
+  season      String?
+  seasonYear  Int?
+  episodes    Int?
+  duration    Int?
+  averageScore Int?
+  popularity  Int?
+  genres      String[]
+  studios     String[]
+  source      String?
+  updatedAt   DateTime @updatedAt
+
+  watchHistory WatchHistory[]
+  listEntries  ListEntry[]
+  favorites    Favorite[]
+  reviews      Review[]
+  comments     Comment[]
+}
+
+model WatchHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  animeId      String
+  episodeNumber Int
+  progress     Int      @default(0) // seconds watched
+  duration     Int      @default(0) // total seconds
+  completed    Boolean  @default(false)
+  watchedAt    DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId, episodeNumber])
+  @@index([userId, watchedAt])
+}
+
+enum ListStatus {
+  WATCHING
+  COMPLETED
+  PLAN_TO_WATCH
+  DROPPED
+  ON_HOLD
+}
+
+model ListEntry {
+  id        String     @id @default(cuid())
+  userId    String
+  animeId   String
+  status    ListStatus @default(PLAN_TO_WATCH)
+  score     Int?
+  folder    String?
+  updatedAt DateTime   @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+  @@index([userId, status])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  rating    Int
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  parentId  String?
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime    Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([animeId, createdAt])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @db.Text
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
