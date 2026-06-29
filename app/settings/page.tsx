@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { usePlayerStore } from "@/store/player-store";
+import { usePlayerStore, type PlayerSettings } from "@/store/player-store";
 import { useHistoryStore } from "@/store/history-store";
 import { useWatchlistStore } from "@/store/watchlist-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -178,6 +178,7 @@ export default function SettingsPage() {
                 mounted={mounted} theme={theme} setTheme={setTheme}
                 accentHsl={accentHsl} onAccent={selectAccent}
                 radius={radius} onRadius={handleRadius} player={player}
+                customHex={customHex} setCustomHex={setCustomHex}
               />
             )}
             {active === "app-behavior"     && <AppBehaviorSection />}
@@ -297,11 +298,12 @@ function AccountSection({ mounted }: { mounted: boolean }) {
 }
 
 /* ─── Section: Appearance ─────────────────────────── */
-function AppearanceSection({ mounted, theme, setTheme, accentHsl, onAccent, radius, onRadius, player }: {
+function AppearanceSection({ mounted, theme, setTheme, accentHsl, onAccent, radius, onRadius, player, customHex, setCustomHex }: {
   mounted: boolean; theme?: string; setTheme: (t: string) => void;
   accentHsl: string; onAccent: (hsl: string, fg: string) => void;
   radius: number; onRadius: (v: number) => void;
-  player: ReturnType<typeof usePlayerStore>;
+  player: PlayerSettings;
+  customHex: string; setCustomHex: (hex: string) => void;
 }) {
   return (
     <>
@@ -497,7 +499,7 @@ function AppBehaviorSection() {
 }
 
 /* ─── Section: Display Language ───────────────────── */
-function DisplayLanguageSection({ player }: { player: ReturnType<typeof usePlayerStore> }) {
+function DisplayLanguageSection({ player }: { player: PlayerSettings }) {
   return (
     <>
       <Row label="Interface Language" hint="Language used for the Bankai interface.">
@@ -519,7 +521,7 @@ function DisplayLanguageSection({ player }: { player: ReturnType<typeof usePlaye
 }
 
 /* ─── Section: Media Settings ─────────────────────── */
-function MediaSettingsSection({ player }: { player: ReturnType<typeof usePlayerStore> }) {
+function MediaSettingsSection({ player }: { player: PlayerSettings }) {
   return (
     <>
       <Row label="Default Audio" hint="Preferred audio type when opening an episode.">
@@ -548,7 +550,7 @@ function MediaSettingsSection({ player }: { player: ReturnType<typeof usePlayerS
 }
 
 /* ─── Section: Comments ───────────────────────────── */
-function CommentsSection({ player }: { player: ReturnType<typeof usePlayerStore> }) {
+function CommentsSection({ player }: { player: PlayerSettings }) {
   return (
     <>
       <Toggle

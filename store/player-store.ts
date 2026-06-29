@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface PlayerSettings {
+export interface PlayerSettings {
   volume: number;
   muted: boolean;
   playbackRate: number;
