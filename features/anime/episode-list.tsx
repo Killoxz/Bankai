@@ -43,7 +43,7 @@ export function EpisodeList({
 
   if (isLoading) {
     return (
-      <div className={cn("gap-2", layout === "grid" ? "grid grid-cols-5 sm:grid-cols-8" : "space-y-2")}>
+      <div className={cn("gap-2", layout === "grid" ? "grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8" : "space-y-2")}>
         {Array.from({ length: 12 }).map((_, i) => (
           <Skeleton key={i} className={layout === "grid" ? "h-11 rounded-lg" : "h-20 rounded-lg"} />
         ))}
@@ -73,7 +73,7 @@ export function EpisodeList({
       </div>
 
       {layout === "grid" ? (
-        <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10">
+        <div className="grid grid-cols-4 gap-2 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10">
           {filtered.map((ep) => {
             const active = ep.number === currentEpisode;
             const watched = mounted && history && history.episode >= ep.number;

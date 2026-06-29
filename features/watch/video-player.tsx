@@ -138,6 +138,10 @@ export function VideoPlayer({
     return () => {
       destroyed = true;
       cleanup?.();
+      // Fully reset the video element so stale audio tracks can't bleed into
+      // the next source — this is the standard fix for HLS.js dual-audio bugs.
+      const v = videoRef.current;
+      if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
@@ -362,6 +366,9 @@ export function VideoPlayer({
           if (settings.autoSkipIntro && intro && v.currentTime >= intro.start && v.currentTime < intro.end) {
             v.currentTime = intro.end;
           }
+          if (settings.autoSkipOutro && outro && v.currentTime >= outro.start && v.currentTime < outro.end) {
+            v.currentTime = outro.end;
+          }
         }}
         onEnded={() => {
           onProgress?.(duration, duration);
@@ -508,7 +515,7 @@ export function VideoPlayer({
                 settings.setSettings({ volume: Number(e.target.value), muted: Number(e.target.value) === 0 })
               }
               aria-label="Volume"
-              className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-white/30 accent-white [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+              className="hidden sm:block h-1 w-20 cursor-pointer appearance-none rounded-full bg-white/30 accent-white [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
             />
           </div>
 
@@ -650,10 +657,13 @@ export function VideoPlayer({
                 <DropdownItem onClick={() => settings.setSettings({ autoSkipIntro: !settings.autoSkipIntro })}>
                   Skip intro: <span className={settings.autoSkipIntro ? "text-primary ml-auto" : "text-muted-foreground ml-auto"}>{settings.autoSkipIntro ? "On" : "Off"}</span>
                 </DropdownItem>
+                <DropdownItem onClick={() => settings.setSettings({ autoSkipOutro: !settings.autoSkipOutro })}>
+                  Skip outro: <span className={settings.autoSkipOutro ? "text-primary ml-auto" : "text-muted-foreground ml-auto"}>{settings.autoSkipOutro ? "On" : "Off"}</span>
+                </DropdownItem>
               </div>
             </Dropdown>
 
-            <Ctrl onClick={togglePiP} label="Picture in picture"><PictureInPicture2 /></Ctrl>
+            <span className="hidden sm:contents"><Ctrl onClick={togglePiP} label="Picture in picture"><PictureInPicture2 /></Ctrl></span>
             <Ctrl
               onClick={toggleFullscreen}
               label={fullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)"}

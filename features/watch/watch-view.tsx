@@ -5,12 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Flag, Share2, Bookmark, ThumbsUp,
-  ChevronLeft, ChevronRight, AlertTriangle, ListVideo, Loader2,
+  ChevronLeft, ChevronRight, AlertTriangle, ListVideo, Loader2, Layers,
 } from "lucide-react";
 import { VideoPlayer } from "./video-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
+import { cn, preferredTitle } from "@/lib/utils";
 import { AnimeRow } from "@/components/anime/anime-row";
 import { EpisodeList } from "@/features/anime/episode-list";
 import { Comments } from "@/features/anime/comments";
@@ -19,7 +19,6 @@ import { usePlayerStore } from "@/store/player-store";
 import { useHistoryStore } from "@/store/history-store";
 import { useWatchlistStore } from "@/store/watchlist-store";
 import { toCardFromDetail } from "@/lib/to-card";
-import { preferredTitle } from "@/lib/utils";
 import type { AnimeDetail } from "@/types/anime";
 
 // User-facing server names → Anivexa provider IDs (see consumet.ts)
@@ -132,17 +131,15 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-6">
-      <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
-        {/* Main column */}
+      {/* On desktop: 2-column grid. On mobile: single column, sidebar renders between info and recs. */}
+      <div className="grid gap-5 xl:grid-cols-[1fr_400px] xl:items-start">
+
+        {/* ── Left: player + controls + info ── */}
         <div className="min-w-0 space-y-4">
           {streamLoading ? (
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-card">
               {episodeMeta?.thumbnail && (
-                <img
-                  src={episodeMeta.thumbnail}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                <img src={episodeMeta.thumbnail} alt="" className="h-full w-full object-cover" />
               )}
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <Loader2 className="size-10 animate-spin text-white" />
@@ -240,6 +237,7 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
             </div>
           </div>
 
+          {/* Recommendations + comments — below episode list on mobile (sidebar renders first via grid order) */}
           {detail.recommendations.length > 0 && (
             <div className="pt-2">
               <AnimeRow title="You might also like" items={detail.recommendations} />
@@ -253,21 +251,42 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
           )}
         </div>
 
-        {/* Side panel */}
-        <aside className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-3">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 font-semibold">
-                <ListVideo className="size-4 text-primary" /> Episodes
+        {/* ── Right: seasons + episodes ── */}
+        <aside className="space-y-4 xl:sticky xl:top-20">
+
+          {/* Seasons list — only shown when this anime has related seasons */}
+          {seasons.length > 1 && (
+            <div className="rounded-xl border border-border bg-card p-3">
+              <h2 className="mb-3 flex items-center gap-2 font-semibold">
+                <Layers className="size-4 text-primary" /> Seasons
               </h2>
-              {seasons.length > 1 ? (
-                <Select
-                  value={`/watch/${detail.slug}?ep=${ep}`}
-                  onChange={(e) => router.push(e.target.value)}
-                  options={seasons.map((s) => ({ label: s.label, value: s.value }))}
-                />
-              ) : null}
+              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto pr-1">
+                {seasons.map((s) => {
+                  const isActive = s.value === `/watch/${detail.slug}?ep=${ep}`;
+                  return (
+                    <button
+                      key={s.value}
+                      onClick={() => router.push(s.value)}
+                      className={cn(
+                        "flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+          )}
+
+          {/* Episode list */}
+          <div className="rounded-xl border border-border bg-card p-3">
+            <h2 className="mb-3 flex items-center gap-2 font-semibold">
+              <ListVideo className="size-4 text-primary" /> Episodes
+            </h2>
             <EpisodeList
               animeId={detail.id}
               slug={detail.slug}

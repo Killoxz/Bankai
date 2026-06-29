@@ -15,12 +15,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Navbar />
       <Sidebar />
       <main className="min-w-0 flex-1 pb-20 lg:pb-0">
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.18 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
           >
             {children}
           </motion.div>

@@ -8,6 +8,7 @@ export interface PlayerSettings {
   autoPlay: boolean;
   autoNext: boolean;
   autoSkipIntro: boolean;
+  autoSkipOutro: boolean;
   category: "sub" | "dub";
   quality: string;
   server: string;
@@ -33,6 +34,7 @@ export const usePlayerStore = create<PlayerSettings>()(
       autoPlay: true,
       autoNext: true,
       autoSkipIntro: false,
+      autoSkipOutro: false,
       category: "sub",
       quality: "auto",
       server: "Kiwi",

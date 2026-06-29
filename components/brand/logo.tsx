@@ -22,8 +22,8 @@ export function Logo({
         height={36}
         priority
         className={cn(
-          "h-8 w-auto object-contain object-left",
-          collapsed && "max-w-[32px]"
+          "h-7 w-auto object-contain object-left sm:h-8",
+          collapsed ? "max-w-[32px]" : "max-w-[80px] sm:max-w-[120px]"
         )}
       />
     </Link>
