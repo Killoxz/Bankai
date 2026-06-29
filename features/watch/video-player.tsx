@@ -230,11 +230,22 @@ export function VideoPlayer({
   const toggleFullscreen = useCallback(() => {
     setFullscreen((prev) => {
       const next = !prev;
-      // Also attempt native OS-level fullscreen alongside the CSS approach.
-      // Native fullscreen gives the real "no browser chrome" experience when
-      // available; CSS fixed-positioning is the reliable fallback.
       if (next) {
-        containerRef.current?.requestFullscreen().catch(() => {});
+        const container = containerRef.current;
+        const video = videoRef.current;
+        if (container?.requestFullscreen) {
+          // Standard API (Android Chrome, Firefox, desktop browsers)
+          container.requestFullscreen().catch(() => {
+            // On iOS Safari requestFullscreen is unsupported — try the video element's
+            // webkit API which gives a native iOS fullscreen player.
+            if (video && "webkitEnterFullscreen" in video) {
+              (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+            }
+            // Either way the CSS fixed-position fallback is already applied by the state change.
+          });
+        } else if (video && "webkitEnterFullscreen" in video) {
+          (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+        }
       } else {
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       }
@@ -243,16 +254,23 @@ export function VideoPlayer({
     });
   }, []);
 
-  // Sync CSS state when native fullscreen is exited externally (Esc key, etc.)
+  // Sync CSS state when native fullscreen is exited externally (Esc key, Android back, etc.)
   useEffect(() => {
     const onFs = () => {
-      if (!document.fullscreenElement) {
-        setFullscreen(false);
-      }
+      if (!document.fullscreenElement) setFullscreen(false);
       setShowControls(true);
     };
     document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
+
+    // iOS Safari: webkitendfullscreen fires on the video element when the system player closes
+    const v = videoRef.current;
+    const onIosEnd = () => setFullscreen(false);
+    v?.addEventListener("webkitendfullscreen", onIosEnd);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      v?.removeEventListener("webkitendfullscreen", onIosEnd);
+    };
   }, []);
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────
@@ -335,11 +353,12 @@ export function VideoPlayer({
       className={cn(
         "group relative bg-black",
         fullscreen
-          ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none"
+          ? "fixed inset-0 z-[9999] w-screen h-[100dvh] rounded-none"
           : "w-full aspect-video rounded-xl"
       )}
       onMouseMove={showControlsTemporarily}
       onMouseLeave={() => playing && setShowControls(false)}
+      onTouchStart={showControlsTemporarily}
     >
       {/* Video clip wrapper — overflow-hidden lives here so dropdowns aren't clipped */}
       <div className={cn("absolute inset-0 overflow-hidden", fullscreen ? "" : "rounded-xl")}>
@@ -489,6 +508,26 @@ export function VideoPlayer({
                 dragTime !== null ? "opacity-100" : "opacity-0 group-hover/seek:opacity-100"
               )} />
             </div>
+            {/* Intro segment — amber marker so the user can see exactly where it is */}
+            {intro && duration > 0 && (
+              <div
+                className="pointer-events-none absolute inset-y-0 bg-amber-400/75"
+                style={{
+                  left: `${(intro.start / duration) * 100}%`,
+                  width: `${Math.max(0.4, ((intro.end - intro.start) / duration) * 100)}%`,
+                }}
+              />
+            )}
+            {/* Outro segment — sky-blue marker */}
+            {outro && duration > 0 && (
+              <div
+                className="pointer-events-none absolute inset-y-0 bg-sky-400/75"
+                style={{
+                  left: `${(outro.start / duration) * 100}%`,
+                  width: `${Math.max(0.4, ((outro.end - outro.start) / duration) * 100)}%`,
+                }}
+              />
+            )}
           </div>
         </div>
 

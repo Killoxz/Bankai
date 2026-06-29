@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Flag, Share2, Bookmark, ThumbsUp,
-  ChevronLeft, ChevronRight, AlertTriangle, ListVideo, Loader2, Layers,
+  ChevronLeft, ChevronRight, AlertTriangle, ListVideo, Loader2,
 } from "lucide-react";
 import { VideoPlayer } from "./video-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { cn, preferredTitle } from "@/lib/utils";
 import { AnimeRow } from "@/components/anime/anime-row";
 import { EpisodeList } from "@/features/anime/episode-list";
@@ -106,24 +107,26 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
   const episodeMeta = episodes?.find((e) => e.number === ep);
   episodeThumbnailRef.current = episodeMeta?.thumbnail;
 
-  // Build season list from PREQUEL/SEQUEL relations, sorted by AniList ID
-  // (lower ID = published earlier = earlier season)
+  // Build season list from PREQUEL/SEQUEL relations sorted by AniList ID
+  // (lower ID = published earlier = earlier season). Labels include "Season N:" so the
+  // dropdown clearly shows every entry even when titles are long/truncated.
   const seasons = useMemo(() => {
     const numId = (id: string) => Number(id.replace("anilist:", "")) || 0;
     const prequels = detail.relations
       .filter((r) => r.relationType === "PREQUEL")
-      .sort((a, b) => numId(a.id) - numId(b.id)); // ascending → S1, S1.5, …
+      .sort((a, b) => numId(a.id) - numId(b.id));
     const sequels = detail.relations
       .filter((r) => r.relationType === "SEQUEL")
-      .sort((a, b) => numId(a.id) - numId(b.id)); // ascending → next, then next+1, …
+      .sort((a, b) => numId(a.id) - numId(b.id));
+    const currentIdx = prequels.length + 1; // 1-based season number for current entry
     return [
-      ...prequels.map((r) => ({
-        label: r.title.english ?? r.title.romaji ?? "Prequel",
+      ...prequels.map((r, i) => ({
+        label: `Season ${i + 1}: ${r.title.english ?? r.title.romaji ?? "Prequel"}`,
         value: `/watch/${r.slug}?ep=1`,
       })),
-      { label: title, value: `/watch/${detail.slug}?ep=${ep}` },
-      ...sequels.map((r) => ({
-        label: r.title.english ?? r.title.romaji ?? "Sequel",
+      { label: `Season ${currentIdx}: ${title}`, value: `/watch/${detail.slug}?ep=${ep}` },
+      ...sequels.map((r, i) => ({
+        label: `Season ${currentIdx + 1 + i}: ${r.title.english ?? r.title.romaji ?? "Sequel"}`,
         value: `/watch/${r.slug}?ep=1`,
       })),
     ];
@@ -251,42 +254,21 @@ export function WatchView({ detail }: { detail: AnimeDetail }) {
           )}
         </div>
 
-        {/* ── Right: seasons + episodes ── */}
+        {/* ── Right: episodes (+ season selector in header) ── */}
         <aside className="space-y-4 xl:sticky xl:top-20">
-
-          {/* Seasons list — only shown when this anime has related seasons */}
-          {seasons.length > 1 && (
-            <div className="rounded-xl border border-border bg-card p-3">
-              <h2 className="mb-3 flex items-center gap-2 font-semibold">
-                <Layers className="size-4 text-primary" /> Seasons
-              </h2>
-              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto pr-1">
-                {seasons.map((s) => {
-                  const isActive = s.value === `/watch/${detail.slug}?ep=${ep}`;
-                  return (
-                    <button
-                      key={s.value}
-                      onClick={() => router.push(s.value)}
-                      className={cn(
-                        "flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Episode list */}
           <div className="rounded-xl border border-border bg-card p-3">
-            <h2 className="mb-3 flex items-center gap-2 font-semibold">
-              <ListVideo className="size-4 text-primary" /> Episodes
-            </h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <ListVideo className="size-4 text-primary" /> Episodes
+              </h2>
+              {seasons.length > 1 && (
+                <Select
+                  value={`/watch/${detail.slug}?ep=${ep}`}
+                  onChange={(e) => router.push(e.target.value)}
+                  options={seasons.map((s) => ({ label: s.label, value: s.value }))}
+                />
+              )}
+            </div>
             <EpisodeList
               animeId={detail.id}
               slug={detail.slug}

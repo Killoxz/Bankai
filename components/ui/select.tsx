@@ -36,7 +36,7 @@ export function Select({ value, onChange, options, className }: SelectProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 max-w-[160px] items-center justify-between gap-2 rounded-lg border border-input bg-background pl-3 pr-2.5 text-sm text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-9 max-w-[200px] items-center justify-between gap-2 rounded-lg border border-input bg-background pl-3 pr-2.5 text-sm text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="truncate">{selected?.label ?? value}</span>
         <ChevronDown
@@ -48,8 +48,8 @@ export function Select({ value, onChange, options, className }: SelectProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-[200] w-max min-w-full max-w-[240px] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
-          <div className="max-h-72 overflow-y-auto p-1">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-[200] w-max min-w-full max-w-[320px] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+          <div className="max-h-[55vh] overflow-y-auto p-1">
             {options.map((o) => (
               <button
                 key={o.value}
