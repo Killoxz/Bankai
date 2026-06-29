@@ -11,16 +11,10 @@
   "categories": ["entertainment"],
   "icons": [
     {
-      "src": "/bankai-logo.svg",
+      "src": "/bankai-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/Bankai Second Logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [

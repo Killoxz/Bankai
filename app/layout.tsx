@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     title: "Bankai",
   },
   icons: {
-    icon: "/bankai-logo.svg",
-    apple: "/bankai-logo.svg",
+    icon: "/bankai-icon.svg",
+    apple: "/bankai-icon.svg",
   },
 };
 
