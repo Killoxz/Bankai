@@ -34,7 +34,7 @@ function syncUpsert(entry: Omit<HistoryEntry, "updatedAt">) {
   fetch("/api/sync/history", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: uid, anime: entry.anime, episode: entry.episode, progress: entry.progress, duration: entry.duration }),
+    body: JSON.stringify({ userId: uid, anime: entry.anime, episode: entry.episode, progress: entry.progress, duration: entry.duration, episodeThumbnail: entry.episodeThumbnail ?? null }),
   }).catch(() => {});
 }
 

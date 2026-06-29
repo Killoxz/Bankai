@@ -112,14 +112,15 @@ model Anime {
 }
 
 model WatchHistory {
-  id           String   @id @default(cuid())
-  userId       String
-  animeId      String
-  episodeNumber Int
-  progress     Int      @default(0) // seconds watched
-  duration     Int      @default(0) // total seconds
-  completed    Boolean  @default(false)
-  watchedAt    DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  animeId          String
+  episodeNumber    Int
+  progress         Int      @default(0) // seconds watched
+  duration         Int      @default(0) // total seconds
+  completed        Boolean  @default(false)
+  episodeThumbnail String?
+  watchedAt        DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)

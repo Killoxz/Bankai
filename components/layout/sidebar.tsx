@@ -86,7 +86,7 @@ export function Sidebar() {
               <div className="flex items-center gap-2">
                 <Logo />
                 <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  v1.8.6
+                  v1.8.7
                 </span>
               </div>
               <button

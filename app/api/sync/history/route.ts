@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       progress: r.progress,
       duration: r.duration,
       updatedAt: r.watchedAt.getTime(),
-      episodeThumbnail: null,
+      episodeThumbnail: r.episodeThumbnail ?? null,
     }));
 
     return NextResponse.json({ entries });
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
 // POST /api/sync/history  — upsert one entry
 export async function POST(req: NextRequest) {
   try {
-    const { userId, anime, episode, progress, duration } = await req.json();
+    const { userId, anime, episode, progress, duration, episodeThumbnail } = await req.json();
     if (!userId || !anime?.id) return NextResponse.json({ ok: false });
 
     await upsertAnime(anime);
@@ -92,11 +92,13 @@ export async function POST(req: NextRequest) {
         progress: Math.round(progress),
         duration: Math.round(duration),
         completed: duration > 0 && progress / duration > 0.9,
+        episodeThumbnail: episodeThumbnail ?? null,
       },
       update: {
         progress: Math.round(progress),
         duration: Math.round(duration),
         completed: duration > 0 && progress / duration > 0.9,
+        episodeThumbnail: episodeThumbnail ?? null,
         watchedAt: new Date(),
       },
     });
