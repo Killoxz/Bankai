@@ -59,7 +59,7 @@ export function SignupForm() {
     setError("");
     if (password !== confirm) { setError("Passwords do not match."); return; }
     setLoading(true);
-    const result = register(email, username, password, avatar);
+    const result = await register(email, username, password, avatar);
     setLoading(false);
     if (!result.ok) { setError(result.error ?? "Sign-up failed."); return; }
     router.push("/profile");

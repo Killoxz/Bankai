@@ -195,7 +195,7 @@ export default function SettingsPage() {
 
 /* ─── Section: Account ────────────────────────────── */
 function AccountSection({ mounted }: { mounted: boolean }) {
-  const { currentUser, updateProfile, users } = useAuthStore();
+  const { currentUser, updateProfile } = useAuthStore();
   const router = useRouter();
   const [newUsername, setNewUsername] = useState("");
   const [error, setError] = useState("");
@@ -221,18 +221,27 @@ function AccountSection({ mounted }: { mounted: boolean }) {
   const canChange = elapsed >= USERNAME_COOLDOWN_MS;
   const cooldownLeft = canChange ? 0 : USERNAME_COOLDOWN_MS - elapsed;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError("");
     setSuccess(false);
     const un = newUsername.trim();
     if (!un) { setError("Username cannot be empty."); return; }
     if (un.length < 2) { setError("Must be at least 2 characters."); return; }
     if (un.length > 20) { setError("Must be 20 characters or less."); return; }
-    if (un.toLowerCase() === currentUser.username.toLowerCase()) {
+    if (un.toLowerCase() === (currentUser.username ?? "").toLowerCase()) {
       setError("That's already your username."); return;
     }
-    if (users.some((u) => u.id !== currentUser.id && u.username.toLowerCase() === un.toLowerCase())) {
-      setError("This username is already taken."); return;
+    try {
+      const res = await fetch("/api/auth/update-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id, username: un }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to update username."); return; }
+    } catch {
+      setError("Network error. Please try again.");
+      return;
     }
     updateProfile({ username: un });
     setNewUsername("");
@@ -256,8 +265,8 @@ function AccountSection({ mounted }: { mounted: boolean }) {
             <Input
               value={newUsername}
               onChange={(e) => setNewUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              placeholder={currentUser.username}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+              placeholder={currentUser.username ?? ""}
               className="h-8 w-36 text-sm"
               maxLength={20}
             />

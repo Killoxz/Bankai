@@ -20,7 +20,7 @@ export function LoginForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const result = login(email, password);
+    const result = await login(email, password);
     setLoading(false);
     if (!result.ok) { setError(result.error ?? "Sign-in failed."); return; }
     router.push("/profile");

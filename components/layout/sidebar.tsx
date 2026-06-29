@@ -148,7 +148,7 @@ export function Sidebar() {
               {mounted && currentUser ? (
                 <div className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-accent">
                   <Link href="/profile" onClick={toggle} className="flex flex-1 items-center gap-3 min-w-0">
-                    <Avatar src={currentUser.avatar} fallback={currentUser.username} size={36} />
+                    <Avatar src={currentUser.avatar} fallback={currentUser.username ?? currentUser.email} size={36} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{currentUser.username}</p>
                       <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>

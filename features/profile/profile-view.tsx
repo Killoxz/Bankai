@@ -158,7 +158,7 @@ export function ProfileView() {
           <div className="relative shrink-0">
             <Avatar
               src={currentUser.avatar}
-              fallback={currentUser.username}
+              fallback={currentUser.username ?? currentUser.email}
               size={112}
               className="border-4 border-background shadow-xl"
             />
@@ -250,7 +250,7 @@ export function ProfileView() {
                 </h1>
                 {canChangeUsername ? (
                   <button
-                    onClick={() => { setNameInput(currentUser.username); setEditingName(true); setNameError(""); }}
+                    onClick={() => { setNameInput(currentUser.username ?? ""); setEditingName(true); setNameError(""); }}
                     aria-label="Edit username"
                     className="shrink-0 grid size-6 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
                   >

@@ -17,8 +17,10 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   name          String?
+  username      String?   @unique
   email         String?   @unique
   emailVerified DateTime?
+  passwordHash  String?
   image         String?
   banner        String?
   role          Role      @default(USER)
