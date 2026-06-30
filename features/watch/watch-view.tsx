@@ -108,6 +108,17 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
   const episodeMeta = episodes?.find((e) => e.number === ep);
   episodeThumbnailRef.current = episodeMeta?.thumbnail;
 
+  // Back-fill DB the moment episodes resolve and expose a thumbnail URL.
+  // Without this, the 5-second progress save races with episode fetch and
+  // writes null first — this effect wins once the fetch settles.
+  useEffect(() => {
+    const thumbnail = episodeMeta?.thumbnail;
+    if (!thumbnail) return;
+    const saved = useHistoryStore.getState().getFor(detail.id);
+    if (!saved || saved.episode !== ep || saved.episodeThumbnail === thumbnail) return;
+    upsert({ anime: card, episode: ep, progress: saved.progress, duration: saved.duration, episodeThumbnail: thumbnail });
+  }, [episodeMeta?.thumbnail, ep, detail.id, card, upsert]);
+
   // Complete season chain is built server-side via BFS traversal of AniList relations.
   // Using the pre-built chain ensures all seasons are always visible from any season page.
   const seasons = useMemo(() => {

@@ -98,7 +98,8 @@ export async function POST(req: NextRequest) {
         progress: Math.round(progress),
         duration: Math.round(duration),
         completed: duration > 0 && progress / duration > 0.9,
-        episodeThumbnail: episodeThumbnail ?? null,
+        // Never overwrite a real thumbnail URL with null — keep whatever was saved first
+        ...(episodeThumbnail != null ? { episodeThumbnail } : {}),
         watchedAt: new Date(),
       },
     });
