@@ -42,9 +42,13 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
   const { data: stream, isLoading: streamLoading, isError } = useStream(detail.id, ep, category, server);
   const { data: episodes } = useEpisodes(detail.id);
   const streamFailed = !streamLoading && (isError || !stream);
-  const torrentTitle = detail.title.english ?? detail.title.romaji ?? "";
+  // SubsPlease always uses romaji titles, so prefer romaji over english
+  const torrentTitle = detail.title.romaji ?? detail.title.english ?? "";
+  const torrentTitleAlt = detail.title.english !== detail.title.romaji
+    ? (detail.title.english ?? "")
+    : "";
   const { data: torrent, isLoading: torrentLoading } = useTorrent(
-    detail.id, ep, torrentTitle, streamFailed
+    detail.id, ep, torrentTitle, torrentTitleAlt, streamFailed
   );
   const total = episodes?.length ?? detail.episodes ?? 1;
 

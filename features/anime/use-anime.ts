@@ -95,15 +95,16 @@ export function useTorrent(
   animeId: string,
   ep: number,
   title: string,
+  titleAlt: string,
   enabled: boolean
 ) {
   return useQuery({
     queryKey: ["torrent", animeId, ep, title] as const,
     queryFn: async (): Promise<TorrentResult | null> => {
       const numId = animeId.replace("anilist:", "");
-      const res = await fetch(
-        `/api/anime/${numId}/torrent?ep=${ep}&title=${encodeURIComponent(title)}`
-      );
+      const params = new URLSearchParams({ ep: String(ep), title });
+      if (titleAlt) params.set("titleAlt", titleAlt);
+      const res = await fetch(`/api/anime/${numId}/torrent?${params}`);
       if (!res.ok) return null;
       return res.json();
     },

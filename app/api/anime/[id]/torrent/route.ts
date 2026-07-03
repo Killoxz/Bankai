@@ -26,25 +26,31 @@ export async function GET(
   const { id: _id } = await params;
   const ep = parseInt(req.nextUrl.searchParams.get("ep") ?? "1", 10);
   const title = req.nextUrl.searchParams.get("title") ?? "";
+  const titleAlt = req.nextUrl.searchParams.get("titleAlt") ?? "";
 
   if (!title || ep < 1) {
     return NextResponse.json({ error: "title and ep are required" }, { status: 400 });
   }
 
-  // Remove season suffixes & punctuation so romaji/english titles match Nyaa search
-  const clean = title
-    .replace(/[:–—]/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
   const epStr = ep.toString().padStart(2, "0");
+  const cleanTitle = (t: string) =>
+    t.replace(/[:–—]/g, " ").replace(/\s{2,}/g, " ").trim();
 
-  // Try progressively looser queries until we get a hit
+  const clean = cleanTitle(title);
+  const cleanAlt = titleAlt ? cleanTitle(titleAlt) : "";
+
+  // Try progressively looser queries — romaji title first, English title as last resort
   const queries = [
     `${clean} - ${epStr} subsplease 1080p`,
     `${clean} ${epStr} subsplease 1080p`,
     `${clean} - ${epStr} subsplease`,
     `${clean} ${epStr} subsplease`,
+    ...(cleanAlt
+      ? [
+          `${cleanAlt} - ${epStr} subsplease 1080p`,
+          `${cleanAlt} ${epStr} subsplease 1080p`,
+        ]
+      : []),
   ];
 
   for (const q of queries) {
