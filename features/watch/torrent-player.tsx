@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-// Browser UMD build of WebTorrent (v1.x with UMD dist)
-const WT_CDN = "https://cdn.jsdelivr.net/npm/webtorrent@1/dist/webtorrent.min.js";
+// Browser UMD build — v0.109.2 is the last version with a bundled webtorrent.min.js
+const WT_CDN = "https://cdn.jsdelivr.net/npm/webtorrent@0.109.2/webtorrent.min.js";
 
 interface Props {
   magnetUri: string;
