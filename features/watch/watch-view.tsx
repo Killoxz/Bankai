@@ -22,8 +22,8 @@ import { useWatchlistStore } from "@/store/watchlist-store";
 import { toCardFromDetail } from "@/lib/to-card";
 import type { AnimeDetail } from "@/types/anime";
 
-// User-facing server names → Anivexa provider IDs (see consumet.ts)
-const SERVERS = ["Kiwi", "Ally", "Bee", "Hop", "Bonk"] as const;
+// User-facing server names → provider IDs (see consumet.ts)
+const SERVERS = ["Kiwi", "Arc", "Zoro", "Jet", "Ally", "Bee"] as const;
 
 type SeasonEntry = { id: string; slug: string; title: { english?: string | null; romaji?: string | null } };
 
@@ -149,9 +149,18 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
             </div>
           ) : isError || !stream ? (
             <div className="grid aspect-video w-full place-items-center rounded-xl border border-border bg-card text-center">
-              <div className="space-y-2 text-muted-foreground">
-                <AlertTriangle className="mx-auto size-10" />
-                <p>Couldn&apos;t load this stream. Try another server.</p>
+              <div className="space-y-3 px-6 text-muted-foreground">
+                <AlertTriangle className="mx-auto size-10 text-yellow-500" />
+                <p className="font-medium text-foreground">Stream unavailable</p>
+                <p className="text-sm">Try switching servers above, or watch directly on Miruro:</p>
+                <a
+                  href={`https://www.miruro.tv/watch/${detail.id.replace("anilist:", "")}/${detail.slug.split("-").slice(0, -1).join("-") || detail.slug}?ep=${ep}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  Watch on Miruro.tv →
+                </a>
               </div>
             </div>
           ) : (

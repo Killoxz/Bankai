@@ -1,36 +1,89 @@
 /**
- * Streaming client for Miruro-API.
- * Repo: https://github.com/walterwhite-69/Miruro-API
- * Accepts AniList IDs directly — no title-search mapping needed.
- * Set STREAMING_API_URL in .env to your self-hosted (or public) Miruro-API instance.
+ * Streaming client for Miruro TV.
+ * Calls the Miruro.tv secure pipe directly from our Next.js API routes
+ * (Vercel) instead of going through the Railway proxy, which was broken
+ * because Miruro.tv added Cloudflare protection to their pipe endpoint
+ * and Railway IPs fail the challenge.
+ *
+ * Pipe encoding:  JSON payload → base64url → ?e= query param
+ * Pipe decoding:  base64url → (optional XOR) → gzip → JSON
+ * XOR key (hex):  71951034f8fbcf53d89db52ceb3dc22c  (from Miruro.tv env)
  */
 
+import { gunzipSync } from "zlib";
 import type { Episode, StreamData } from "@/types/anime";
 
-const BASE = (process.env.STREAMING_API_URL ?? process.env.CONSUMET_URL ?? "").replace(/\/$/, "");
+const PIPE_URL = "https://www.miruro.tv/api/secure/pipe";
+const XOR_KEY_HEX = "71951034f8fbcf53d89db52ceb3dc22c";
+const XOR_KEY = Buffer.from(XOR_KEY_HEX, "hex");
 
-function enabled() {
-  return !!BASE;
-}
-
-const PROVIDERS = ["kiwi", "ally", "bee", "hop", "bonk", "pewe", "moo"] as const;
-type Provider = (typeof PROVIDERS)[number];
-
-// Map user-facing server names → provider IDs
-const SERVER_TO_PROVIDER: Record<string, Provider> = {
-  Kiwi: "kiwi",
-  Ally: "ally",
-  Bee:  "bee",
-  Hop:  "hop",
-  Bonk: "bonk",
-  Pewe: "pewe",
-  Moo:  "moo",
+const HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "Accept": "text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Referer": "https://www.miruro.tv/",
+  "sec-ch-ua": '"Chromium";v="130", "Not?A_Brand";v="99"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
 };
 
-// ── Response shapes ────────────────────────────────────────────────────────────
+// ── Encoding ──────────────────────────────────────────────────────────────────
+
+function encodePipe(path: string, query: Record<string, unknown> = {}): string {
+  const payload = { path, method: "GET", query, body: null, version: "0.1.0" };
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+// ── Decoding ──────────────────────────────────────────────────────────────────
+
+function xorDecrypt(buf: Uint8Array): Uint8Array {
+  const out = new Uint8Array(buf.length);
+  for (let i = 0; i < buf.length; i++) {
+    out[i] = buf[i] ^ XOR_KEY[i % XOR_KEY.length];
+  }
+  return out;
+}
+
+function decodeResponse(text: string, obfuscated: string | null): unknown {
+  if (!obfuscated) {
+    // Plain JSON response
+    return JSON.parse(text);
+  }
+  // Base64url → bytes
+  const b64 = text.replace(/-/g, "+").replace(/_/g, "/");
+  let bytes: Uint8Array = new Uint8Array(Buffer.from(b64, "base64"));
+  if (obfuscated === "2") {
+    bytes = xorDecrypt(bytes);
+  }
+  // Gzip decompress
+  return JSON.parse(gunzipSync(bytes).toString("utf-8"));
+}
+
+// ── HTTP helper ───────────────────────────────────────────────────────────────
+
+async function pipe<T>(path: string, query: Record<string, unknown> = {}): Promise<T> {
+  const e = encodePipe(path, query);
+  const url = `${PIPE_URL}?e=${encodeURIComponent(e)}`;
+  const res = await fetch(url, {
+    headers: HEADERS,
+    // Short cache — episode lists don't change often
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) {
+    throw new Error(`Miruro pipe ${res.status} for ${path}`);
+  }
+  const text = await res.text();
+  const obfuscated = res.headers.get("x-obfuscated");
+  return decodeResponse(text, obfuscated) as T;
+}
+
+// ── Response shapes ───────────────────────────────────────────────────────────
 
 interface RawEpisode {
-  /** Full watch path, e.g. "watch/kiwi/178005/sub/animepahe-1" */
   id: string;
   number: number;
   title?: string | null;
@@ -49,7 +102,7 @@ interface ProviderEpisodes {
 }
 
 interface EpisodesResponse {
-  providers?: Partial<Record<Provider, ProviderEpisodes>>;
+  providers?: Record<string, ProviderEpisodes>;
 }
 
 interface MiruroStream {
@@ -65,24 +118,23 @@ interface MiruroSubtitle {
   label: string;
 }
 
-interface MiruroWatchResponse {
+interface MiruroSourcesResponse {
   streams?: MiruroStream[];
   subtitles?: MiruroSubtitle[];
   intro?: { start: number; end: number } | null;
   outro?: { start: number; end: number } | null;
 }
 
-// ── AniSkip fallback ───────────────────────────────────────────────────────────
-// Used when Miruro doesn't return intro/outro timestamps.
+// ── AniSkip fallback ──────────────────────────────────────────────────────────
 
-async function getMalId(anilistNumericId: string): Promise<number | null> {
+async function getMalId(numericAnilistId: string): Promise<number | null> {
   try {
     const res = await fetch("https://graphql.anilist.co", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "query($id:Int){Media(id:$id){idMal}}",
-        variables: { id: Number(anilistNumericId) },
+        variables: { id: Number(numericAnilistId) },
       }),
       next: { revalidate: 86400 },
     });
@@ -116,35 +168,36 @@ async function getAniSkipTimes(
   }
 }
 
-// ── HTTP helper ────────────────────────────────────────────────────────────────
+// ── ID helpers ────────────────────────────────────────────────────────────────
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    next: { revalidate: 300 },
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-      "Referer": "https://www.miruro.to/",
-      "Origin": "https://www.miruro.to",
-    },
-  });
-  if (!res.ok) throw new Error(`Miruro ${res.status}: ${path}`);
-  return res.json() as Promise<T>;
-}
-
-// Strip the "anilist:" prefix to get the bare numeric AniList ID.
 function numId(id: string) {
   return id.replace("anilist:", "");
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────────
+// Provider preference order (matches Miruro.tv v2 providers)
+const PROVIDERS = ["kiwi", "arc", "zoro", "jet", "ally", "bee", "hop", "bonk", "pewe", "moo"] as const;
+type Provider = (typeof PROVIDERS)[number];
+
+const SERVER_TO_PROVIDER: Record<string, Provider> = {
+  Kiwi: "kiwi",
+  Arc:  "arc",
+  Zoro: "zoro",
+  Jet:  "jet",
+  Ally: "ally",
+  Bee:  "bee",
+  Hop:  "hop",
+  Bonk: "bonk",
+};
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function getEpisodes(
   anilistId: string,
   _title?: string
 ): Promise<Episode[] | null> {
-  if (!enabled()) return null;
   try {
-    const data = await get<EpisodesResponse>(`/episodes/${numId(anilistId)}`);
+    const nid = numId(anilistId);
+    const data = await pipe<EpisodesResponse>("episodes", { anilistId: nid });
     const providers = data.providers ?? {};
 
     for (const provider of PROVIDERS) {
@@ -175,24 +228,20 @@ export async function getStream(
   _episodes?: Episode[],
   server?: string
 ): Promise<StreamData | null> {
-  if (!enabled()) return null;
-
   const nid = numId(anilistId);
 
-  // Fetch episode list once — needed to resolve the provider-specific episode slug.
-  // Next.js caches this for 5 min so rapid sub/dub/server switches are cheap.
+  // Fetch episode list to resolve provider-specific episode IDs
   let episodesData: EpisodesResponse;
   try {
-    episodesData = await get<EpisodesResponse>(`/episodes/${nid}`);
+    episodesData = await pipe<EpisodesResponse>("episodes", { anilistId: nid });
   } catch {
     return null;
   }
 
   const providers = episodesData.providers ?? {};
 
-  // Put the user-selected server's provider first, then fall back to the rest.
   const preferred = server ? SERVER_TO_PROVIDER[server] : undefined;
-  const order: readonly Provider[] = preferred
+  const order: readonly string[] = preferred
     ? [preferred, ...PROVIDERS.filter((p) => p !== preferred)]
     : PROVIDERS;
 
@@ -201,7 +250,6 @@ export async function getStream(
       const providerEps = providers[provider]?.episodes;
       if (!providerEps) continue;
 
-      // Prefer the requested category; fall back to the other if unavailable.
       const epList =
         providerEps[category] ??
         providerEps[category === "sub" ? "dub" : "sub"];
@@ -210,8 +258,13 @@ export async function getStream(
       const ep = epList.find((e) => e.number === episode);
       if (!ep) continue;
 
-      // ep.id is the full watch path: "watch/kiwi/178005/sub/animepahe-1"
-      const data = await get<MiruroWatchResponse>(`/${ep.id}`);
+      // ep.id is the full source ID (provider-specific format)
+      const data = await pipe<MiruroSourcesResponse>("sources", {
+        episodeId: ep.id,
+        provider,
+        category,
+        anilistId: nid,
+      });
 
       const hlsSources = (data.streams ?? []).filter(
         (s) => s.type === "hls" && s.url && s.isActive !== false
@@ -221,7 +274,6 @@ export async function getStream(
       let intro: StreamData["intro"] = data.intro ?? undefined;
       let outro: StreamData["outro"] = data.outro ?? undefined;
 
-      // Miruro didn't supply timestamps — fall back to AniSkip community database
       if (!intro && !outro) {
         const malId = await getMalId(nid);
         if (malId) {
@@ -249,7 +301,6 @@ export async function getStream(
         outro,
       };
     } catch {
-      // Provider failed — try the next one.
       continue;
     }
   }
