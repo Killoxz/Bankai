@@ -82,3 +82,33 @@ export function useGenres() {
     staleTime: 60 * 60 * 1000,
   });
 }
+
+export interface TorrentResult {
+  title: string;
+  infoHash: string;
+  magnetUri: string;
+  size: string;
+  seeders: number;
+}
+
+export function useTorrent(
+  animeId: string,
+  ep: number,
+  title: string,
+  enabled: boolean
+) {
+  return useQuery({
+    queryKey: ["torrent", animeId, ep, title] as const,
+    queryFn: async (): Promise<TorrentResult | null> => {
+      const numId = animeId.replace("anilist:", "");
+      const res = await fetch(
+        `/api/anime/${numId}/torrent?ep=${ep}&title=${encodeURIComponent(title)}`
+      );
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled,
+    retry: 1,
+    staleTime: 3_600_000,
+  });
+}

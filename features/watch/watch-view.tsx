@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, ListVideo, Loader2,
 } from "lucide-react";
 import { VideoPlayer } from "./video-player";
+import { TorrentPlayer } from "./torrent-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
@@ -15,7 +16,7 @@ import { cn, preferredTitle } from "@/lib/utils";
 import { AnimeRow } from "@/components/anime/anime-row";
 import { EpisodeList } from "@/features/anime/episode-list";
 import { Comments } from "@/features/anime/comments";
-import { useStream, useEpisodes } from "@/features/anime/use-anime";
+import { useStream, useEpisodes, useTorrent } from "@/features/anime/use-anime";
 import { usePlayerStore } from "@/store/player-store";
 import { useHistoryStore } from "@/store/history-store";
 import { useWatchlistStore } from "@/store/watchlist-store";
@@ -40,6 +41,11 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
 
   const { data: stream, isLoading: streamLoading, isError } = useStream(detail.id, ep, category, server);
   const { data: episodes } = useEpisodes(detail.id);
+  const streamFailed = !streamLoading && (isError || !stream);
+  const torrentTitle = detail.title.english ?? detail.title.romaji ?? "";
+  const { data: torrent, isLoading: torrentLoading } = useTorrent(
+    detail.id, ep, torrentTitle, streamFailed
+  );
   const total = episodes?.length ?? detail.episodes ?? 1;
 
   const upsert  = useHistoryStore((s) => s.upsert);
@@ -138,32 +144,19 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
 
         {/* ── Left: player + controls + info ── */}
         <div className="min-w-0 space-y-4">
-          {streamLoading ? (
+          {streamLoading || (streamFailed && torrentLoading) ? (
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-card">
               {episodeMeta?.thumbnail && (
                 <img src={episodeMeta.thumbnail} alt="" className="h-full w-full object-cover" />
               )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50">
                 <Loader2 className="size-10 animate-spin text-white" />
+                {streamFailed && (
+                  <p className="text-sm text-white/70">Searching for torrent…</p>
+                )}
               </div>
             </div>
-          ) : isError || !stream ? (
-            <div className="grid aspect-video w-full place-items-center rounded-xl border border-border bg-card text-center">
-              <div className="space-y-3 px-6 text-muted-foreground">
-                <AlertTriangle className="mx-auto size-10 text-yellow-500" />
-                <p className="font-medium text-foreground">Stream unavailable</p>
-                <p className="text-sm">Try switching servers above, or watch directly on Miruro:</p>
-                <a
-                  href={`https://www.miruro.tv/watch/${detail.id.replace("anilist:", "")}/${detail.slug.split("-").slice(0, -1).join("-") || detail.slug}?ep=${ep}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Watch on Miruro.tv →
-                </a>
-              </div>
-            </div>
-          ) : (
+          ) : stream ? (
             <VideoPlayer
               stream={stream}
               poster={episodeMeta?.thumbnail ?? detail.coverImage}
@@ -174,6 +167,29 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
               onProgress={onProgress}
               startTime={startTime}
             />
+          ) : torrent ? (
+            <TorrentPlayer
+              magnetUri={torrent.magnetUri}
+              poster={episodeMeta?.thumbnail ?? detail.coverImage}
+              startTime={startTime}
+              onProgress={onProgress}
+            />
+          ) : (
+            <div className="grid aspect-video w-full place-items-center rounded-xl border border-border bg-card text-center">
+              <div className="space-y-3 px-6 text-muted-foreground">
+                <AlertTriangle className="mx-auto size-10 text-yellow-500" />
+                <p className="font-medium text-foreground">Stream unavailable</p>
+                <p className="text-sm">No stream or torrent found for this episode.</p>
+                <a
+                  href={`https://www.miruro.tv/watch/${detail.id.replace("anilist:", "")}/${detail.slug.split("-").slice(0, -1).join("-") || detail.slug}?ep=${ep}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  Watch on Miruro.tv →
+                </a>
+              </div>
+            </div>
           )}
 
           {/* Server / category bar */}
