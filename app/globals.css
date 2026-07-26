@@ -4,46 +4,53 @@
 
 @layer base {
   :root {
-    --background: 0 0% 11%;
-    --foreground: 0 0% 92%;
-    --card: 0 0% 14%;
-    --card-foreground: 0 0% 92%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 92%;
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 95%;
     --primary: 142 69% 58%;
     --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 18%;
+    --secondary: 0 0% 16%;
     --secondary-foreground: 0 0% 88%;
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 54%;
-    --accent: 0 0% 20%;
-    --accent-foreground: 0 0% 92%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 142 69% 58%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   * {
-    @apply border-border;
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-inter), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
   }
 
-  /* Hide scrollbars globally */
+  /* Hide all scrollbars while keeping scroll functionality */
   * {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
   *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
 }
