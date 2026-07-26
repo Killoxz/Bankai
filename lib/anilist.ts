@@ -28,7 +28,10 @@ const FIELDS = `
   seasonYear
 `;
 
-async function gql(query: string): Promise<Record<string, { media: AnimeMedia[] }>> {
+// Mushoku Tensei: Jobless Reincarnation Season 3 — always the first hero slide
+const HERO_PIN_ID = 178789;
+
+async function gql<T>(query: string): Promise<T> {
   const res = await fetch(GQL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -37,11 +40,19 @@ async function gql(query: string): Promise<Record<string, { media: AnimeMedia[] 
   });
   const json = await res.json();
   if (json.errors) throw new Error(json.errors[0]?.message ?? "AniList error");
-  return json.data;
+  return json.data as T;
+}
+
+interface HomeQuery {
+  trending: { media: AnimeMedia[] };
+  popular: { media: AnimeMedia[] };
+  topRated: { media: AnimeMedia[] };
+  newSeason: { media: AnimeMedia[] };
+  pinned: AnimeMedia | null;
 }
 
 export async function getHomeData() {
-  const data = await gql(`{
+  const data = await gql<HomeQuery>(`{
     trending: Page(perPage: 16) {
       media(sort: TRENDING_DESC, type: ANIME) { ${FIELDS} }
     }
@@ -54,17 +65,26 @@ export async function getHomeData() {
     newSeason: Page(perPage: 16) {
       media(sort: TRENDING_DESC, type: ANIME, status: RELEASING) { ${FIELDS} }
     }
+    pinned: Media(id: ${HERO_PIN_ID}, type: ANIME) { ${FIELDS} }
   }`);
 
-  const trending = data.trending.media;
-  const popular = data.popular.media;
-  const topRated = data.topRated.media;
-  const newSeason = data.newSeason.media;
+  // Hero: pinned show first, then other currently-airing shows with banner art — 4 total
+  const heroItems: AnimeMedia[] = [];
+  if (data.pinned?.bannerImage) heroItems.push(data.pinned);
+  for (const m of [...data.newSeason.media, ...data.trending.media]) {
+    if (heroItems.length >= 4) break;
+    if (!m.bannerImage || m.status !== "RELEASING") continue;
+    if (heroItems.some((h) => h.id === m.id)) continue;
+    heroItems.push(m);
+  }
 
-  // Pick hero: first trending anime that has a banner image
-  const hero = trending.find((m) => m.bannerImage) ?? trending[0];
-
-  return { hero, trending, popular, topRated, newSeason };
+  return {
+    heroItems,
+    trending: data.trending.media,
+    popular: data.popular.media,
+    topRated: data.topRated.media,
+    newSeason: data.newSeason.media,
+  };
 }
 
 export function preferredTitle(anime: AnimeMedia): string {

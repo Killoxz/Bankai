@@ -1,6 +1,6 @@
 {
   "name": "bankai",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Bankai — a modern anime streaming platform. Browse trending shows, track your watchlist, and pick up where you left off.",
   "scripts": {

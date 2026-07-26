@@ -3,28 +3,76 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Bell } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 
 const NAV_LINKS = [
-  { label: "Home",        href: "/" },
-  { label: "My List",     href: "/my-list" },
-  { label: "Movie",       href: "/browse?format=MOVIE" },
-  { label: "New Season",  href: "/browse?status=RELEASING" },
-  { label: "Language",    href: "#" },
+  { label: "Home",       href: "/" },
+  { label: "My List",    href: "/my-list" },
+  { label: "Movie",      href: "/browse?format=MOVIE" },
+  { label: "New Season", href: "/browse?status=RELEASING" },
+  { label: "Language",   href: "#" },
 ];
+
+interface SearchResult {
+  id: number;
+  title: { romaji: string; english: string | null };
+  coverImage: { medium: string };
+  seasonYear: number | null;
+  format: string | null;
+}
 
 export function Navbar() {
   const [search, setSearch] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const logout = useAuthStore((s) => s.logout);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Debounced live search against AniList
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch("https://graphql.anilist.co", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `query ($q: String) { Page(perPage: 6) { media(search: $q, type: ANIME) {
+              id title { romaji english } coverImage { medium } seasonYear format
+            } } }`,
+            variables: { q },
+          }),
+        });
+        const json = await res.json();
+        setResults(json.data?.Page?.media ?? []);
+      } catch {
+        setResults([]);
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const showResults = searchFocused && search.trim().length >= 2 && results.length > 0;
 
   return (
     <header
@@ -47,13 +95,12 @@ export function Navbar() {
         />
       </Link>
 
-      {/* Desktop nav */}
-      <nav className="flex items-center gap-5">
+      {/* Nav links */}
+      <nav className="hidden items-center gap-5 md:flex">
         {NAV_LINKS.map((link) => {
+          const base = link.href.split("?")[0];
           const active =
-            link.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(link.href.split("?")[0]) && link.href.split("?")[0] !== "/";
+            link.href === "/" ? pathname === "/" : base !== "/" && base !== "#" && pathname.startsWith(base);
           return (
             <Link
               key={link.label}
@@ -71,33 +118,100 @@ export function Navbar() {
         })}
       </nav>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search */}
-      <div className="flex w-52 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 transition-colors focus-within:border-white/35">
-        <input
-          type="text"
-          placeholder="Search here ..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none"
-        />
-        <Search className="size-4 shrink-0 text-white/45" />
+      {/* Live search */}
+      <div
+        className="relative hidden sm:block"
+        onFocus={() => setSearchFocused(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false);
+        }}
+      >
+        <div className="flex w-52 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 transition-colors focus-within:border-white/35">
+          <input
+            type="text"
+            placeholder="Search here ..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
+          />
+          <Search className="size-4 shrink-0 text-white/45" />
+        </div>
+
+        {showResults && (
+          <div className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1.5 shadow-2xl">
+            {results.map((r) => (
+              <Link
+                key={r.id}
+                href={`/anime/${r.id}`}
+                onClick={() => {
+                  setSearch("");
+                  setSearchFocused(false);
+                }}
+                className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-white/5"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={r.coverImage.medium} alt="" className="h-12 w-9 shrink-0 rounded object-cover" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-white">{r.title.english || r.title.romaji}</p>
+                  <p className="text-xs text-white/40">
+                    {[r.seasonYear, r.format].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bell */}
-      <button
-        aria-label="Notifications"
-        className="text-white/60 transition-colors hover:text-white"
-      >
+      <button aria-label="Notifications" className="text-white/60 transition-colors hover:text-white">
         <Bell className="size-5" />
       </button>
 
-      {/* Avatar */}
-      <div className="size-8 shrink-0 overflow-hidden rounded-full ring-2 ring-white/20">
-        <div className="size-full bg-gradient-to-br from-sky-400 to-violet-500" />
-      </div>
+      {/* Account */}
+      {mounted && currentUser ? (
+        <div
+          className="relative"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenuOpen(false);
+          }}
+        >
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="Account menu"
+            className="grid size-8 place-items-center rounded-full bg-primary text-sm font-bold text-black ring-2 ring-white/20"
+          >
+            {currentUser[0]?.toUpperCase()}
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-11 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+              <p className="px-4 py-2.5 text-xs text-white/50">
+                Signed in as <span className="font-semibold text-white">{currentUser}</span>
+              </p>
+              <div className="h-px bg-white/10" />
+              <button
+                onClick={() => {
+                  logout();
+                  setMenuOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <Link
+          href="/login"
+          aria-label="Log in"
+          className="block size-8 shrink-0 overflow-hidden rounded-full ring-2 ring-white/20 transition hover:ring-primary/60"
+        >
+          <div className="size-full bg-gradient-to-br from-sky-400 to-violet-500" />
+        </Link>
+      )}
     </header>
   );
 }
