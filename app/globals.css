@@ -10,8 +10,8 @@
     --card-foreground: 240 10% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 4%;
-    --primary: 45 88% 60%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 142 69% 58%;
+    --primary-foreground: 0 0% 5%;
     --secondary: 240 5% 96%;
     --secondary-foreground: 240 6% 10%;
     --muted: 240 5% 96%;
@@ -22,31 +22,31 @@
     --destructive-foreground: 0 0% 100%;
     --border: 240 6% 90%;
     --input: 240 6% 90%;
-    --ring: 45 88% 60%;
+    --ring: 142 69% 58%;
     --radius: 0.48rem;
   }
 
-  /* Dark mode — neutral dark, standard across the industry. */
+  /* Dark mode — flat neutral dark matching Figma #1E1E1E. */
   .dark {
-    --background: 220 9% 10%;
-    --foreground: 210 16% 93%;
-    --card: 220 9% 13%;
-    --card-foreground: 210 16% 93%;
-    --popover: 220 9% 12%;
-    --popover-foreground: 210 16% 93%;
-    --primary: 45 88% 60%;
-    --primary-foreground: 220 20% 10%;
-    --secondary: 220 9% 18%;
-    --secondary-foreground: 210 14% 88%;
-    --muted: 220 9% 15%;
-    --muted-foreground: 220 8% 54%;
-    --accent: 220 9% 19%;
-    --accent-foreground: 210 16% 93%;
+    --background: 0 0% 11%;
+    --foreground: 0 0% 92%;
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 92%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 92%;
+    --primary: 142 69% 58%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 54%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 92%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 9% 19%;
-    --input: 220 9% 20%;
-    --ring: 45 88% 60%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 142 69% 58%;
   }
 }
 
@@ -57,15 +57,6 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Light mode: soft purple-tinted gradients */
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% 0%, hsl(270 80% 96% / 0.6) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, hsl(230 70% 96% / 0.4) 0%, transparent 60%);
-  }
-  .dark body {
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% 0%, hsl(270 40% 10% / 0.7) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, hsl(224 30% 8% / 0.5) 0%, transparent 60%);
   }
   ::selection {
     @apply bg-primary/25 text-foreground;

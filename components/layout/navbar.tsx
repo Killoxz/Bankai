@@ -11,6 +11,8 @@ import {
   LogOut,
   Bookmark,
   History as HistoryIcon,
+  Crown,
+  ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -24,8 +26,14 @@ import {
 import { useUIStore } from "@/store/ui-store";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
-import { InstallPWAButton } from "@/components/install-pwa-button";
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePathname } from "next/navigation";
+
+const DESKTOP_NAV = [
+  { label: "Home", href: "/" },
+  { label: "Browse", href: "/browse", chevron: true },
+  { label: "Schedule", href: "/schedule" },
+];
 
 export function Navbar() {
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
@@ -33,40 +41,80 @@ export function Navbar() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
   const { notifications, unreadCount, markAllRead } = useNotifications();
+  const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 h-16 border-b border-border glass">
-      <div className="mx-auto flex h-full max-w-[1800px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+    <header className="sticky top-0 z-50 h-16 border-b border-border bg-background/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-[1800px] items-center gap-3 px-4 sm:px-6">
 
-        {/* Left: hamburger + logo */}
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Mobile only: hamburger */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          aria-label="Open menu"
+          className="shrink-0 lg:hidden"
+        >
+          <Menu className="size-5" />
+        </Button>
+
+        {/* Logo */}
+        <Logo />
+
+        {/* Desktop: nav links */}
+        <nav className="ml-4 hidden items-center gap-0.5 lg:flex">
+          {DESKTOP_NAV.map((link) => {
+            const active =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {link.label}
+                {link.chevron && <ChevronDown className="size-3.5" />}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right actions */}
+        <div className="flex shrink-0 items-center gap-0.5">
+
+          {/* Search */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleSidebar}
-            aria-label="Open menu"
+            onClick={() => setCommandOpen(true)}
+            aria-label="Search"
           >
-            <Menu className="size-5" />
+            <Search className="size-5" />
           </Button>
-          <Logo />
-        </div>
 
-        {/* Search bar — grows to fill space */}
-        <button
-          onClick={() => setCommandOpen(true)}
-          className="mx-auto flex h-10 w-full max-w-xl flex-1 items-center gap-2 rounded-[var(--radius)] border border-input bg-background/40 px-4 text-sm text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Open search"
-        >
-          <Search className="size-4 shrink-0" />
-          <span className="truncate">Search anime…</span>
-          <kbd className="ml-auto hidden rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] sm:inline">
-            ⌘
-          </kbd>
-        </button>
+          {/* Watchlist */}
+          <Link
+            href="/watchlist"
+            aria-label="Watchlist"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "hidden sm:inline-flex"
+            )}
+          >
+            <Bookmark className="size-5" />
+          </Link>
 
-        {/* Right: install + notifications + settings + profile */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          <InstallPWAButton />
+          {/* Notifications */}
           <Dropdown
             trigger={
               <Button
@@ -103,10 +151,12 @@ export function Navbar() {
               ) : (
                 notifications.map((n) => (
                   <Link key={n.id} href={n.href}>
-                    <div className={cn(
-                      "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent",
-                      n.unread && "bg-primary/5"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent",
+                        n.unread && "bg-primary/5"
+                      )}
+                    >
                       {n.coverImage && (
                         <img
                           src={n.coverImage}
@@ -129,10 +179,7 @@ export function Navbar() {
             </div>
           </Dropdown>
 
-          <Link href="/settings" aria-label="Settings" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "hidden sm:inline-flex")}>
-            <Settings className="size-5" />
-          </Link>
-
+          {/* User avatar / account dropdown */}
           <Dropdown
             trigger={
               <button
@@ -159,10 +206,18 @@ export function Navbar() {
               </div>
             </div>
             <DropdownSeparator />
-            <Link href="/profile"><DropdownItem><User className="size-4" /> Profile</DropdownItem></Link>
-            <Link href="/watchlist"><DropdownItem><Bookmark className="size-4" /> Watchlist</DropdownItem></Link>
-            <Link href="/history"><DropdownItem><HistoryIcon className="size-4" /> History</DropdownItem></Link>
-            <Link href="/settings"><DropdownItem><Settings className="size-4" /> Settings</DropdownItem></Link>
+            <Link href="/profile">
+              <DropdownItem><User className="size-4" /> Profile</DropdownItem>
+            </Link>
+            <Link href="/watchlist">
+              <DropdownItem><Bookmark className="size-4" /> Watchlist</DropdownItem>
+            </Link>
+            <Link href="/history">
+              <DropdownItem><HistoryIcon className="size-4" /> History</DropdownItem>
+            </Link>
+            <Link href="/settings">
+              <DropdownItem><Settings className="size-4" /> Settings</DropdownItem>
+            </Link>
             <DropdownSeparator />
             {currentUser ? (
               <DropdownItem onClick={logout} className="text-destructive">
@@ -174,9 +229,17 @@ export function Navbar() {
               </Link>
             )}
           </Dropdown>
+
+          {/* Premium CTA — desktop only */}
+          <Link
+            href="/settings"
+            className="ml-2 hidden items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:inline-flex"
+          >
+            <Crown className="size-3.5" />
+            Premium
+          </Link>
         </div>
       </div>
     </header>
   );
 }
-
