@@ -4,30 +4,6 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
-    --primary: 142 69% 58%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 142 69% 58%;
-    --radius: 0.48rem;
-  }
-
-  /* Dark mode — flat neutral dark matching Figma #1E1E1E. */
-  .dark {
     --background: 0 0% 11%;
     --foreground: 0 0% 92%;
     --card: 0 0% 14%;
@@ -47,119 +23,27 @@
     --border: 0 0% 20%;
     --input: 0 0% 20%;
     --ring: 142 69% 58%;
+    --radius: 0.5rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  ::selection {
-    @apply bg-primary/25 text-foreground;
+    font-family: var(--font-inter), system-ui, sans-serif;
   }
 
-  /* Smooth scroll */
-  html {
-    scroll-behavior: smooth;
+  /* Hide scrollbars globally */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-}
-
-@layer components {
-  /* Frosted-glass surface used by navbar, sidebar, dropdowns, overlays. */
-  .glass {
-    @apply bg-card/90 backdrop-blur-xl;
-  }
-  .glass-strong {
-    @apply bg-card backdrop-blur-xl;
-  }
-  .glass-card {
-    @apply bg-secondary border border-border rounded-xl;
-  }
-
-  /* Skeleton shimmer */
-  .skeleton {
-    @apply relative overflow-hidden rounded-md bg-muted;
-  }
-  .skeleton::after {
-    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/5 to-transparent;
-    content: "";
-  }
-
-  /* Hide scrollbar but keep scroll functionality */
-  .no-scrollbar::-webkit-scrollbar {
+  *::-webkit-scrollbar {
     display: none;
   }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  /* Glow accent for interactive elements */
-  .glow {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.35);
-  }
-  .glow-sm {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.25);
-  }
 }
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  /* Fades right edge of horizontal carousels */
-  .mask-fade-r {
-    mask-image: linear-gradient(to right, black 85%, transparent 100%);
-  }
-  /* Subtle inner glow on cards */
-  .inner-glow {
-    box-shadow: inset 0 1px 0 hsl(var(--primary) / 0.06);
-  }
-}
-
-/* Hide all scrollbars globally */
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-*::-webkit-scrollbar {
-  display: none;
-}
-
-/* ── Fullscreen: remove aspect-ratio so the video fills the entire screen ── */
-:fullscreen,
-:-webkit-full-screen,
-:-moz-full-screen {
-  width: 100% !important;
-  height: 100% !important;
-  background: #000;
-}
-/* Browsers add their own UA fullscreen background; ensure our wrapper fills it */
-:fullscreen video,
-:-webkit-full-screen video,
-:-moz-full-screen video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* ── Subtitle / caption cue styling ── */
-::cue {
-  background-color: transparent;
-  color: #fff;
-  font-size: 1.05em;
-  font-family: inherit;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  text-shadow:
-    0 1px 4px rgba(0,0,0,0.9),
-    0 0px 2px rgba(0,0,0,0.9),
-    1px 1px 3px rgba(0,0,0,0.8),
-    -1px -1px 3px rgba(0,0,0,0.8);
-}
-::cue(b) { font-weight: 700; }
-::cue(i) { font-style: italic; }
