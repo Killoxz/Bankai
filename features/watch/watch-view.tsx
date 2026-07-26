@@ -16,7 +16,7 @@ import { cn, preferredTitle } from "@/lib/utils";
 import { AnimeRow } from "@/components/anime/anime-row";
 import { EpisodeList } from "@/features/anime/episode-list";
 import { Comments } from "@/features/anime/comments";
-import { useStream, useEpisodes, useTorrent } from "@/features/anime/use-anime";
+import { useStream, useEpisodes, useAnimeHeaven, useTorrent } from "@/features/anime/use-anime";
 import { usePlayerStore } from "@/store/player-store";
 import { useHistoryStore } from "@/store/history-store";
 import { useWatchlistStore } from "@/store/watchlist-store";
@@ -47,8 +47,16 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
   const torrentTitleAlt = detail.title.english !== detail.title.romaji
     ? (detail.title.english ?? "")
     : "";
-  const { data: torrent, isLoading: torrentLoading } = useTorrent(
+
+  // AnimeHeaven: no Cloudflare, direct MP4 — first fallback when stream fails
+  const { data: ahStream, isLoading: ahLoading } = useAnimeHeaven(
     detail.id, ep, torrentTitle, torrentTitleAlt, streamFailed
+  );
+  const ahFailed = !ahLoading && !ahStream;
+
+  // Nyaa.si torrent: second fallback, only starts once AnimeHeaven has resolved
+  const { data: torrent, isLoading: torrentLoading } = useTorrent(
+    detail.id, ep, torrentTitle, torrentTitleAlt, streamFailed && ahFailed
   );
   const total = episodes?.length ?? detail.episodes ?? 1;
 
@@ -148,14 +156,17 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
 
         {/* ── Left: player + controls + info ── */}
         <div className="min-w-0 space-y-4">
-          {streamLoading || (streamFailed && torrentLoading) ? (
+          {streamLoading || (streamFailed && ahLoading) || (streamFailed && ahFailed && torrentLoading) ? (
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-card">
               {episodeMeta?.thumbnail && (
                 <img src={episodeMeta.thumbnail} alt="" className="h-full w-full object-cover" />
               )}
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50">
                 <Loader2 className="size-10 animate-spin text-white" />
-                {streamFailed && (
+                {streamFailed && ahLoading && (
+                  <p className="text-sm text-white/70">Searching AnimeHeaven…</p>
+                )}
+                {streamFailed && ahFailed && torrentLoading && (
                   <p className="text-sm text-white/70">Searching for torrent…</p>
                 )}
               </div>
@@ -166,6 +177,15 @@ export function WatchView({ detail, seasonChain, initialEp }: { detail: AnimeDet
               poster={episodeMeta?.thumbnail ?? detail.coverImage}
               intro={stream.intro}
               outro={stream.outro}
+              onNext={ep < total ? () => goToEp(ep + 1) : undefined}
+              onPrev={ep > 1 ? () => goToEp(ep - 1) : undefined}
+              onProgress={onProgress}
+              startTime={startTime}
+            />
+          ) : ahStream ? (
+            <VideoPlayer
+              stream={{ sources: [{ url: ahStream.url, quality: "1080p", isM3U8: false }], subtitles: [] }}
+              poster={episodeMeta?.thumbnail ?? detail.coverImage}
               onNext={ep < total ? () => goToEp(ep + 1) : undefined}
               onPrev={ep > 1 ? () => goToEp(ep - 1) : undefined}
               onProgress={onProgress}

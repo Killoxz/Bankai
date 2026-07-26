@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Monitor, Search, TrendingUp, Star, Bookmark, Settings } from "lucide-react";
 
-const VERSION = "v1.9.2";
+const VERSION = "v1.9.4";
 
 const NAV_LINKS = [
   { label: "Trending",  href: "/trending"              },

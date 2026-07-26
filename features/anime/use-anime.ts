@@ -83,6 +83,34 @@ export function useGenres() {
   });
 }
 
+export interface AnimeHeavenStream {
+  url: string;
+  isM3U8: false;
+}
+
+export function useAnimeHeaven(
+  animeId: string,
+  ep: number,
+  title: string,
+  titleAlt: string,
+  enabled: boolean
+) {
+  return useQuery({
+    queryKey: ["animeheaven", animeId, ep, title] as const,
+    queryFn: async (): Promise<AnimeHeavenStream | null> => {
+      const numId = animeId.replace("anilist:", "");
+      const params = new URLSearchParams({ ep: String(ep), title });
+      if (titleAlt) params.set("titleAlt", titleAlt);
+      const res = await fetch(`/api/anime/${numId}/animeheaven?${params}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled,
+    retry: 1,
+    staleTime: 1_800_000,
+  });
+}
+
 export interface TorrentResult {
   title: string;
   infoHash: string;
