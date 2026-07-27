@@ -147,8 +147,10 @@ export function ProfileView() {
         </div>
 
         <div className="px-8 sm:px-12">
-          {/* Avatar + username */}
-          <div className="-mt-16 flex flex-col gap-4 sm:-mt-20 sm:flex-row sm:items-end">
+          {/* Avatar + username — relative z-10 so this paints above the
+              banner (position:relative content painting rules would
+              otherwise put a positioned-but-earlier sibling underneath it) */}
+          <div className="relative z-10 -mt-16 flex flex-col gap-4 sm:-mt-20 sm:flex-row sm:items-end">
             <div className="grid size-24 shrink-0 place-items-center rounded-full border-4 border-[#141414] bg-primary text-3xl font-bold text-black shadow-xl sm:size-28">
               {currentUser[0]?.toUpperCase()}
             </div>
