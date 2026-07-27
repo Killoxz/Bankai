@@ -7,14 +7,16 @@ function SeriesRow({
   id,
   title,
   coverImage,
+  subtitle,
 }: {
   id: number;
   title: string;
   coverImage: string;
+  subtitle?: string;
 }) {
   return (
     <Link
-      href={`/watch/${id}?ep=1`}
+      href={`/watch/${id}`}
       className="group flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-white/5"
     >
       <div className="relative h-14 w-11 shrink-0 overflow-hidden rounded-md bg-white/5">
@@ -26,10 +28,15 @@ function SeriesRow({
         <p className="line-clamp-1 text-sm font-medium text-white/90 group-hover:text-white">
           {title}
         </p>
-        <p className="text-xs text-white/40">Episode 1</p>
+        {subtitle && <p className="text-xs text-white/40">{subtitle}</p>}
       </div>
     </Link>
   );
+}
+
+function formatLabel(format: string | null): string | undefined {
+  if (!format) return undefined;
+  return format.toLowerCase().split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 }
 
 export function SeriesSidebar({
@@ -53,12 +60,13 @@ export function SeriesSidebar({
             <span className="text-xs font-medium text-white/40">VIEW ALL</span>
           </div>
           <div className="space-y-1">
-            {relatedAnime.map(({ node }) => (
+            {relatedAnime.map(({ node, relationType }) => (
               <SeriesRow
                 key={node.id}
                 id={node.id}
                 title={node.title.english || node.title.romaji}
                 coverImage={node.coverImage.large}
+                subtitle={formatLabel(relationType)}
               />
             ))}
           </div>
@@ -78,6 +86,7 @@ export function SeriesSidebar({
                 id={anime.id}
                 title={preferredTitle(anime)}
                 coverImage={anime.coverImage.large}
+                subtitle={[anime.seasonYear, formatLabel(anime.format)].filter(Boolean).join(" · ")}
               />
             ))}
           </div>

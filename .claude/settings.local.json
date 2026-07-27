@@ -270,7 +270,10 @@
       "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/components/ui\" \"C:/Users/izzyn/Downloads/Website/components/anime\" \"C:/Users/izzyn/Downloads/Website/app/anime/[id]\" && echo ready)",
       "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Media\\(id: 178789, type: ANIME\\) { characters\\(sort: ROLE, perPage: 12\\) { edges { role node { id name { full } } } } staff\\(sort: RELEVANCE, perPage: 12\\) { edges { role node { id name { full } } } } recommendations\\(sort: RATING_DESC, perPage: 12\\) { nodes { mediaRecommendation { id } } } } }\"}')",
       "Bash(python -m json.tool)",
-      "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/comments/[commentId]\" \"C:/Users/izzyn/Downloads/Website/app/watch/[id]\" \"C:/Users/izzyn/Downloads/Website/components/watch\" && echo ready)"
+      "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/comments/[commentId]\" \"C:/Users/izzyn/Downloads/Website/app/watch/[id]\" \"C:/Users/izzyn/Downloads/Website/components/watch\" && echo ready)",
+      "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Media\\(id: 178789, type: ANIME\\) { externalLinks { url site type color icon language } } }\"}')",
+      "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Page\\(perPage: 20\\) { media\\(sort: ID, type: ANIME, seasonYear: 1995\\) { id title { romaji } externalLinks { type } } } }\"}')",
+      "Bash(python -c ' *)"
     ]
   }
 }

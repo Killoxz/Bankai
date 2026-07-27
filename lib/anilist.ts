@@ -111,6 +111,15 @@ export interface RelationEntry {
   };
 }
 
+export interface ExternalLink {
+  url: string;
+  site: string;
+  type: string;
+  color: string | null;
+  icon: string | null;
+  language: string | null;
+}
+
 export interface AnimeDetail {
   id: number;
   title: { romaji: string; english: string | null; native: string | null };
@@ -134,6 +143,7 @@ export interface AnimeDetail {
   staff: { edges: StaffEntry[] };
   relations: { edges: RelationEntry[] };
   recommendations: { nodes: { mediaRecommendation: AnimeMedia | null }[] };
+  externalLinks: ExternalLink[];
 }
 
 const DETAIL_FIELDS = `
@@ -170,6 +180,7 @@ const DETAIL_FIELDS = `
   recommendations(sort: RATING_DESC, perPage: 12) {
     nodes { mediaRecommendation { ${FIELDS} } }
   }
+  externalLinks { url site type color icon language }
 `;
 
 export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
