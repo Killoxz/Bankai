@@ -122,6 +122,7 @@ export interface ExternalLink {
 
 export interface AnimeDetail {
   id: number;
+  idMal: number | null;
   title: { romaji: string; english: string | null; native: string | null };
   coverImage: { large: string; extraLarge: string | null };
   bannerImage: string | null;
@@ -148,6 +149,7 @@ export interface AnimeDetail {
 
 const DETAIL_FIELDS = `
   id
+  idMal
   title { romaji english native }
   coverImage { large extraLarge }
   bannerImage
