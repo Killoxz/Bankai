@@ -3,21 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export interface StoredUser {
-  username: string;
-  passwordHash: string;
-  createdAt: number;
-}
-
-async function sha256(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 interface AuthState {
-  users: Record<string, StoredUser>;
   currentUser: string | null;
   remember: boolean;
   /** Returns an error message, or null on success. */
@@ -27,33 +13,42 @@ interface AuthState {
   setRemember: (v: boolean) => void;
 }
 
+async function callAuthApi(
+  path: "signup" | "login",
+  username: string,
+  password: string
+): Promise<{ username?: string; error?: string }> {
+  try {
+    const res = await fetch(`/api/auth/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error ?? "Something went wrong. Please try again." };
+    return { username: data.user.username };
+  } catch {
+    return { error: "Network error. Please try again." };
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
-      users: {},
+    (set) => ({
       currentUser: null,
       remember: true,
 
       async signup(username, password) {
-        const name = username.trim();
-        if (name.length < 3) return "Username must be at least 3 characters.";
-        if (password.length < 6) return "Password must be at least 6 characters.";
-        const key = name.toLowerCase();
-        if (get().users[key]) return "That username is already taken.";
-        const passwordHash = await sha256(password);
-        set((s) => ({
-          users: { ...s.users, [key]: { username: name, passwordHash, createdAt: Date.now() } },
-          currentUser: name,
-        }));
+        const { username: name, error } = await callAuthApi("signup", username, password);
+        if (error) return error;
+        set({ currentUser: name! });
         return null;
       },
 
       async login(username, password) {
-        const key = username.trim().toLowerCase();
-        const user = get().users[key];
-        if (!user) return "No account found with that username.";
-        if (user.passwordHash !== (await sha256(password))) return "Incorrect password.";
-        set({ currentUser: user.username });
+        const { username: name, error } = await callAuthApi("login", username, password);
+        if (error) return error;
+        set({ currentUser: name! });
         return null;
       },
 
@@ -62,9 +57,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "bankai-auth",
-      // Accounts always persist; the session only persists when "Keep me Logged In" is on
+      // The account itself lives in Postgres; only the "stay signed in"
+      // convenience flag and cached session survive in the browser.
       partialize: (s) => ({
-        users: s.users,
         remember: s.remember,
         currentUser: s.remember ? s.currentUser : null,
       }),

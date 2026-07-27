@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Anime {
+  id           String         @id
+  slug         String         @unique
+  title        String
+  titleNative  String?
+  description  String?
+  coverImage   String?
+  bannerImage  String?
+  format       String?
+  status       String?
+  season       String?
+  seasonYear   Int?
+  episodes     Int?
+  duration     Int?
+  averageScore Int?
+  popularity   Int?
+  genres       String[]
+  studios      String[]
+  source       String?
+  updatedAt    DateTime       @updatedAt
+  Comment      Comment[]
+  Favorite     Favorite[]
+  ListEntry    ListEntry[]
+  Review       Review[]
+  WatchHistory WatchHistory[]
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id            String    @id @default(cuid())
+  userId        String
+  animeId       String
+  parentId      String?
+  body          String
+  createdAt     DateTime  @default(now())
+  Anime         Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  Comment       Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  other_Comment Comment[] @relation("CommentToComment")
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([animeId, createdAt])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  createdAt DateTime @default(now())
+  Anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+}
+
+model ListEntry {
+  id        String     @id @default(cuid())
+  userId    String
+  animeId   String
+  status    ListStatus @default(PLAN_TO_WATCH)
+  score     Int?
+  folder    String?
+  updatedAt DateTime   @updatedAt
+  Anime     Anime      @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  User      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+  @@index([userId, status])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  rating    Int
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String?        @unique
+  emailVerified DateTime?
+  image         String?
+  banner        String?
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  passwordHash  String?
+  username      String?        @unique
+  Account       Account[]
+  Comment       Comment[]
+  Favorite      Favorite[]
+  ListEntry     ListEntry[]
+  Review        Review[]
+  Session       Session[]
+  WatchHistory  WatchHistory[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model WatchHistory {
+  id               String   @id @default(cuid())
+  userId           String
+  animeId          String
+  episodeNumber    Int
+  progress         Int      @default(0)
+  duration         Int      @default(0)
+  completed        Boolean  @default(false)
+  watchedAt        DateTime @default(now())
+  episodeThumbnail String?
+  Anime            Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  User             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId, episodeNumber])
+  @@index([userId, watchedAt])
+}
+
+enum ListStatus {
+  WATCHING
+  COMPLETED
+  PLAN_TO_WATCH
+  DROPPED
+  ON_HOLD
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
