@@ -90,3 +90,91 @@ export async function getHomeData() {
 export function preferredTitle(anime: AnimeMedia): string {
   return anime.title.english || anime.title.romaji;
 }
+
+export interface CharacterEntry {
+  role: string;
+  node: { id: number; name: { full: string }; image: { large: string | null } };
+}
+
+export interface StaffEntry {
+  role: string;
+  node: { id: number; name: { full: string }; image: { large: string | null } };
+}
+
+export interface RelationEntry {
+  relationType: string;
+  node: {
+    id: number;
+    title: { romaji: string; english: string | null };
+    coverImage: { large: string };
+    format: string | null;
+  };
+}
+
+export interface AnimeDetail {
+  id: number;
+  title: { romaji: string; english: string | null; native: string | null };
+  coverImage: { large: string; extraLarge: string | null };
+  bannerImage: string | null;
+  description: string | null;
+  genres: string[];
+  averageScore: number | null;
+  episodes: number | null;
+  duration: number | null;
+  status: AnimeMedia["status"];
+  format: AnimeMedia["format"];
+  season: string | null;
+  seasonYear: number | null;
+  startDate: { year: number | null; month: number | null; day: number | null };
+  endDate: { year: number | null; month: number | null; day: number | null };
+  source: string | null;
+  studios: { nodes: { name: string }[] };
+  trailer: { id: string; site: string } | null;
+  characters: { edges: CharacterEntry[] };
+  staff: { edges: StaffEntry[] };
+  relations: { edges: RelationEntry[] };
+  recommendations: { nodes: { mediaRecommendation: AnimeMedia | null }[] };
+}
+
+const DETAIL_FIELDS = `
+  id
+  title { romaji english native }
+  coverImage { large extraLarge }
+  bannerImage
+  description(asHtml: false)
+  genres
+  averageScore
+  episodes
+  duration
+  status
+  format
+  season
+  seasonYear
+  startDate { year month day }
+  endDate { year month day }
+  source
+  studios(isMain: true) { nodes { name } }
+  trailer { id site }
+  characters(sort: ROLE, perPage: 12) {
+    edges { role node { id name { full } image { large } } }
+  }
+  staff(sort: RELEVANCE, perPage: 12) {
+    edges { role node { id name { full } image { large } } }
+  }
+  relations {
+    edges {
+      relationType(version: 2)
+      node { id title { romaji english } coverImage { large } format }
+    }
+  }
+  recommendations(sort: RATING_DESC, perPage: 12) {
+    nodes { mediaRecommendation { ${FIELDS} } }
+  }
+`;
+
+export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
+  const data = await gql<{ Media: AnimeDetail | null }>(`{
+    Media(id: ${id}, type: ANIME) { ${DETAIL_FIELDS} }
+  }`);
+  return data.Media;
+}

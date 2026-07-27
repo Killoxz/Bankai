@@ -102,15 +102,18 @@ model ListEntry {
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  animeId   String
-  rating    Int
-  body      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  userId          String
+  animeId         String
+  rating          Int
+  body            String
+  containsSpoiler Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  Anime           Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  User            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
 }
 
 model Session {

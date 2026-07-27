@@ -256,7 +256,20 @@
       "Bash(node scripts-cleanup-tmp.mjs)",
       "Bash(rm -f scripts-cleanup-tmp.mjs)",
       "Bash(node scripts-visual-check.mjs)",
-      "Bash(rm -f scripts-visual-check.mjs)"
+      "Bash(rm -f scripts-visual-check.mjs)",
+      "Bash(ffmpeg -version)",
+      "Bash(python -c \"import cv2; print\\('cv2 available', cv2.__version__\\)\")",
+      "Bash(pip list *)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install --quiet imageio-ffmpeg)",
+      "Bash(python -c \"import imageio_ffmpeg; print\\(imageio_ffmpeg.get_ffmpeg_exe\\(\\)\\)\")",
+      "Bash('C:\\\\Users\\\\izzyn\\\\AppData\\\\Local\\\\Python\\\\pythoncore-3.14-64\\\\Lib\\\\site-packages\\\\imageio_ffmpeg\\\\binaries\\\\ffmpeg-win-x86_64-v7.1.exe' -i 'C:\\\\Users\\\\izzyn\\\\Downloads\\\\original-ac5f15225e8b552a0049d9a1c3532fe3.mp4')",
+      "Bash(node scripts-check-reviews.mjs)",
+      "Bash(rm -f scripts-check-reviews.mjs)",
+      "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/reviews/[reviewId]\" \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/status\" && echo ready)",
+      "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/components/ui\" \"C:/Users/izzyn/Downloads/Website/components/anime\" \"C:/Users/izzyn/Downloads/Website/app/anime/[id]\" && echo ready)",
+      "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Media\\(id: 178789, type: ANIME\\) { characters\\(sort: ROLE, perPage: 12\\) { edges { role node { id name { full } } } } staff\\(sort: RELEVANCE, perPage: 12\\) { edges { role node { id name { full } } } } recommendations\\(sort: RATING_DESC, perPage: 12\\) { nodes { mediaRecommendation { id } } } } }\"}')",
+      "Bash(python -m json.tool)"
     ]
   }
 }
