@@ -254,7 +254,9 @@
       "Bash(rm -f public/sw.js)",
       "Bash(node scripts-check-users.mjs)",
       "Bash(node scripts-cleanup-tmp.mjs)",
-      "Bash(rm -f scripts-cleanup-tmp.mjs)"
+      "Bash(rm -f scripts-cleanup-tmp.mjs)",
+      "Bash(node scripts-visual-check.mjs)",
+      "Bash(rm -f scripts-visual-check.mjs)"
     ]
   }
 }

@@ -9,6 +9,9 @@ import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
+const PROFILE_BANNER =
+  "https://s4.anilist.co/file/anilistcdn/media/anime/banner/178789-9nHWmoRLlcLu.jpg";
+
 interface AnimeStub {
   id: string;
   slug: string;
@@ -131,20 +134,22 @@ export function ProfileView() {
 
       <div className="pt-16">
         {/* Banner */}
-        <div className="relative h-44 w-full overflow-hidden bg-gradient-to-br from-[#1c2b23] via-[#141414] to-[#0a0a0a] sm:h-56">
-          <div
-            className="absolute inset-0 opacity-40"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 30% 20%, rgba(74,222,128,0.25), transparent 55%)",
-            }}
+        <div className="relative h-44 w-full overflow-hidden bg-[#0a0a0a] sm:h-56">
+          <Image
+            src={PROFILE_BANNER}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-[#141414]" />
         </div>
 
         <div className="px-8 sm:px-12">
           {/* Avatar + username */}
-          <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end">
-            <div className="grid size-24 shrink-0 place-items-center rounded-full border-4 border-[#141414] bg-primary text-3xl font-bold text-black sm:size-28">
+          <div className="-mt-16 flex flex-col gap-4 sm:-mt-20 sm:flex-row sm:items-end">
+            <div className="grid size-24 shrink-0 place-items-center rounded-full border-4 border-[#141414] bg-primary text-3xl font-bold text-black shadow-xl sm:size-28">
               {currentUser[0]?.toUpperCase()}
             </div>
             <div className="pb-1">
