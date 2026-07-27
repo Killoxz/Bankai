@@ -252,7 +252,9 @@
       "Bash(git rm *)",
       "Bash(rm -rf app components features hooks lib services store types prisma)",
       "Bash(rm -f public/sw.js)",
-      "Bash(node scripts-check-users.mjs)"
+      "Bash(node scripts-check-users.mjs)",
+      "Bash(node scripts-cleanup-tmp.mjs)",
+      "Bash(rm -f scripts-cleanup-tmp.mjs)"
     ]
   }
 }

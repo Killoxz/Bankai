@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, User, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -191,26 +191,44 @@ export function Navbar() {
                 Signed in as <span className="font-semibold text-white">{currentUser}</span>
               </p>
               <div className="h-px bg-white/10" />
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/5"
+              >
+                <User className="size-4" />
+                Profile
+              </Link>
               <button
                 onClick={() => {
                   logout();
                   setMenuOpen(false);
                 }}
-                className="w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
               >
+                <LogOut className="size-4" />
                 Sign out
               </button>
             </div>
           )}
         </div>
+      ) : mounted ? (
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+          >
+            Log In
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-black transition hover:brightness-110"
+          >
+            Sign Up
+          </Link>
+        </div>
       ) : (
-        <Link
-          href="/login"
-          aria-label="Log in"
-          className="block size-8 shrink-0 overflow-hidden rounded-full ring-2 ring-white/20 transition hover:ring-primary/60"
-        >
-          <div className="size-full bg-gradient-to-br from-sky-400 to-violet-500" />
-        </Link>
+        <div className="h-8 w-[124px] shrink-0" aria-hidden />
       )}
     </header>
   );
