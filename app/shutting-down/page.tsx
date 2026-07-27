@@ -26,7 +26,9 @@ export default function ShuttingDownPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#141414] px-4 text-center">
-      <h1 className="text-2xl font-bold text-white sm:text-3xl">Bankai is shutting down</h1>
+      <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: "#F97316" }}>
+        Bankai is shutting down
+      </h1>
       <p className="mt-3 max-w-sm text-sm text-white/50">
         {done ? "This project is offline." : "Thanks for stopping by."}
       </p>
@@ -40,7 +42,7 @@ export default function ShuttingDownPage() {
             { label: "Seconds", value: remaining.seconds },
           ].map(({ label, value }) => (
             <div key={label} className="w-16 sm:w-20">
-              <p className="font-mono text-3xl font-bold text-primary sm:text-4xl">
+              <p className="font-mono text-3xl font-bold sm:text-4xl" style={{ color: "#F97316" }}>
                 {String(value).padStart(2, "0")}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">{label}</p>
