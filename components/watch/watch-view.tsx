@@ -1,3 +1,4 @@
+import { MyLibrary } from "./my-library";
 import { StreamingLinks } from "./streaming-links";
 import { CommentsSection } from "./comments-section";
 import { SeriesSidebar } from "./series-sidebar";
@@ -11,6 +12,7 @@ export function WatchView({ detail, animeId }: { detail: AnimeDetail; animeId: n
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
+        <MyLibrary animeId={animeId} poster={detail.bannerImage ?? detail.coverImage.large} />
         <StreamingLinks links={detail.externalLinks} />
         <CommentsSection animeId={animeId} />
       </div>

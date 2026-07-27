@@ -46,10 +46,26 @@ model Anime {
   source       String?
   updatedAt    DateTime       @updatedAt
   Comment      Comment[]
+  EpisodeSource EpisodeSource[]
   Favorite     Favorite[]
   ListEntry    ListEntry[]
   Review       Review[]
   WatchHistory WatchHistory[]
+}
+
+model EpisodeSource {
+  id        String   @id @default(cuid())
+  animeId   String
+  episode   Int
+  url       String
+  label     String?
+  addedById String
+  createdAt DateTime @default(now())
+  Anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  AddedBy   User     @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@unique([animeId, episode, url])
+  @@index([animeId, episode])
 }
 
 model Announcement {
@@ -138,6 +154,7 @@ model User {
   username      String?        @unique
   Account       Account[]
   Comment       Comment[]
+  EpisodeSource EpisodeSource[]
   Favorite      Favorite[]
   ListEntry     ListEntry[]
   Review        Review[]

@@ -273,7 +273,9 @@
       "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/comments/[commentId]\" \"C:/Users/izzyn/Downloads/Website/app/watch/[id]\" \"C:/Users/izzyn/Downloads/Website/components/watch\" && echo ready)",
       "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Media\\(id: 178789, type: ANIME\\) { externalLinks { url site type color icon language } } }\"}')",
       "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Page\\(perPage: 20\\) { media\\(sort: ID, type: ANIME, seasonYear: 1995\\) { id title { romaji } externalLinks { type } } } }\"}')",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(mkdir -p \"C:/Users/izzyn/Downloads/Website/app/api/anime/[id]/sources/[sourceId]\" && echo ready)",
+      "Bash(curl -sI \"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4\")"
     ]
   }
 }
