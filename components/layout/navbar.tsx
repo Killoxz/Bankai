@@ -78,7 +78,7 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50">
       {/* Site-wide status notice */}
       <div className="bg-[#F5A623] px-4 py-1.5 text-center text-xs font-semibold text-black">
-        Sorry but the Streaming Services are currently down.
+        Streaming Services Are Currently Down At The Moment.
       </div>
 
       <div

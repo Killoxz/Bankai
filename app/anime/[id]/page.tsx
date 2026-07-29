@@ -58,9 +58,9 @@ export default async function AnimeDetailPage({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/50 to-black/20" />
 
-        {detail.trailer?.site === "youtube" && detail.trailer.id && (
+        {detail.trailer?.id && (
           <div className="absolute bottom-6 right-6 z-10 hidden sm:block">
-            <TrailerButton youtubeId={detail.trailer.id} />
+            <TrailerButton site={detail.trailer.site} trailerId={detail.trailer.id} />
           </div>
         )}
       </div>
@@ -108,9 +108,9 @@ export default async function AnimeDetailPage({
         </div>
 
         {/* Trailer button — mobile fallback (banner overlay is desktop-only) */}
-        {detail.trailer?.site === "youtube" && detail.trailer.id && (
+        {detail.trailer?.id && (
           <div className="mt-4 sm:hidden">
-            <TrailerButton youtubeId={detail.trailer.id} />
+            <TrailerButton site={detail.trailer.site} trailerId={detail.trailer.id} />
           </div>
         )}
 

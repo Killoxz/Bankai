@@ -281,7 +281,8 @@
       "Bash(curl -s \"https://api.jikan.moe/v4/anime/52991/episodes\")",
       "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Media\\(id: 154587, type: ANIME\\) { idMal averageScore } }\"}')",
       "Bash(curl -s \"https://api.jikan.moe/v4/anime/52991/reviews?preliminary=true\")",
-      "Bash(curl -s \"https://api.jikan.moe/v4/anime/52991/statistics\")"
+      "Bash(curl -s \"https://api.jikan.moe/v4/anime/52991/statistics\")",
+      "Bash(curl -s -X POST https://graphql.anilist.co -H \"Content-Type: application/json\" -d '{\"query\":\"{ Page\\(perPage: 50\\) { media\\(sort: POPULARITY_DESC, type: ANIME\\) { id title { romaji } trailer { id site } } } }\"}')"
     ]
   }
 }

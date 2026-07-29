@@ -4,8 +4,16 @@ import { useState } from "react";
 import { Play } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
-export function TrailerButton({ youtubeId }: { youtubeId: string }) {
+function embedUrl(site: string, id: string): string | null {
+  if (site === "youtube") return `https://www.youtube.com/embed/${id}?autoplay=1`;
+  if (site === "dailymotion") return `https://www.dailymotion.com/embed/video/${id}?autoplay=1`;
+  return null;
+}
+
+export function TrailerButton({ site, trailerId }: { site: string; trailerId: string }) {
   const [open, setOpen] = useState(false);
+  const src = embedUrl(site, trailerId);
+  if (!src) return null;
 
   return (
     <>
@@ -21,7 +29,7 @@ export function TrailerButton({ youtubeId }: { youtubeId: string }) {
         <Modal title="Trailer" onClose={() => setOpen(false)} maxWidth={800}>
           <div className="mt-5 aspect-video overflow-hidden rounded-lg bg-black">
             <iframe
-              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+              src={src}
               title="Trailer"
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
