@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { preferredTitle, type AnimeMedia } from "@/lib/anilist";
+import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 
 export function AnimeRow({
   title,
@@ -87,7 +87,7 @@ function AnimeCard({
   showProgress?: boolean;
   showBadge?: boolean;
 }) {
-  const title = preferredTitle(anime);
+  const title = usePreferredTitle(anime);
   const isNew = anime.status === "RELEASING";
   // Deterministic placeholder until real watch history exists
   const progress = showProgress ? (anime.id % 65) + 15 : 0;

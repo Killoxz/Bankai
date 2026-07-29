@@ -7,7 +7,7 @@ import { Eye, Bookmark, Check } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { ReviewsSection } from "./reviews-section";
 import {
-  preferredTitle,
+  usePreferredTitle,
   type AnimeDetail,
   type AnimeMedia,
   type CharacterEntry,
@@ -149,7 +149,7 @@ function OverviewTab({ detail }: { detail: AnimeDetail }) {
 function RecommendationCard({ anime }: { anime: AnimeMedia }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const [status, setStatus] = useState<"WATCHING" | "PLAN_TO_WATCH" | "COMPLETED" | null>(null);
-  const title = preferredTitle(anime);
+  const title = usePreferredTitle(anime);
 
   async function quickSet(key: "WATCHING" | "PLAN_TO_WATCH" | "COMPLETED") {
     if (!currentUser) {

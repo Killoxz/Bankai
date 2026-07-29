@@ -2,18 +2,24 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, User, LogOut } from "lucide-react";
+import { Search, Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 
 const NAV_LINKS = [
   { label: "Home",       href: "/" },
   { label: "My List",    href: "/my-list" },
   { label: "Movie",      href: "/browse?format=MOVIE" },
   { label: "New Season", href: "/browse?status=RELEASING" },
-  { label: "Language",   href: "#" },
+];
+
+const LANGUAGE_OPTIONS: { label: string; value: TitleLanguage }[] = [
+  { label: "English", value: "english" },
+  { label: "Romaji", value: "romaji" },
+  { label: "Native", value: "native" },
 ];
 
 interface SearchResult {
@@ -122,6 +128,7 @@ export function Navbar() {
             </Link>
           );
         })}
+        <LanguageDropdown />
       </nav>
 
       <div className="flex-1" />
@@ -238,5 +245,52 @@ export function Navbar() {
       )}
       </div>
     </header>
+  );
+}
+
+function LanguageDropdown() {
+  const titleLanguage = useLanguageStore((s) => s.titleLanguage);
+  const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGE_OPTIONS.find((o) => o.value === titleLanguage)?.label ?? "English";
+
+  return (
+    <div
+      className="relative"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-sm font-medium text-white/55 transition-colors hover:text-white/90"
+      >
+        Language
+        <ChevronDown className="size-3.5" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+          <p className="px-3.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-white/40">
+            Title Language
+          </p>
+          {LANGUAGE_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => {
+                setTitleLanguage(o.value);
+                setOpen(false);
+              }}
+              className={cn(
+                "block w-full px-3.5 py-2 text-left text-sm transition-colors hover:bg-white/5",
+                o.value === titleLanguage ? "text-primary" : "text-white/80"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <span className="sr-only">Currently: {current}</span>
+    </div>
   );
 }

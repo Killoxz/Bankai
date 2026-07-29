@@ -9,12 +9,11 @@ export const revalidate = 3600;
 export default async function HomePage() {
   let heroItems: AnimeMedia[] = [];
   let trending: AnimeMedia[] = [];
-  let popular: AnimeMedia[] = [];
   let topRated: AnimeMedia[] = [];
   let newSeason: AnimeMedia[] = [];
 
   try {
-    ({ heroItems, trending, popular, topRated, newSeason } = await getHomeData());
+    ({ heroItems, trending, topRated, newSeason } = await getHomeData());
   } catch {
     /* AniList unreachable — the empty state below renders instead */
   }
@@ -32,7 +31,7 @@ export default async function HomePage() {
         ) : (
           <>
             <AnimeRow title="Trending Now" items={trending} />
-            <HomeRows popular={popular} newSeason={newSeason} topRated={topRated} />
+            <HomeRows newSeason={newSeason} topRated={topRated} />
           </>
         )}
       </div>

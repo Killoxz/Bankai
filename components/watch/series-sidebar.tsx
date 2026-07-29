@@ -1,7 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { AnimeMedia, RelationEntry } from "@/lib/anilist";
-import { preferredTitle } from "@/lib/anilist";
+import { usePreferredTitle } from "@/lib/anilist";
 
 function SeriesRow({
   id,
@@ -31,6 +33,18 @@ function SeriesRow({
         {subtitle && <p className="text-xs text-white/40">{subtitle}</p>}
       </div>
     </Link>
+  );
+}
+
+function SuggestedSeriesRow({ anime }: { anime: AnimeMedia }) {
+  const title = usePreferredTitle(anime);
+  return (
+    <SeriesRow
+      id={anime.id}
+      title={title}
+      coverImage={anime.coverImage.large}
+      subtitle={[anime.seasonYear, formatLabel(anime.format)].filter(Boolean).join(" · ")}
+    />
   );
 }
 
@@ -81,13 +95,7 @@ export function SeriesSidebar({
           </div>
           <div className="space-y-1">
             {suggested.map((anime) => (
-              <SeriesRow
-                key={anime.id}
-                id={anime.id}
-                title={preferredTitle(anime)}
-                coverImage={anime.coverImage.large}
-                subtitle={[anime.seasonYear, formatLabel(anime.format)].filter(Boolean).join(" · ")}
-              />
+              <SuggestedSeriesRow key={anime.id} anime={anime} />
             ))}
           </div>
         </div>

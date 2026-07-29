@@ -1,8 +1,10 @@
+import { useLanguageStore } from "@/store/language-store";
+
 const GQL = "https://graphql.anilist.co";
 
 export interface AnimeMedia {
   id: number;
-  title: { romaji: string; english: string | null };
+  title: { romaji: string; english: string | null; native: string | null };
   coverImage: { large: string; extraLarge: string | null };
   bannerImage: string | null;
   description: string | null;
@@ -16,7 +18,7 @@ export interface AnimeMedia {
 
 const FIELDS = `
   id
-  title { romaji english }
+  title { romaji english native }
   coverImage { large extraLarge }
   bannerImage
   description(asHtml: false)
@@ -31,11 +33,11 @@ const FIELDS = `
 // Mushoku Tensei: Jobless Reincarnation Season 3 — always the first hero slide
 const HERO_PIN_ID = 178789;
 
-async function gql<T>(query: string): Promise<T> {
+async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const res = await fetch(GQL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
     next: { revalidate: 3600 },
   });
   const json = await res.json();
@@ -88,6 +90,15 @@ export async function getHomeData() {
 }
 
 export function preferredTitle(anime: AnimeMedia): string {
+  return anime.title.english || anime.title.romaji;
+}
+
+/** Client-only: respects the user's title-language preference (falls back
+ * to romaji if the preferred field is missing for a given title). */
+export function usePreferredTitle(anime: AnimeMedia): string {
+  const lang = useLanguageStore((s) => s.titleLanguage);
+  if (lang === "native") return anime.title.native || anime.title.english || anime.title.romaji;
+  if (lang === "romaji") return anime.title.romaji;
   return anime.title.english || anime.title.romaji;
 }
 
@@ -190,4 +201,49 @@ export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
     Media(id: ${id}, type: ANIME) { ${DETAIL_FIELDS} }
   }`);
   return data.Media;
+}
+
+export interface BrowseFilters {
+  page?: number;
+  format?: AnimeMedia["format"];
+  status?: AnimeMedia["status"];
+  genre?: string;
+  sort?: "TRENDING_DESC" | "POPULARITY_DESC" | "SCORE_DESC" | "START_DATE_DESC";
+  search?: string;
+}
+
+export interface BrowsePage {
+  items: AnimeMedia[];
+  hasNextPage: boolean;
+}
+
+export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
+  // AniList's resolver treats an explicitly-passed `null` filter argument as
+  // "must equal null" rather than "no filter" — so unused filters must be
+  // omitted from the variables object entirely, not set to null.
+  const variables: Record<string, unknown> = {
+    page: filters.page ?? 1,
+    sort: [filters.sort ?? "TRENDING_DESC"],
+  };
+  if (filters.format) variables.format = filters.format;
+  if (filters.status) variables.status = filters.status;
+  if (filters.genre && filters.genre !== "All Genres") variables.genre = filters.genre;
+  if (filters.search) variables.search = filters.search;
+
+  const data = await gql<{ Page: { pageInfo: { hasNextPage: boolean }; media: AnimeMedia[] } }>(
+    `query (
+      $page: Int, $format: MediaFormat, $status: MediaStatus,
+      $genre: String, $sort: [MediaSort], $search: String
+    ) {
+      Page(page: $page, perPage: 24) {
+        pageInfo { hasNextPage }
+        media(
+          type: ANIME, format: $format, status: $status,
+          genre: $genre, sort: $sort, search: $search
+        ) { ${FIELDS} }
+      }
+    }`,
+    variables
+  );
+  return { items: data.Page.media, hasNextPage: data.Page.pageInfo.hasNextPage };
 }
