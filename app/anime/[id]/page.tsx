@@ -43,7 +43,7 @@ export default async function AnimeDetailPage({
       <Navbar />
 
       {/* Banner */}
-      <div className="relative h-[34vh] min-h-[240px] w-full overflow-hidden pt-16">
+      <div className="relative h-[34vh] min-h-[240px] w-full overflow-hidden pt-24">
         {detail.bannerImage || detail.coverImage.large ? (
           <Image
             src={detail.bannerImage || detail.coverImage.large}

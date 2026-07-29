@@ -75,14 +75,20 @@ export function Navbar() {
   const showResults = searchFocused && search.trim().length >= 2 && results.length > 0;
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 flex h-16 items-center gap-5 px-8 transition-all duration-300",
-        scrolled
-          ? "bg-[#141414]/95 backdrop-blur-sm"
-          : "bg-gradient-to-b from-black/70 to-transparent"
-      )}
-    >
+    <header className="fixed inset-x-0 top-0 z-50">
+      {/* Site-wide status notice */}
+      <div className="bg-[#F97316] px-4 py-1.5 text-center text-xs font-semibold text-black">
+        Sorry but the Streaming Services are currently down.
+      </div>
+
+      <div
+        className={cn(
+          "flex h-16 items-center gap-5 px-8 transition-all duration-300",
+          scrolled
+            ? "bg-[#141414]/95 backdrop-blur-sm"
+            : "bg-gradient-to-b from-black/70 to-transparent"
+        )}
+      >
       {/* Logo */}
       <Link href="/" aria-label="Bankai home" className="shrink-0">
         <Image
@@ -230,6 +236,7 @@ export function Navbar() {
       ) : (
         <div className="h-8 w-[124px] shrink-0" aria-hidden />
       )}
+      </div>
     </header>
   );
 }

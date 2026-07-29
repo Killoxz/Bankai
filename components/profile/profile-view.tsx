@@ -132,7 +132,7 @@ export function ProfileView() {
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
 
-      <div className="pt-16">
+      <div className="pt-24">
         {/* Banner */}
         <div className="relative h-44 w-full overflow-hidden bg-[#0a0a0a] sm:h-56">
           <Image
