@@ -40,8 +40,26 @@ export function Navbar() {
   const pathname = usePathname();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setAvatar(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/profile?username=${encodeURIComponent(currentUser)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && !json.error) setAvatar(json.image ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -195,9 +213,14 @@ export function Navbar() {
           <button
             onClick={() => setMenuOpen((o) => !o)}
             aria-label="Account menu"
-            className="grid size-8 place-items-center rounded-full bg-primary text-sm font-bold text-black ring-2 ring-white/20"
+            className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-white/20"
           >
-            {currentUser[0]?.toUpperCase()}
+            {avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt="" className="size-full object-cover" />
+            ) : (
+              currentUser[0]?.toUpperCase()
+            )}
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-11 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
