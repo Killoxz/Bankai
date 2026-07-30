@@ -10,9 +10,6 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { EditProfileModal } from "./edit-profile-modal";
 
-const PROFILE_BANNER =
-  "https://s4.anilist.co/file/anilistcdn/media/anime/banner/178789-9nHWmoRLlcLu.jpg";
-
 interface AnimeStub {
   id: string;
   slug: string;
@@ -137,14 +134,16 @@ export function ProfileView() {
       <Navbar />
 
       <div className="pt-24">
-        {/* Banner */}
-        <div className="relative h-44 w-full overflow-hidden bg-[#0a0a0a] sm:h-56">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={data?.banner || PROFILE_BANNER}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-          />
+        {/* Banner — blank (site background) when nothing's set, no fake default */}
+        <div className="relative h-44 w-full overflow-hidden bg-[#1c1c1c] sm:h-56">
+          {data?.banner && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.banner}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-[#141414]" />
           <button
             onClick={() => setEditOpen(true)}
