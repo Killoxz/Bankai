@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimeRow } from "./anime-row";
+import { ScrollRow } from "./scroll-row";
 import { useAuthStore } from "@/store/auth-store";
 import type { AnimeMedia } from "@/lib/anilist";
 
@@ -100,24 +101,21 @@ export function HomeRows({
 
   return (
     <>
-      <div className="relative">
-        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
-          {GENRES.map((g) => (
-            <button
-              key={g}
-              onClick={() => setGenre(g)}
-              className={
-                g === genre
-                  ? "flex-shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black"
-                  : "flex-shrink-0 whitespace-nowrap rounded-full border border-white/25 px-4 py-1.5 text-sm font-medium text-white/75 transition-colors hover:border-white/50 hover:text-white"
-              }
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#141414] to-transparent" />
-      </div>
+      <ScrollRow className="items-center gap-2 pb-1">
+        {GENRES.map((g) => (
+          <button
+            key={g}
+            onClick={() => setGenre(g)}
+            className={
+              g === genre
+                ? "flex-shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black"
+                : "flex-shrink-0 whitespace-nowrap rounded-full border border-white/25 px-4 py-1.5 text-sm font-medium text-white/75 transition-colors hover:border-white/50 hover:text-white"
+            }
+          >
+            {g}
+          </button>
+        ))}
+      </ScrollRow>
 
       {!watchingLoading && (
         continueWatching.length > 0 ? (

@@ -123,8 +123,8 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#141414] md:hidden">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2.5">
+      <div className="flex min-w-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2.5">
           <Search className="size-4 shrink-0 text-white/45" />
           <input
             autoFocus
