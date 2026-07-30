@@ -227,6 +227,7 @@ export interface BrowseFilters {
   format?: AnimeMedia["format"];
   status?: AnimeMedia["status"];
   genre?: string[];
+  tag?: string[];
   year?: number;
   sort?: "TRENDING_DESC" | "POPULARITY_DESC" | "SCORE_DESC" | "START_DATE_DESC";
   search?: string;
@@ -235,6 +236,19 @@ export interface BrowseFilters {
 export interface BrowsePage {
   items: AnimeMedia[];
   hasNextPage: boolean;
+}
+
+// AniList's tag collection is large (400+) and static, so this is fetched once
+// per revalidate window (same 1hr cache as everything else via gql()) and
+// filtered to non-adult tags — this is a general-audience filter list, not an
+// unfiltered dump of AniList's full taxonomy.
+export async function getTagCollection(): Promise<string[]> {
+  const data = await gql<{ MediaTagCollection: { name: string; isAdult: boolean }[] }>(
+    `{ MediaTagCollection { name isAdult } }`
+  );
+  return data.MediaTagCollection.filter((t) => !t.isAdult)
+    .map((t) => t.name)
+    .sort((a, b) => a.localeCompare(b));
 }
 
 export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
@@ -248,19 +262,20 @@ export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
   if (filters.format) variables.format = filters.format;
   if (filters.status) variables.status = filters.status;
   if (filters.genre && filters.genre.length > 0) variables.genre = filters.genre;
+  if (filters.tag && filters.tag.length > 0) variables.tag = filters.tag;
   if (filters.year) variables.seasonYear = filters.year;
   if (filters.search) variables.search = filters.search;
 
   const data = await gql<{ Page: { pageInfo: { hasNextPage: boolean }; media: AnimeMedia[] } }>(
     `query (
-      $page: Int, $format: MediaFormat, $status: MediaStatus,
-      $genre: [String], $seasonYear: Int, $sort: [MediaSort], $search: String
+      $page: Int, $format: MediaFormat, $status: MediaStatus, $genre: [String],
+      $tag: [String], $seasonYear: Int, $sort: [MediaSort], $search: String
     ) {
       Page(page: $page, perPage: 24) {
         pageInfo { hasNextPage }
         media(
-          type: ANIME, format: $format, status: $status,
-          genre_in: $genre, seasonYear: $seasonYear, sort: $sort, search: $search
+          type: ANIME, format: $format, status: $status, genre_in: $genre,
+          tag_in: $tag, seasonYear: $seasonYear, sort: $sort, search: $search
         ) { ${FIELDS} }
       }
     }`,

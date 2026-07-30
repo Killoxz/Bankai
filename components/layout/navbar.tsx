@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Bell, User, LogOut, ChevronDown, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
@@ -38,12 +38,19 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
-  const [avatar, setAvatar] = useState<string | null>(null);
+  const avatar = useAuthStore((s) => s.avatar);
+  const setAvatar = useAuthStore((s) => s.setAvatar);
 
   useEffect(() => setMounted(true), []);
 
+  // Cached in the persistent auth store (not local state) so it's already
+  // there on the very next render — Navbar is remounted fresh on every
+  // page navigation (it isn't hoisted into a shared layout), and local
+  // state would otherwise reset to null and flash the letter-avatar before
+  // this fetch resolves.
   useEffect(() => {
     if (!currentUser) {
       setAvatar(null);
@@ -59,7 +66,7 @@ export function Navbar() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser]);
+  }, [currentUser, setAvatar]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -129,9 +136,21 @@ export function Navbar() {
       {/* Nav links */}
       <nav className="hidden items-center gap-5 md:flex">
         {NAV_LINKS.map((link) => {
-          const base = link.href.split("?")[0];
-          const active =
-            link.href === "/" ? pathname === "/" : base !== "/" && base !== "#" && pathname.startsWith(base);
+          const [linkPath, linkQuery] = link.href.split("?");
+          let active: boolean;
+          if (link.href === "/") {
+            active = pathname === "/";
+          } else if (linkQuery) {
+            // Links with a query (e.g. Movie -> /browse?format=MOVIE) must match
+            // that query too, so plain /browse (from the search icon) doesn't
+            // falsely highlight them.
+            const linkParams = new URLSearchParams(linkQuery);
+            active =
+              pathname === linkPath &&
+              [...linkParams.entries()].every(([k, v]) => searchParams.get(k) === v);
+          } else {
+            active = linkPath !== "#" && pathname.startsWith(linkPath);
+          }
           return (
             <Link
               key={link.label}

@@ -86,7 +86,7 @@ export function HomeRows({
         {GENRES.map((g) => (
           <button
             key={g}
-            onClick={() => setGenre(g)}
+            onClick={() => setGenre(g === genre ? "All Genres" : g)}
             className={
               g === genre
                 ? "flex-shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black"

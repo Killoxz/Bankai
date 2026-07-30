@@ -5,12 +5,14 @@ import { persist } from "zustand/middleware";
 
 interface AuthState {
   currentUser: string | null;
+  avatar: string | null;
   remember: boolean;
   /** Returns an error message, or null on success. */
   signup: (username: string, password: string) => Promise<string | null>;
   login: (username: string, password: string) => Promise<string | null>;
   logout: () => void;
   setRemember: (v: boolean) => void;
+  setAvatar: (url: string | null) => void;
 }
 
 async function callAuthApi(
@@ -36,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       currentUser: null,
+      avatar: null,
       remember: true,
 
       async signup(username, password) {
@@ -52,8 +55,9 @@ export const useAuthStore = create<AuthState>()(
         return null;
       },
 
-      logout: () => set({ currentUser: null }),
+      logout: () => set({ currentUser: null, avatar: null }),
       setRemember: (v) => set({ remember: v }),
+      setAvatar: (url) => set({ avatar: url }),
     }),
     {
       name: "bankai-auth",
@@ -62,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (s) => ({
         remember: s.remember,
         currentUser: s.remember ? s.currentUser : null,
+        avatar: s.remember ? s.avatar : null,
       }),
     }
   )

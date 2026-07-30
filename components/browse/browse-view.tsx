@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ChevronDown, X, Check, RotateCcw } from "lucide-react";
+import { Loader2, ChevronDown, X, Check, RotateCcw, Search } from "lucide-react";
 import { browseAnime, ANIME_GENRES, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 import { AnimeCard } from "./anime-card";
 
@@ -105,58 +105,90 @@ function Dropdown<T extends string>({
   );
 }
 
-function GenreMultiSelect({
+function MultiSelect({
+  label,
+  placeholder,
   values,
+  options,
   onChange,
 }: {
+  label: string;
+  placeholder: string;
   values: string[];
+  options: string[];
   onChange: (v: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const label = values.length === 0 ? "Select Genres" : values.length === 1 ? values[0] : `${values.length} Genres`;
+  const [query, setQuery] = useState("");
+  const current = values.length === 0 ? placeholder : values.length === 1 ? values[0] : `${values.length} ${label}`;
+  const filtered = query.trim()
+    ? options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
+    : options;
 
-  function toggle(g: string) {
-    onChange(values.includes(g) ? values.filter((v) => v !== g) : [...values, g]);
+  function toggle(o: string) {
+    onChange(values.includes(o) ? values.filter((v) => v !== o) : [...values, o]);
   }
 
   return (
     <div
       className="relative flex items-center gap-1 rounded-full border border-white/15 bg-white/5 pl-4 pr-2 py-2 transition-colors hover:border-white/30"
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setOpen(false);
+          setQuery("");
+        }
       }}
     >
       <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-white/80">
-        {label}
+        {current}
         <ChevronDown className="size-3.5 text-white/50" />
       </button>
       {values.length > 0 && (
-        <button onClick={() => onChange([])} aria-label="Clear genres" className="text-white/40 transition-colors hover:text-white">
+        <button onClick={() => onChange([])} aria-label={`Clear ${label}`} className="text-white/40 transition-colors hover:text-white">
           <X className="size-3.5" />
         </button>
       )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 max-h-72 w-48 overflow-y-auto rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
-          {ANIME_GENRES.map((g) => {
-            const checked = values.includes(g);
-            return (
-              <button
-                key={g}
-                onClick={() => toggle(g)}
-                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
-              >
-                <span
-                  className={[
-                    "grid size-4 shrink-0 place-items-center rounded border",
-                    checked ? "border-primary bg-primary" : "border-white/30",
-                  ].join(" ")}
-                >
-                  {checked && <Check className="size-3 text-black" />}
-                </span>
-                {g}
-              </button>
-            );
-          })}
+        <div className="absolute left-0 top-11 z-20 w-56 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] shadow-2xl">
+          {options.length > 12 && (
+            <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
+              <Search className="size-3.5 shrink-0 text-white/40" />
+              <input
+                autoFocus
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={`Filter ${label.toLowerCase()}...`}
+                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+              />
+            </div>
+          )}
+          <div className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3.5 py-2 text-sm text-white/40">No matches.</p>
+            ) : (
+              filtered.map((o) => {
+                const checked = values.includes(o);
+                return (
+                  <button
+                    key={o}
+                    onClick={() => toggle(o)}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    <span
+                      className={[
+                        "grid size-4 shrink-0 place-items-center rounded border",
+                        checked ? "border-primary bg-primary" : "border-white/30",
+                      ].join(" ")}
+                    >
+                      {checked && <Check className="size-3 text-black" />}
+                    </span>
+                    {o}
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -166,9 +198,11 @@ function GenreMultiSelect({
 export function BrowseView({
   initial,
   basePath = "/browse",
+  availableTags = [],
 }: {
   initial: BrowseFilters;
   basePath?: string;
+  availableTags?: string[];
 }) {
   const router = useRouter();
   const [filters, setFilters] = useState<BrowseFilters>(initial);
@@ -187,6 +221,7 @@ export function BrowseView({
       if (next.format) sp.set("format", next.format);
       if (next.status) sp.set("status", next.status);
       if (next.genre && next.genre.length > 0) sp.set("genre", next.genre.join(","));
+      if (next.tag && next.tag.length > 0) sp.set("tag", next.tag.join(","));
       if (next.year) sp.set("year", String(next.year));
       if (next.sort) sp.set("sort", next.sort);
       if (next.search) sp.set("q", next.search);
@@ -212,7 +247,7 @@ export function BrowseView({
         if (id === requestId.current) setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.format, filters.status, filters.genre, filters.year, filters.sort, filters.search]);
+  }, [filters.format, filters.status, filters.genre, filters.tag, filters.year, filters.sort, filters.search]);
 
   async function loadMore() {
     if (loadingMore || !hasNextPage) return;
@@ -232,18 +267,34 @@ export function BrowseView({
     filters.format ||
     filters.status ||
     (filters.genre && filters.genre.length > 0) ||
+    (filters.tag && filters.tag.length > 0) ||
     filters.year
   );
 
   function resetFilters() {
-    patch({ format: undefined, status: undefined, genre: undefined, year: undefined });
+    patch({ format: undefined, status: undefined, genre: undefined, tag: undefined, year: undefined });
   }
 
   return (
     <div>
       <div className="flex flex-wrap items-end gap-3">
         <FilterField label="Genres">
-          <GenreMultiSelect values={filters.genre ?? []} onChange={(v) => patch({ genre: v.length ? v : undefined })} />
+          <MultiSelect
+            label="Genres"
+            placeholder="Select Genres"
+            values={filters.genre ?? []}
+            options={ANIME_GENRES}
+            onChange={(v) => patch({ genre: v.length ? v : undefined })}
+          />
+        </FilterField>
+        <FilterField label="Tags">
+          <MultiSelect
+            label="Tags"
+            placeholder="Select Tags"
+            values={filters.tag ?? []}
+            options={availableTags}
+            onChange={(v) => patch({ tag: v.length ? v : undefined })}
+          />
         </FilterField>
         <FilterField label="Year">
           <Dropdown
