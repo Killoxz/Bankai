@@ -9,13 +9,14 @@ export const metadata: Metadata = { title: "Series — Bankai" };
 export default async function SeriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ format?: string; status?: string; genre?: string; sort?: string; q?: string }>;
+  searchParams: Promise<{ format?: string; status?: string; genre?: string; year?: string; sort?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const filters: BrowseFilters = {
     format: (sp.format as AnimeMedia["format"]) || "TV",
     status: (sp.status as AnimeMedia["status"]) || undefined,
-    genre: sp.genre || undefined,
+    genre: sp.genre ? sp.genre.split(",") : undefined,
+    year: sp.year ? Number(sp.year) : undefined,
     sort: (sp.sort as BrowseFilters["sort"]) || undefined,
     search: sp.q || undefined,
   };

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, ChevronDown } from "lucide-react";
-import { browseAnime, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
+import { useRouter } from "next/navigation";
+import { Loader2, ChevronDown, X, Check, RotateCcw } from "lucide-react";
+import { browseAnime, ANIME_GENRES, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 import { AnimeCard } from "./anime-card";
 
 type FormatValue = Exclude<AnimeMedia["format"], null> | "";
@@ -32,36 +32,58 @@ const SORTS: { label: string; value: NonNullable<BrowseFilters["sort"]> }[] = [
   { label: "Newest", value: "START_DATE_DESC" },
 ];
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS: { label: string; value: string }[] = [
+  { label: "Any Year", value: "" },
+  ...Array.from({ length: CURRENT_YEAR - 1959 }, (_, i) => {
+    const y = String(CURRENT_YEAR + 1 - i);
+    return { label: y, value: y };
+  }),
+];
+
+function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">{label}</p>
+      {children}
+    </div>
+  );
+}
+
 function Dropdown<T extends string>({
   label,
   value,
   options,
   onChange,
+  onClear,
 }: {
   label: string;
   value: T;
   options: { label: string; value: T }[];
   onChange: (v: T) => void;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value)?.label ?? label;
 
   return (
     <div
-      className="relative"
+      className="relative flex items-center gap-1 rounded-full border border-white/15 bg-white/5 pl-4 pr-2 py-2 transition-colors hover:border-white/30"
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
       }}
     >
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 transition-colors hover:border-white/30"
-      >
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-white/80">
         {current}
         <ChevronDown className="size-3.5 text-white/50" />
       </button>
+      {onClear && value && (
+        <button onClick={onClear} aria-label={`Clear ${label}`} className="text-white/40 transition-colors hover:text-white">
+          <X className="size-3.5" />
+        </button>
+      )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 min-w-40 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+        <div className="absolute left-0 top-11 z-20 max-h-72 min-w-40 overflow-y-auto rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
           {options.map((o) => (
             <button
               key={o.value}
@@ -83,6 +105,64 @@ function Dropdown<T extends string>({
   );
 }
 
+function GenreMultiSelect({
+  values,
+  onChange,
+}: {
+  values: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = values.length === 0 ? "Select Genres" : values.length === 1 ? values[0] : `${values.length} Genres`;
+
+  function toggle(g: string) {
+    onChange(values.includes(g) ? values.filter((v) => v !== g) : [...values, g]);
+  }
+
+  return (
+    <div
+      className="relative flex items-center gap-1 rounded-full border border-white/15 bg-white/5 pl-4 pr-2 py-2 transition-colors hover:border-white/30"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-white/80">
+        {label}
+        <ChevronDown className="size-3.5 text-white/50" />
+      </button>
+      {values.length > 0 && (
+        <button onClick={() => onChange([])} aria-label="Clear genres" className="text-white/40 transition-colors hover:text-white">
+          <X className="size-3.5" />
+        </button>
+      )}
+      {open && (
+        <div className="absolute left-0 top-11 z-20 max-h-72 w-48 overflow-y-auto rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+          {ANIME_GENRES.map((g) => {
+            const checked = values.includes(g);
+            return (
+              <button
+                key={g}
+                onClick={() => toggle(g)}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+              >
+                <span
+                  className={[
+                    "grid size-4 shrink-0 place-items-center rounded border",
+                    checked ? "border-primary bg-primary" : "border-white/30",
+                  ].join(" ")}
+                >
+                  {checked && <Check className="size-3 text-black" />}
+                </span>
+                {g}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function BrowseView({
   initial,
   basePath = "/browse",
@@ -91,7 +171,6 @@ export function BrowseView({
   basePath?: string;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [filters, setFilters] = useState<BrowseFilters>(initial);
   const [items, setItems] = useState<AnimeMedia[]>([]);
   const [page, setPage] = useState(1);
@@ -107,7 +186,8 @@ export function BrowseView({
       const sp = new URLSearchParams();
       if (next.format) sp.set("format", next.format);
       if (next.status) sp.set("status", next.status);
-      if (next.genre && next.genre !== "All Genres") sp.set("genre", next.genre);
+      if (next.genre && next.genre.length > 0) sp.set("genre", next.genre.join(","));
+      if (next.year) sp.set("year", String(next.year));
       if (next.sort) sp.set("sort", next.sort);
       if (next.search) sp.set("q", next.search);
       router.replace(`${basePath}?${sp.toString()}`, { scroll: false });
@@ -132,7 +212,7 @@ export function BrowseView({
         if (id === requestId.current) setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.format, filters.status, filters.genre, filters.sort, filters.search]);
+  }, [filters.format, filters.status, filters.genre, filters.year, filters.sort, filters.search]);
 
   async function loadMore() {
     if (loadingMore || !hasNextPage) return;
@@ -148,12 +228,63 @@ export function BrowseView({
     }
   }
 
+  const hasActiveFilters = !!(
+    filters.format ||
+    filters.status ||
+    (filters.genre && filters.genre.length > 0) ||
+    filters.year
+  );
+
+  function resetFilters() {
+    patch({ format: undefined, status: undefined, genre: undefined, year: undefined });
+  }
+
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Dropdown label="All Formats" value={filters.format ?? ""} options={FORMATS} onChange={(v) => patch({ format: v || undefined })} />
-        <Dropdown label="Any Status" value={filters.status ?? ""} options={STATUSES} onChange={(v) => patch({ status: v || undefined })} />
-        <Dropdown label="Sort" value={filters.sort ?? "TRENDING_DESC"} options={SORTS} onChange={(v) => patch({ sort: v })} />
+      <div className="flex flex-wrap items-end gap-3">
+        <FilterField label="Genres">
+          <GenreMultiSelect values={filters.genre ?? []} onChange={(v) => patch({ genre: v.length ? v : undefined })} />
+        </FilterField>
+        <FilterField label="Year">
+          <Dropdown
+            label="Any Year"
+            value={filters.year ? String(filters.year) : ""}
+            options={YEARS}
+            onChange={(v) => patch({ year: v ? Number(v) : undefined })}
+            onClear={filters.year ? () => patch({ year: undefined }) : undefined}
+          />
+        </FilterField>
+        <FilterField label="Status">
+          <Dropdown
+            label="Any Status"
+            value={filters.status ?? ""}
+            options={STATUSES}
+            onChange={(v) => patch({ status: v || undefined })}
+            onClear={filters.status ? () => patch({ status: undefined }) : undefined}
+          />
+        </FilterField>
+        <FilterField label="Format">
+          <Dropdown
+            label="All Formats"
+            value={filters.format ?? ""}
+            options={FORMATS}
+            onChange={(v) => patch({ format: v || undefined })}
+            onClear={filters.format ? () => patch({ format: undefined }) : undefined}
+          />
+        </FilterField>
+        <FilterField label="Sort">
+          <Dropdown label="Sort" value={filters.sort ?? "TRENDING_DESC"} options={SORTS} onChange={(v) => patch({ sort: v })} />
+        </FilterField>
+
+        {hasActiveFilters && (
+          <button
+            onClick={resetFilters}
+            className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/15"
+          >
+            <RotateCcw className="size-3.5" />
+            Reset
+          </button>
+        )}
       </div>
 
       <div className="mt-8">

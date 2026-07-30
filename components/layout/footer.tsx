@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Send, MessageCircle, Youtube, Instagram } from "lucide-react";
+import pkg from "../../package.json";
 
 const LINKS = [
   { label: "Home", href: "/" },
@@ -20,7 +21,10 @@ export function Footer() {
     <footer className="border-t border-white/10 px-8 py-6 sm:px-12">
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <Image src="/bankai-logo.svg" alt="Bankai" width={70} height={22} className="h-5 w-auto opacity-90" />
+          <div className="flex items-center gap-2">
+            <Image src="/bankai-logo.svg" alt="Bankai" width={70} height={22} className="h-5 w-auto opacity-90" />
+            <span className="text-[10px] font-medium text-white/30">v{pkg.version}</span>
+          </div>
           {LINKS.map((l) => (
             <Link
               key={l.href}

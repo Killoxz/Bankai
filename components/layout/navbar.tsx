@@ -168,7 +168,9 @@ export function Navbar() {
             onChange={(e) => setSearch(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
           />
-          <Search className="size-4 shrink-0 text-white/45" />
+          <Link href="/browse" aria-label="Advanced search" className="shrink-0 text-white/45 transition-colors hover:text-white">
+            <Search className="size-4" />
+          </Link>
         </div>
 
         {showResults && (

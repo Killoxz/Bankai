@@ -203,11 +203,31 @@ export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
   return data.Media;
 }
 
+export const ANIME_GENRES = [
+  "Action",
+  "Fantasy",
+  "Slice of Life",
+  "Adventure",
+  "Comedy",
+  "Romance",
+  "Drama",
+  "Supernatural",
+  "Sci-Fi",
+  "Mystery",
+  "Psychological",
+  "Sports",
+  "Horror",
+  "Music",
+  "Thriller",
+  "Mecha",
+];
+
 export interface BrowseFilters {
   page?: number;
   format?: AnimeMedia["format"];
   status?: AnimeMedia["status"];
-  genre?: string;
+  genre?: string[];
+  year?: number;
   sort?: "TRENDING_DESC" | "POPULARITY_DESC" | "SCORE_DESC" | "START_DATE_DESC";
   search?: string;
 }
@@ -227,19 +247,20 @@ export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
   };
   if (filters.format) variables.format = filters.format;
   if (filters.status) variables.status = filters.status;
-  if (filters.genre && filters.genre !== "All Genres") variables.genre = filters.genre;
+  if (filters.genre && filters.genre.length > 0) variables.genre = filters.genre;
+  if (filters.year) variables.seasonYear = filters.year;
   if (filters.search) variables.search = filters.search;
 
   const data = await gql<{ Page: { pageInfo: { hasNextPage: boolean }; media: AnimeMedia[] } }>(
     `query (
       $page: Int, $format: MediaFormat, $status: MediaStatus,
-      $genre: String, $sort: [MediaSort], $search: String
+      $genre: [String], $seasonYear: Int, $sort: [MediaSort], $search: String
     ) {
       Page(page: $page, perPage: 24) {
         pageInfo { hasNextPage }
         media(
           type: ANIME, format: $format, status: $status,
-          genre: $genre, sort: $sort, search: $search
+          genre_in: $genre, seasonYear: $seasonYear, sort: $sort, search: $search
         ) { ${FIELDS} }
       }
     }`,

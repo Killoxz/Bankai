@@ -4,28 +4,9 @@ import { useEffect, useState } from "react";
 import { AnimeRow } from "./anime-row";
 import { ScrollRow } from "./scroll-row";
 import { useAuthStore } from "@/store/auth-store";
-import type { AnimeMedia } from "@/lib/anilist";
+import { ANIME_GENRES, type AnimeMedia } from "@/lib/anilist";
 
-// Real AniList genre names only, so every pill actually filters results
-const GENRES = [
-  "All Genres",
-  "Action",
-  "Fantasy",
-  "Slice of Life",
-  "Adventure",
-  "Comedy",
-  "Romance",
-  "Drama",
-  "Supernatural",
-  "Sci-Fi",
-  "Mystery",
-  "Psychological",
-  "Sports",
-  "Horror",
-  "Music",
-  "Thriller",
-  "Mecha",
-];
+const GENRES = ["All Genres", ...ANIME_GENRES];
 
 interface ProfileAnimeStub {
   id: string; // "anilist:<id>"
