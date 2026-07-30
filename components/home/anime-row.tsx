@@ -65,14 +65,20 @@ export function AnimeRow({
       </div>
 
       {canLeft && (
-        <button onClick={() => scrollByDir(-1)} aria-label="Scroll left" className={`${arrowBase} -left-4`}>
-          <ChevronLeft className="size-5" />
-        </button>
+        <>
+          <div className="pointer-events-none absolute inset-y-0 -left-1 z-[5] hidden w-20 bg-gradient-to-r from-[#141414] to-transparent opacity-0 transition-opacity duration-300 group-hover/row:opacity-100 sm:block" />
+          <button onClick={() => scrollByDir(-1)} aria-label="Scroll left" className={`${arrowBase} -left-4`}>
+            <ChevronLeft className="size-5" />
+          </button>
+        </>
       )}
       {canRight && (
-        <button onClick={() => scrollByDir(1)} aria-label="Scroll right" className={`${arrowBase} -right-4`}>
-          <ChevronRight className="size-5" />
-        </button>
+        <>
+          <div className="pointer-events-none absolute inset-y-0 -right-1 z-[5] hidden w-20 bg-gradient-to-l from-[#141414] to-transparent opacity-0 transition-opacity duration-300 group-hover/row:opacity-100 sm:block" />
+          <button onClick={() => scrollByDir(1)} aria-label="Scroll right" className={`${arrowBase} -right-4`}>
+            <ChevronRight className="size-5" />
+          </button>
+        </>
       )}
     </section>
   );
