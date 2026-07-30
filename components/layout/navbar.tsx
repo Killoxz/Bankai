@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Bell, User, LogOut, ChevronDown, AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -37,8 +37,6 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
   const avatar = useAuthStore((s) => s.avatar);
@@ -134,40 +132,9 @@ export function Navbar() {
       </Link>
 
       {/* Nav links */}
-      <nav className="hidden items-center gap-5 md:flex">
-        {NAV_LINKS.map((link) => {
-          const [linkPath, linkQuery] = link.href.split("?");
-          let active: boolean;
-          if (link.href === "/") {
-            active = pathname === "/";
-          } else if (linkQuery) {
-            // Links with a query (e.g. Movie -> /browse?format=MOVIE) must match
-            // that query too, so plain /browse (from the search icon) doesn't
-            // falsely highlight them.
-            const linkParams = new URLSearchParams(linkQuery);
-            active =
-              pathname === linkPath &&
-              [...linkParams.entries()].every(([k, v]) => searchParams.get(k) === v);
-          } else {
-            active = linkPath !== "#" && pathname.startsWith(linkPath);
-          }
-          return (
-            <Link
-              key={link.label}
-              href={link.href}
-              className={cn(
-                "text-sm transition-colors",
-                active
-                  ? "font-semibold text-white"
-                  : "font-medium text-white/55 hover:text-white/90"
-              )}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-        <LanguageDropdown />
-      </nav>
+      <Suspense fallback={<NavLinks pathname={null} searchParams={null} />}>
+        <NavLinksWithSearchParams />
+      </Suspense>
 
       <div className="flex-1" />
 
@@ -290,6 +257,66 @@ export function Navbar() {
       )}
       </div>
     </header>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary or static builds fail
+// ("missing-suspense-with-csr-bailout") on pages Next tries to fully
+// prerender (e.g. /terms, /contact — plain pages with no dynamic signal
+// of their own). Isolated here so only this small piece suspends; the
+// fallback renders the same links unhighlighted rather than blocking the
+// rest of the navbar.
+function NavLinksWithSearchParams() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  return <NavLinks pathname={pathname} searchParams={searchParams} />;
+}
+
+function NavLinks({
+  pathname,
+  searchParams,
+}: {
+  pathname: string | null;
+  searchParams: URLSearchParams | null;
+}) {
+  return (
+    <nav className="hidden items-center gap-5 md:flex">
+      {NAV_LINKS.map((link) => {
+        const [linkPath, linkQuery] = link.href.split("?");
+        let active = false;
+        if (pathname) {
+          if (link.href === "/") {
+            active = pathname === "/";
+          } else if (linkQuery) {
+            // Links with a query (e.g. Movie -> /browse?format=MOVIE) must
+            // match that query too, so plain /browse (from the search icon)
+            // doesn't falsely highlight them.
+            const linkParams = new URLSearchParams(linkQuery);
+            active =
+              !!searchParams &&
+              pathname === linkPath &&
+              [...linkParams.entries()].every(([k, v]) => searchParams.get(k) === v);
+          } else {
+            active = linkPath !== "#" && pathname.startsWith(linkPath);
+          }
+        }
+        return (
+          <Link
+            key={link.label}
+            href={link.href}
+            className={cn(
+              "text-sm transition-colors",
+              active
+                ? "font-semibold text-white"
+                : "font-medium text-white/55 hover:text-white/90"
+            )}
+          >
+            {link.label}
+          </Link>
+        );
+      })}
+      <LanguageDropdown />
+    </nav>
   );
 }
 
