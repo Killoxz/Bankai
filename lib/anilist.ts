@@ -119,6 +119,8 @@ export interface RelationEntry {
     title: { romaji: string; english: string | null };
     coverImage: { large: string };
     format: string | null;
+    /** ANIME | MANGA | ... — AniList relations span both; only ANIME nodes have a matching /anime/[id] page. */
+    type: string;
   };
 }
 
@@ -187,7 +189,7 @@ const DETAIL_FIELDS = `
   relations {
     edges {
       relationType(version: 2)
-      node { id title { romaji english } coverImage { large } format }
+      node { id title { romaji english } coverImage { large } format type }
     }
   }
   recommendations(sort: RATING_DESC, perPage: 12) {

@@ -60,8 +60,10 @@ export function SeriesSidebar({
   relations: RelationEntry[];
   recommendations: AnimeMedia[];
 }) {
+  // Relations include manga nodes (e.g. source material) that have no
+  // matching /watch/[id] page and would 404 on click.
   const relatedAnime = relations
-    .filter((r) => r.node.format !== null)
+    .filter((r) => r.node.type === "ANIME")
     .slice(0, 5);
   const suggested = recommendations.slice(0, 5);
 

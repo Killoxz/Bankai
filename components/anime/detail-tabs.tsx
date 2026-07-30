@@ -230,12 +230,16 @@ function QuickAction({
 }
 
 function RelationsTab({ edges }: { edges: RelationEntry[] }) {
-  if (edges.length === 0)
+  // Relations span both anime and manga (e.g. a "Source" edge usually points
+  // at the manga); only anime nodes have a matching /anime/[id] page, so
+  // anything else would 404 on click.
+  const animeEdges = edges.filter(({ node }) => node.type === "ANIME");
+  if (animeEdges.length === 0)
     return <p className="text-sm text-white/40">No related anime found.</p>;
 
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-      {edges.map(({ relationType, node }) => (
+      {animeEdges.map(({ relationType, node }) => (
         <Link key={node.id} href={`/anime/${node.id}`} className="group">
           <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
             {node.coverImage.large && (
