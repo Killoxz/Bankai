@@ -270,6 +270,7 @@ export function BrowseView({
     (filters.tag && filters.tag.length > 0) ||
     filters.year
   );
+  const activeStatusLabel = STATUSES.find((s) => s.value === filters.status)?.label;
 
   function resetFilters() {
     patch({ format: undefined, status: undefined, genre: undefined, tag: undefined, year: undefined });
@@ -349,7 +350,7 @@ export function BrowseView({
           <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {items.map((anime) => (
-                <AnimeCard key={anime.id} anime={anime} />
+                <AnimeCard key={anime.id} anime={anime} statusLabel={activeStatusLabel} />
               ))}
             </div>
 

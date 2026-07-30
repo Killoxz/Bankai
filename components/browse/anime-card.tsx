@@ -4,7 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 
-export function AnimeCard({ anime }: { anime: AnimeMedia }) {
+export function AnimeCard({
+  anime,
+  statusLabel,
+}: {
+  anime: AnimeMedia;
+  /** Shown next to the rating badge while a Status filter is active on /browse; disappears when the filter is cleared. */
+  statusLabel?: string;
+}) {
   const title = usePreferredTitle(anime);
 
   return (
@@ -19,10 +26,19 @@ export function AnimeCard({ anime }: { anime: AnimeMedia }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         )}
-        {anime.averageScore && (
-          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-white">
-            ★ {(anime.averageScore / 10).toFixed(1)}
-          </span>
+        {(anime.averageScore || statusLabel) && (
+          <div className="absolute left-2 top-2 flex items-center gap-1.5">
+            {anime.averageScore && (
+              <span className="flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-white">
+                ★ {(anime.averageScore / 10).toFixed(1)}
+              </span>
+            )}
+            {statusLabel && (
+              <span className="rounded-md bg-primary/90 px-2 py-0.5 text-[10px] font-semibold text-black">
+                {statusLabel}
+              </span>
+            )}
+          </div>
         )}
         <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/30" />
       </div>
