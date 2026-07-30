@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
+import { Play } from "lucide-react";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { getMalScore } from "@/lib/jikan";
 import { Navbar } from "@/components/layout/navbar";
@@ -103,7 +105,16 @@ export default async function AnimeDetailPage({
 
         {/* Actions */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-          <StatusButtons animeId={anilistId} />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href={`/watch/${anilistId}`}
+              className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+            >
+              <Play className="size-4 fill-black" />
+              Watch
+            </Link>
+            <StatusButtons animeId={anilistId} />
+          </div>
           <AddToCollectionButton />
         </div>
 

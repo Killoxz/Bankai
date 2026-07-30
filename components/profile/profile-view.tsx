@@ -4,10 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Bookmark, CheckCircle2, Folder, ChevronDown, Filter as FilterIcon } from "lucide-react";
+import { Eye, Bookmark, CheckCircle2, Folder, ChevronDown, Filter as FilterIcon, Camera, Pencil } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { EditProfileModal } from "./edit-profile-modal";
 
 const PROFILE_BANNER =
   "https://s4.anilist.co/file/anilistcdn/media/anime/banner/178789-9nHWmoRLlcLu.jpg";
@@ -25,6 +26,8 @@ interface AnimeStub {
 interface ProfileData {
   username: string;
   createdAt: string;
+  image: string | null;
+  banner: string | null;
   lists: {
     watching: AnimeStub[];
     toWatch: AnimeStub[];
@@ -60,6 +63,7 @@ export function ProfileView() {
   const [sort, setSort] = useState<SortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -135,15 +139,20 @@ export function ProfileView() {
       <div className="pt-24">
         {/* Banner */}
         <div className="relative h-44 w-full overflow-hidden bg-[#0a0a0a] sm:h-56">
-          <Image
-            src={PROFILE_BANNER}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={data?.banner || PROFILE_BANNER}
             alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
+            className="absolute inset-0 size-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-[#141414]" />
+          <button
+            onClick={() => setEditOpen(true)}
+            className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+          >
+            <Pencil className="size-3.5" />
+            Edit Banner
+          </button>
         </div>
 
         <div className="px-8 sm:px-12">
@@ -151,8 +160,22 @@ export function ProfileView() {
               banner (position:relative content painting rules would
               otherwise put a positioned-but-earlier sibling underneath it) */}
           <div className="relative z-10 -mt-16 flex flex-col gap-4 sm:-mt-20 sm:flex-row sm:items-end">
-            <div className="grid size-24 shrink-0 place-items-center rounded-full border-4 border-[#141414] bg-primary text-3xl font-bold text-black shadow-xl sm:size-28">
-              {currentUser[0]?.toUpperCase()}
+            <div className="relative size-24 shrink-0 sm:size-28">
+              <div className="grid size-24 place-items-center overflow-hidden rounded-full border-4 border-[#141414] bg-primary text-3xl font-bold text-black shadow-xl sm:size-28">
+                {data?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={data.image} alt="" className="size-full object-cover" />
+                ) : (
+                  currentUser[0]?.toUpperCase()
+                )}
+              </div>
+              <button
+                onClick={() => setEditOpen(true)}
+                aria-label="Edit profile picture"
+                className="absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-[#141414] bg-white text-black shadow-md transition-colors hover:bg-white/85"
+              >
+                <Camera className="size-3.5" />
+              </button>
             </div>
             <div className="pb-1">
               <h1 className="text-2xl font-bold text-white sm:text-3xl">{currentUser}</h1>
@@ -277,6 +300,17 @@ export function ProfileView() {
       </div>
 
       <Footer />
+
+      {editOpen && currentUser && (
+        <EditProfileModal
+          username={currentUser}
+          image={data?.image ?? null}
+          banner={data?.banner ?? null}
+          onImageChange={(url) => setData((prev) => (prev ? { ...prev, image: url } : prev))}
+          onBannerChange={(url) => setData((prev) => (prev ? { ...prev, banner: url } : prev))}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -289,3 +323,4 @@ function EmptyState({ message, hint }: { message: string; hint?: string }) {
     </div>
   );
 }
+

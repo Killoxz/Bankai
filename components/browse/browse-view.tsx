@@ -83,7 +83,13 @@ function Dropdown<T extends string>({
   );
 }
 
-export function BrowseView({ initial }: { initial: BrowseFilters }) {
+export function BrowseView({
+  initial,
+  basePath = "/browse",
+}: {
+  initial: BrowseFilters;
+  basePath?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<BrowseFilters>(initial);
@@ -104,9 +110,9 @@ export function BrowseView({ initial }: { initial: BrowseFilters }) {
       if (next.genre && next.genre !== "All Genres") sp.set("genre", next.genre);
       if (next.sort) sp.set("sort", next.sort);
       if (next.search) sp.set("q", next.search);
-      router.replace(`/browse?${sp.toString()}`, { scroll: false });
+      router.replace(`${basePath}?${sp.toString()}`, { scroll: false });
     },
-    [filters, router]
+    [filters, router, basePath]
   );
 
   useEffect(() => {

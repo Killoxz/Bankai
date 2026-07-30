@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, User, LogOut, ChevronDown } from "lucide-react";
+import { Search, Bell, User, LogOut, ChevronDown, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,10 @@ import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 
 const NAV_LINKS = [
-  { label: "Home",       href: "/" },
-  { label: "My List",    href: "/my-list" },
-  { label: "Movie",      href: "/browse?format=MOVIE" },
-  { label: "New Season", href: "/browse?status=RELEASING" },
+  { label: "Home",    href: "/" },
+  { label: "My List", href: "/my-list" },
+  { label: "Movie",   href: "/browse?format=MOVIE" },
+  { label: "Series",  href: "/series" },
 ];
 
 const LANGUAGE_OPTIONS: { label: string; value: TitleLanguage }[] = [
@@ -83,7 +83,8 @@ export function Navbar() {
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       {/* Site-wide status notice */}
-      <div className="bg-[#F5A623] px-4 py-1.5 text-center text-xs font-semibold text-black">
+      <div className="flex items-center justify-center gap-1.5 border-b border-white/10 bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-sm">
+        <AlertCircle className="size-3.5 shrink-0 text-white/40" />
         Streaming Services Are Currently Down At The Moment.
       </div>
 

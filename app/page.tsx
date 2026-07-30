@@ -1,5 +1,6 @@
 import { getHomeData, type AnimeMedia } from "@/lib/anilist";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { AnimeRow } from "@/components/home/anime-row";
 import { HomeRows } from "@/components/home/home-rows";
@@ -35,6 +36,8 @@ export default async function HomePage() {
           </>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }
