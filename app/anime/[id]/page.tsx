@@ -61,7 +61,12 @@ export default async function AnimeDetailPage({
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/50 to-black/20" />
 
         {detail.trailer?.id && (
-          <div className="absolute bottom-6 right-6 z-10 hidden sm:block">
+          // z-20: the main content wrapper below is also z-10 and, being
+          // later in the DOM, wins ties in the region where its negative
+          // margin pulls it up over the banner — silently swallowing clicks
+          // meant for this button (same category of bug as the profile
+          // page's avatar/banner stacking issue).
+          <div className="absolute bottom-6 right-6 z-20 hidden sm:block">
             <TrailerButton site={detail.trailer.site} trailerId={detail.trailer.id} />
           </div>
         )}

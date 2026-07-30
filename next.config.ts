@@ -9,9 +9,12 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.NODE_ENV !== "production",
     minimumCacheTTL: 86400,
     formats: ["image/webp"],
-    // Episode thumbnails come from Miruro/AniPahe CDNs that can change — allow
-    // all HTTPS sources so thumbnails always load regardless of origin.
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
+    // Every next/image usage in this app renders AniList-sourced media (covers,
+    // banners, character/staff art) — scoped to their CDN, not a wildcard.
+    // User-uploaded avatars/banners (Vercel Blob) render via plain <img>
+    // instead, since that's arbitrary-host user content, not something to
+    // route through Next's remote-image allowlist.
+    remotePatterns: [{ protocol: "https", hostname: "**.anilist.co" }],
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
