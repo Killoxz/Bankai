@@ -27,8 +27,9 @@ export function DownPlayer({ poster, animeId }: DownPlayerProps) {
     }
 
     try {
-// This points directly to your newly deployed live production backend server!
-const apiUrl = `bankai-end-production.up.railway.app/${animeId}`;
+// Delete the old cleanPath / cleanPathWithId logic around line 32 and replace it with this single direct line:
+const apiUrl = `bankai-end-production.up.railway.app{animeId}`;
+
 
 
       
