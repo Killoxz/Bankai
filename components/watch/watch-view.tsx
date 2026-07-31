@@ -11,7 +11,11 @@ export function WatchView({ detail, animeId }: { detail: AnimeDetail; animeId: n
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
-        <DownPlayer poster={detail.bannerImage ?? detail.coverImage.large} />
+        {/* FIXED: Added animeId={animeId} below to satisfy TypeScript */}
+        <DownPlayer 
+          poster={detail.bannerImage ?? detail.coverImage.large} 
+          animeId={animeId} 
+        />
         <CommentsSection animeId={animeId} />
       </div>
 
