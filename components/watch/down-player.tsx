@@ -23,7 +23,7 @@ export function DownPlayer({ poster, animeId }: DownPlayerProps) {
 
       try {
         // Connected directly to your real production address
-        const apiUrl = `bankai-api-production.up.railway.app{animeId}`;
+        const apiUrl = `bankai-end-production.up.railway.app{animeId}`;
         
         const response = await fetch(apiUrl);
         if (!response.ok) throw new Error(`Server responded with status ${response.status}.`);
