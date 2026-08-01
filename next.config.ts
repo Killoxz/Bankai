@@ -1,21 +1,29 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // On Render (and any read-only-filesystem host) Next.js cannot write to
+  // /app/.next/cache at runtime. Two mitigations:
+  //
+  // 1. images.unoptimized — AniList's CDN already serves WebP at appropriate
+  //    sizes, so we don't need Next's image optimizer.  This stops the
+  //    unhandledRejection spam from mkdir('/app/.next/cache/images').
+  //
+  // 2. cacheHandler — redirect the ISR / fetch data cache to /tmp so
+  //    prerender-cache writes don't hit the read-only filesystem.
   images: {
-    // In dev, skip Next's on-the-fly optimizer — AniList's CDN already serves
-    // sized/cached covers, and optimizing 150+ remote images per page is the
-    // single biggest dev slowdown. Production keeps full optimization.
-    unoptimized: process.env.NODE_ENV !== "production",
-    minimumCacheTTL: 86400,
-    formats: ["image/webp"],
-    // Every next/image usage in this app renders AniList-sourced media (covers,
-    // banners, character/staff art) — scoped to their CDN, not a wildcard.
-    // User-uploaded avatars/banners (Vercel Blob) render via plain <img>
-    // instead, since that's arbitrary-host user content, not something to
-    // route through Next's remote-image allowlist.
+    unoptimized: true,
     remotePatterns: [{ protocol: "https", hostname: "**.anilist.co" }],
   },
+
+  ...(isProd && {
+    cacheHandler: require.resolve("./cache-handler.cjs"),
+    cacheMaxMemorySize: 0,
+  }),
+
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
