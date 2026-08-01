@@ -56,15 +56,14 @@ export function SettingsSync() {
         if (s.titleLanguage) setTitleLanguage(s.titleLanguage as Parameters<typeof setTitleLanguage>[0]);
         if (s.defaultAudio)  setDefaultAudio(s.defaultAudio as "sub" | "dub");
 
-        // Apply player prefs
-        const pp: Parameters<typeof usePlayerPrefsStore.setState>[0] = {};
-        if (typeof s.captionsOn  === "boolean") pp.captionsOn  = s.captionsOn;
-        if (typeof s.captionSize === "string")  pp.captionSize = s.captionSize;
-        if (typeof s.captionColor === "string") pp.captionColor = s.captionColor;
-        if (typeof s.captionBg   === "string")  pp.captionBg   = s.captionBg;
-        if (typeof s.captionFont === "string")  pp.captionFont = s.captionFont;
-        if (typeof s.speed === "number")        pp.speed       = s.speed;
-        if (Object.keys(pp).length > 0) usePlayerPrefsStore.setState(pp);
+        // Apply player prefs via individual setters (avoids Zustand v5 type friction)
+        const st = usePlayerPrefsStore.getState();
+        if (typeof s.captionsOn   === "boolean") st.setCaptionsOn(s.captionsOn);
+        if (typeof s.captionSize  === "string")  st.setCaptionSize(s.captionSize);
+        if (typeof s.captionColor === "string")  st.setCaptionColor(s.captionColor);
+        if (typeof s.captionBg    === "string")  st.setCaptionBg(s.captionBg);
+        if (typeof s.captionFont  === "string")  st.setCaptionFont(s.captionFont);
+        if (typeof s.speed        === "number")  st.setSpeed(s.speed);
       })
       .catch(() => {});
   }, [currentUser, setTitleLanguage, setDefaultAudio]);
