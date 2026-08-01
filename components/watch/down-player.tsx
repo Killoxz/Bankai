@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { AlertTriangle, Loader2, RefreshCw, SkipBack, SkipForward } from "lucide-react";
 import Hls from "hls.js";
-import { useAuthStore } from "@/store/auth-store";
 import {
-  firstAvailableProvider,
-  providerLabel,
-  type EpisodesMap,
-} from "./episode-utils";
+  Play, Pause, Volume2, VolumeX, Maximize, Minimize,
+  Loader2, AlertTriangle, RefreshCw, SkipBack, SkipForward,
+} from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
+import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episode-utils";
 
-interface Timestamp { start: number; end: number }
+interface Timestamp     { start: number; end: number }
 interface SubtitleTrack { file: string; label?: string; kind?: string }
 
 interface DownPlayerProps {
@@ -38,103 +37,96 @@ interface DownPlayerProps {
   onError?: (provider: string) => void;
 }
 
-function ControlToggle({
-  label,
-  active,
-  accent,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  accent?: boolean;
-  onClick: () => void;
+function fmt(s: number): string {
+  if (!isFinite(s) || s < 0) return "0:00";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  return h > 0
+    ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+    : `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function Toggle({ label, active, accent, onClick }: {
+  label: string; active: boolean; accent?: boolean; onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       className={[
         "flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors",
-        active && accent
-          ? "text-primary"
-          : active
-          ? "text-white"
-          : "text-white/45 hover:text-white/70",
+        active && accent ? "text-primary" : active ? "text-white" : "text-white/40 hover:text-white/70",
       ].join(" ")}
     >
-      <span
-        className={[
-          "size-3 shrink-0 rounded-[2px] border transition-colors",
-          active && accent
-            ? "border-primary bg-primary"
-            : active
-            ? "border-white bg-white"
-            : "border-white/30",
-        ].join(" ")}
-      />
+      <span className={[
+        "size-3 shrink-0 rounded-[2px] border transition-colors",
+        active && accent ? "border-primary bg-primary" : active ? "border-white bg-white" : "border-white/30",
+      ].join(" ")} />
       {label}
     </button>
   );
 }
 
 export function DownPlayer({
-  poster,
-  animeId,
-  episode = 1,
-  totalEpisodes = 0,
-  providersData,
-  selectedProvider,
-  audio,
-  onProviderChange,
-  onAudioChange,
-  autoplay,
-  autoNext,
-  autoSkip,
-  lightsOff,
-  onAutoplayChange,
-  onAutoNextChange,
-  onAutoSkipChange,
-  onLightsOffChange,
-  onPrevEpisode,
-  onNextEpisode,
-  onEpisodeEnd,
-  onError,
+  poster, animeId, episode = 1, totalEpisodes = 0,
+  providersData, selectedProvider, audio,
+  onProviderChange, onAudioChange,
+  autoplay, autoNext, autoSkip, lightsOff,
+  onAutoplayChange, onAutoNextChange, onAutoSkipChange, onLightsOffChange,
+  onPrevEpisode, onNextEpisode, onEpisodeEnd, onError,
 }: DownPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hlsRef   = useRef<Hls | null>(null);
-  const currentUser = useAuthStore((s) => s.currentUser);
+  const videoRef      = useRef<HTMLVideoElement | null>(null);
+  const containerRef  = useRef<HTMLDivElement | null>(null);
+  const progressRef   = useRef<HTMLDivElement | null>(null);
+  const hlsRef        = useRef<Hls | null>(null);
+  const hideTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrubbingRef  = useRef(false);
+  const currentUser   = useAuthStore((s) => s.currentUser);
 
-  // Refs for values that must NOT trigger player restarts
-  const autoplayRef     = useRef(autoplay);
-  const autoSkipRef     = useRef(autoSkip);
-  const onErrorRef      = useRef(onError);
-  const onEpisodeEndRef = useRef(onEpisodeEnd);
-  const currentUserRef  = useRef(currentUser);
+  // ── Stable refs so initPlayer deps stay minimal ───────────────────────────
+  const autoplayRef      = useRef(autoplay);
+  const autoSkipRef      = useRef(autoSkip);
+  const onErrorRef       = useRef(onError);
+  const onEpisodeEndRef  = useRef(onEpisodeEnd);
+  const currentUserRef   = useRef(currentUser);
+  const providersDataRef = useRef(providersData); // KEY FIX: prevents player restarts
 
-  useEffect(() => { autoplayRef.current     = autoplay;     }, [autoplay]);
-  useEffect(() => { autoSkipRef.current     = autoSkip;     }, [autoSkip]);
-  useEffect(() => { onErrorRef.current      = onError;      }, [onError]);
-  useEffect(() => { onEpisodeEndRef.current = onEpisodeEnd; }, [onEpisodeEnd]);
-  useEffect(() => { currentUserRef.current  = currentUser;  }, [currentUser]);
+  useEffect(() => { autoplayRef.current      = autoplay;      }, [autoplay]);
+  useEffect(() => { autoSkipRef.current      = autoSkip;      }, [autoSkip]);
+  useEffect(() => { onErrorRef.current       = onError;       }, [onError]);
+  useEffect(() => { onEpisodeEndRef.current  = onEpisodeEnd;  }, [onEpisodeEnd]);
+  useEffect(() => { currentUserRef.current   = currentUser;   }, [currentUser]);
+  useEffect(() => { providersDataRef.current = providersData; }, [providersData]);
 
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  // ── Stream state ──────────────────────────────────────────────────────────
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [providerOpen, setProviderOpen] = useState(false);
+  const [intro,    setIntro]    = useState<Timestamp | null>(null);
+  const [outro,    setOutro]    = useState<Timestamp | null>(null);
+  const [skipZone, setSkipZone] = useState<"intro" | "outro" | null>(null);
+  const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([]);
 
-  // Skip intro / outro state
-  const [intro, setIntro]           = useState<Timestamp | null>(null);
-  const [outro, setOutro]           = useState<Timestamp | null>(null);
-  const [skipZone, setSkipZone]     = useState<"intro" | "outro" | null>(null);
-  const [subtitles, setSubtitles]   = useState<SubtitleTrack[]>([]);
+  // ── Playback UI state ─────────────────────────────────────────────────────
+  const [playing,     setPlaying]     = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration,    setDuration]    = useState(0);
+  const [bufferedPct, setBufferedPct] = useState(0);
+  const [volume,      setVolume]      = useState(1);
+  const [muted,       setMuted]       = useState(false);
+  const [fullscreen,  setFullscreen]  = useState(false);
+  const [showCtrl,    setShowCtrl]    = useState(true);
+  const [sourceOpen,  setSourceOpen]  = useState(false);
 
-  // Available providers for the mini dropdown
   const availableProviders = providersData
     ? Object.entries(providersData)
         .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
         .map(([n]) => n)
     : [];
 
-  // ── Player init ────────────────────────────────────────────────────────────
+  // ── Player initialisation ─────────────────────────────────────────────────
+  // providersData is intentionally NOT in deps — it's read via ref so that
+  // loading providers doesn't tear down and restart the player.
   const initPlayer = useCallback(async () => {
     if (!selectedProvider) return;
 
@@ -148,43 +140,42 @@ export function DownPlayer({
     setOutro(null);
     setSkipZone(null);
     setSubtitles([]);
+    setCurrentTime(0);
+    setDuration(0);
+    setPlaying(false);
 
     try {
-      // Resolve the episode's watch ID from provider data — this is used
-      // directly as the API path (e.g. "watch/kiwi/178005/sub/animepahe-1").
-      const episodeId = providersData?.[selectedProvider]?.episodes?.[audio]
+      const epId = providersDataRef.current?.[selectedProvider]?.episodes?.[audio]
         ?.find((e) => e.number === episode)?.id;
 
-      const url = episodeId
-        ? `/api/stream?episodeId=${encodeURIComponent(episodeId)}`
+      const apiUrl = epId
+        ? `/api/stream?episodeId=${encodeURIComponent(epId)}`
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
-      const res = await fetch(url);
+      const res = await fetch(apiUrl);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
 
       const data = await res.json() as {
-        stream_url?: string;
-        subtitles?: SubtitleTrack[];
-        intro?: Timestamp;
-        outro?: Timestamp;
-        error?: string;
+        stream_url?: string | null;
+        subtitles?:  SubtitleTrack[];
+        intro?:      Timestamp;
+        outro?:      Timestamp;
+        error?:      string;
       };
       if (data.error) throw new Error(data.error);
 
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      // Store skip timestamps and subtitle tracks
-      if (data.intro)     setIntro(data.intro);
-      if (data.outro)     setOutro(data.outro);
-      if (data.subtitles) setSubtitles(data.subtitles);
+      if (data.intro)                setIntro(data.intro);
+      if (data.outro)                setOutro(data.outro);
+      if (data.subtitles?.length)    setSubtitles(data.subtitles);
 
       if (Hls.isSupported()) {
         const hls = new Hls({ maxMaxBufferLength: 30 });
         hlsRef.current = hls;
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
-
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
           if (autoplayRef.current) video.play().catch(() => {});
@@ -196,15 +187,12 @@ export function DownPlayer({
                 username: currentUserRef.current,
                 animeId: `anilist:${animeId}`,
                 episodeNumber: episode,
-                progress: 0,
-                duration: 0,
-                completed: false,
+                progress: 0, duration: 0, completed: false,
               }),
             }).catch(() => {});
           }
         });
-
-        hls.on(Hls.Events.ERROR, (_ev, d) => {
+        hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) {
             setError("Playback error — try a different source.");
             setLoading(false);
@@ -212,7 +200,6 @@ export function DownPlayer({
           }
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        // Safari native HLS
         video.src = streamUrl;
         video.onloadedmetadata = () => {
           setLoading(false);
@@ -226,29 +213,55 @@ export function DownPlayer({
       setLoading(false);
       onErrorRef.current?.(selectedProvider);
     }
-  }, [animeId, episode, selectedProvider, audio, providersData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [animeId, episode, selectedProvider, audio]); // ← providersData intentionally absent
 
   useEffect(() => {
     initPlayer();
-    return () => {
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    };
+    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
   }, [initPlayer, retryKey]);
 
-  // Track which skip zone the current time falls in
+  // ── Video event listeners ─────────────────────────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onPlay   = () => setPlaying(true);
+    const onPause  = () => setPlaying(false);
+    const onEnded  = () => { setPlaying(false); onEpisodeEndRef.current?.(); };
+    const onDur    = () => setDuration(video.duration || 0);
+    const onVolume = () => { setVolume(video.volume); setMuted(video.muted); };
+    const onTime   = () => {
+      setCurrentTime(video.currentTime);
+      if (video.buffered.length && video.duration) {
+        setBufferedPct((video.buffered.end(video.buffered.length - 1) / video.duration) * 100);
+      }
+    };
+
+    video.addEventListener("play",           onPlay);
+    video.addEventListener("pause",          onPause);
+    video.addEventListener("ended",          onEnded);
+    video.addEventListener("durationchange", onDur);
+    video.addEventListener("volumechange",   onVolume);
+    video.addEventListener("timeupdate",     onTime);
+    return () => {
+      video.removeEventListener("play",           onPlay);
+      video.removeEventListener("pause",          onPause);
+      video.removeEventListener("ended",          onEnded);
+      video.removeEventListener("durationchange", onDur);
+      video.removeEventListener("volumechange",   onVolume);
+      video.removeEventListener("timeupdate",     onTime);
+    };
+  }, []);
+
+  // Skip zone + auto-skip on timeupdate
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const handler = () => {
       const t = video.currentTime;
-      if (intro && t >= intro.start && t < intro.end) {
-        setSkipZone("intro");
-      } else if (outro && t >= outro.start && t < outro.end) {
-        setSkipZone("outro");
-      } else {
-        setSkipZone(null);
-      }
-      // Auto-skip intro if enabled
+      if      (intro && t >= intro.start && t < intro.end) setSkipZone("intro");
+      else if (outro && t >= outro.start && t < outro.end) setSkipZone("outro");
+      else setSkipZone(null);
       if (autoSkipRef.current && intro && t >= intro.start && t < intro.end) {
         video.currentTime = intro.end;
       }
@@ -257,48 +270,105 @@ export function DownPlayer({
     return () => video.removeEventListener("timeupdate", handler);
   }, [intro, outro]);
 
-  // Episode end → auto next
+  // Fullscreen change
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const handler = () => onEpisodeEndRef.current?.();
-    video.addEventListener("ended", handler);
-    return () => video.removeEventListener("ended", handler);
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  function handleSkip(zone: "intro" | "outro") {
-    const video = videoRef.current;
-    if (!video) return;
-    const target = zone === "intro" ? intro : outro;
-    if (target) video.currentTime = target.end;
+  // Keyboard shortcuts (videoRef and containerRef are stable — no deps needed)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const video = videoRef.current;
+      if (!video) return;
+      if (e.code === "Space" || e.code === "KeyK") {
+        e.preventDefault();
+        video.paused ? video.play().catch(() => {}) : video.pause();
+      }
+      if (e.code === "ArrowLeft")  { e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 10); }
+      if (e.code === "ArrowRight") { e.preventDefault(); video.currentTime = Math.min(video.duration || 0, video.currentTime + 10); }
+      if (e.code === "ArrowUp")    { e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); }
+      if (e.code === "ArrowDown")  { e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); }
+      if (e.code === "KeyM")       { video.muted = !video.muted; }
+      if (e.code === "KeyF") {
+        const el = containerRef.current;
+        if (!el) return;
+        document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Control visibility auto-hide ──────────────────────────────────────────
+  function bumpControls() {
+    setShowCtrl(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setShowCtrl(false);
+    }, 3000);
+  }
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    v.paused ? v.play().catch(() => {}) : v.pause();
+  }
+
+  function toggleFullscreen() {
+    const el = containerRef.current;
+    if (!el) return;
+    document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+  }
+
+  function seek(clientX: number) {
+    const bar = progressRef.current;
+    const v   = videoRef.current;
+    if (!bar || !v || !v.duration) return;
+    const rect = bar.getBoundingClientRect();
+    v.currentTime = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * v.duration;
   }
 
   function handleAudioChange(a: "sub" | "dub") {
     onAudioChange(a);
-    if (providersData) {
-      const next = firstAvailableProvider(providersData, a, episode);
-      onProviderChange(next);
-    }
+    if (providersData) onProviderChange(firstAvailableProvider(providersData, a, episode));
   }
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="overflow-hidden rounded-xl bg-black shadow-2xl">
-      {/* ── Video ─────────────────────────────────────────────────────────── */}
-      <div className="relative aspect-video w-full bg-black">
+
+      {/* ── Video container ───────────────────────────────────────────────── */}
+      <div
+        ref={containerRef}
+        className="relative aspect-video w-full cursor-pointer select-none bg-black"
+        onMouseMove={bumpControls}
+        onMouseLeave={() => { if (!videoRef.current?.paused) setShowCtrl(false); }}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button,input")) return;
+          togglePlay();
+          bumpControls();
+        }}
+      >
+        {/* Poster */}
         {poster && (
           <img
-            src={poster}
-            alt=""
+            src={poster} alt=""
             className={[
-              "absolute inset-0 size-full object-cover transition-opacity duration-500",
-              loading ? "opacity-40" : "opacity-0 pointer-events-none",
+              "pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-500",
+              loading ? "opacity-50" : "opacity-0",
             ].join(" ")}
           />
         )}
 
+        {/* Video */}
         <video
           ref={videoRef}
-          controls
           playsInline
           className="size-full object-contain"
           style={{ display: error ? "none" : "block" }}
@@ -314,106 +384,189 @@ export function DownPlayer({
           ))}
         </video>
 
-        {/* Loading spinner */}
+        {/* Loading */}
         {loading && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="size-10 animate-spin text-white drop-shadow-lg" />
-            <p className="text-sm font-medium text-white/80 drop-shadow">
-              Loading episode {episode}…
-            </p>
+            <Loader2 className="size-12 animate-spin text-white/80" />
+            <p className="text-sm font-medium text-white/50">Loading episode {episode}…</p>
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error */}
         {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center">
-            <AlertTriangle className="size-8 text-amber-400" />
-            <p className="max-w-xs text-sm font-medium text-white">{error}</p>
-            {availableProviders.length > 1 && (
-              <p className="text-xs text-white/50">Select a different server below.</p>
-            )}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/95 px-6 text-center">
+            <div className="rounded-full bg-red-500/10 p-4">
+              <AlertTriangle className="size-8 text-red-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">{error}</p>
+              <p className="mt-1 text-sm text-white/40">Try a different server below</p>
+            </div>
             <button
-              onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
-              className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
+              onClick={(e) => { e.stopPropagation(); setError(null); setRetryKey((k) => k + 1); }}
+              className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
             >
-              <RefreshCw className="size-4" />
-              Retry
+              <RefreshCw className="size-4" /> Retry
             </button>
           </div>
         )}
 
-        {/* Skip intro / outro button */}
+        {/* Centre pause indicator */}
+        {!loading && !error && !playing && duration > 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+              <Play className="size-7 translate-x-0.5 text-white" fill="white" />
+            </div>
+          </div>
+        )}
+
+        {/* Skip intro/outro */}
         {!loading && !error && skipZone && (
           <button
-            onClick={() => handleSkip(skipZone)}
-            className="absolute bottom-16 right-4 rounded-lg border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/15"
+            onClick={(e) => {
+              e.stopPropagation();
+              const target = skipZone === "intro" ? intro : outro;
+              if (videoRef.current && target) videoRef.current.currentTime = target.end;
+            }}
+            className="absolute bottom-20 right-4 z-10 rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-all"
           >
             Skip {skipZone === "intro" ? "Intro" : "Outro"} →
           </button>
         )}
+
+        {/* ── Custom control overlay ───────────────────────────────────────── */}
+        {!error && (
+          <div
+            className={[
+              "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-16 transition-opacity duration-300",
+              showCtrl || !playing ? "opacity-100" : "opacity-0 pointer-events-none",
+            ].join(" ")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Progress bar */}
+            <div
+              ref={progressRef}
+              className="group/bar relative mb-3 h-1 cursor-pointer rounded-full bg-white/20 transition-all duration-150 hover:h-2"
+              onMouseDown={(e) => { scrubbingRef.current = true; seek(e.clientX); }}
+              onMouseMove={(e) => { if (scrubbingRef.current) seek(e.clientX); }}
+              onMouseUp={   () => { scrubbingRef.current = false; }}
+              onMouseLeave={ () => { scrubbingRef.current = false; }}
+            >
+              {/* Buffered track */}
+              <div className="absolute inset-y-0 left-0 rounded-full bg-white/20 transition-all"
+                style={{ width: `${bufferedPct}%` }} />
+              {/* Played track */}
+              <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
+                style={{ width: `${progress}%` }} />
+              {/* Thumb */}
+              <div
+                className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
+                style={{ left: `${progress}%` }}
+              />
+            </div>
+
+            {/* Bottom row */}
+            <div className="flex items-center gap-2">
+              {/* Play/Pause */}
+              <button
+                onClick={togglePlay}
+                disabled={loading}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:opacity-40"
+              >
+                {playing
+                  ? <Pause className="size-4" fill="white" />
+                  : <Play  className="size-4 translate-x-px" fill="white" />}
+              </button>
+
+              {/* Rewind / Forward */}
+              <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
+                className="text-white/70 hover:text-white transition-colors" title="-10s">
+                <SkipBack className="size-4" />
+              </button>
+              <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
+                className="text-white/70 hover:text-white transition-colors" title="+10s">
+                <SkipForward className="size-4" />
+              </button>
+
+              {/* Time */}
+              <span className="shrink-0 text-xs tabular-nums text-white/60">
+                {fmt(currentTime)} / {fmt(duration)}
+              </span>
+
+              <div className="flex-1" />
+
+              {/* Volume */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
+                  className="text-white/70 hover:text-white transition-colors"
+                >
+                  {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                </button>
+                <input
+                  type="range" min={0} max={1} step={0.05}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => {
+                    const v = videoRef.current;
+                    if (!v) return;
+                    const val = parseFloat(e.target.value);
+                    v.volume = val;
+                    v.muted  = val === 0;
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/25 accent-primary"
+                />
+              </div>
+
+              {/* Fullscreen */}
+              <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors">
+                {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Control bar ───────────────────────────────────────────────────── */}
+      {/* ── Settings bar below video ──────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#141414] px-4 py-2.5">
-        {/* Left: toggles + quick source picker */}
         <div className="flex flex-wrap items-center gap-4">
-          <ControlToggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
-          <ControlToggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
-          <ControlToggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
-
+          <Toggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
+          <Toggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
+          <Toggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
           <button
             onClick={() => onLightsOffChange(!lightsOff)}
-            className={[
-              "text-xs font-medium transition-colors",
-              lightsOff ? "text-primary" : "text-white/45 hover:text-white/70",
-            ].join(" ")}
+            className={["text-xs font-medium transition-colors", lightsOff ? "text-primary" : "text-white/40 hover:text-white/70"].join(" ")}
           >
             ☽ Lights Off
           </button>
 
-          {/* Compact source picker */}
+          {/* Source picker */}
           {availableProviders.length > 0 && (
-            <div
-              className="relative"
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  setProviderOpen(false);
-                }
-              }}
-            >
+            <div className="relative"
+              onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSourceOpen(false); }}>
               <button
-                onClick={() => setProviderOpen((o) => !o)}
-                className="text-xs font-medium text-white/45 transition-colors hover:text-white/70"
+                onClick={() => setSourceOpen((o) => !o)}
+                className="text-xs font-medium text-white/40 transition-colors hover:text-white/70"
               >
                 {selectedProvider ? providerLabel(selectedProvider) : "Source"} ▾
               </button>
-
-              {providerOpen && (
+              {sourceOpen && (
                 <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/12 bg-[#1c1c1c] shadow-2xl">
                   <div className="flex border-b border-white/10">
                     {(["sub", "dub"] as const).map((a) => (
-                      <button
-                        key={a}
-                        onClick={() => handleAudioChange(a)}
-                        className={[
-                          "flex-1 py-1.5 text-xs font-semibold uppercase transition-colors",
-                          audio === a ? "bg-primary/15 text-primary" : "text-white/55 hover:text-white",
-                        ].join(" ")}
-                      >
+                      <button key={a} onClick={() => handleAudioChange(a)}
+                        className={["flex-1 py-1.5 text-xs font-semibold uppercase transition-colors",
+                          audio === a ? "bg-primary/15 text-primary" : "text-white/55 hover:text-white"].join(" ")}>
                         {a}
                       </button>
                     ))}
                   </div>
                   <div className="py-1">
                     {availableProviders.map((name) => (
-                      <button
-                        key={name}
-                        onClick={() => { onProviderChange(name); setProviderOpen(false); }}
-                        className={[
-                          "flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5",
-                          name === selectedProvider ? "text-primary" : "text-white/75",
-                        ].join(" ")}
-                      >
+                      <button key={name}
+                        onClick={() => { onProviderChange(name); setSourceOpen(false); }}
+                        className={["flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5",
+                          name === selectedProvider ? "text-primary" : "text-white/75"].join(" ")}>
                         {providerLabel(name)}
                       </button>
                     ))}
@@ -424,24 +577,17 @@ export function DownPlayer({
           )}
         </div>
 
-        {/* Right: Prev / Next */}
+        {/* Prev / Next episode */}
         <div className="flex items-center gap-3 text-xs font-medium">
-          <button
-            onClick={onPrevEpisode}
-            disabled={episode <= 1}
-            className="flex items-center gap-1 text-white/55 transition-colors hover:text-white disabled:opacity-25"
-          >
-            <SkipBack className="size-3.5" />
-            Prev
+          <button onClick={onPrevEpisode} disabled={episode <= 1}
+            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25">
+            <SkipBack className="size-3.5" /> Prev
           </button>
-          <span className="text-white/30">|</span>
-          <button
-            onClick={onNextEpisode}
+          <span className="text-white/25">|</span>
+          <button onClick={onNextEpisode}
             disabled={totalEpisodes > 0 && episode >= totalEpisodes}
-            className="flex items-center gap-1 text-white/55 transition-colors hover:text-white disabled:opacity-25"
-          >
-            Ep {episode + 1}
-            <SkipForward className="size-3.5" />
+            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25">
+            Ep {episode + 1} <SkipForward className="size-3.5" />
           </button>
         </div>
       </div>
