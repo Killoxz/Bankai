@@ -8,6 +8,7 @@ import {
   Captions, CaptionsOff, Gauge,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { usePlayerPrefsStore } from "@/store/player-prefs-store";
 import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episode-utils";
 
 interface Timestamp     { start: number; end: number }
@@ -17,6 +18,7 @@ interface HLSLevel      { index: number; height: number; bitrate: number }
 interface DownPlayerProps {
   poster?: string;
   animeId: number;
+  malId?: number | null;
   animeTitle?: string;
   animeCover?: string;
   episode?: number;
@@ -87,12 +89,8 @@ const CAPTION_BGS = [
   { l: "Dark", v: "rgba(0,0,0,0.9)" },
 ];
 
-function lsGet(key: string, fallback: string) {
-  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
-}
-
 export function DownPlayer({
-  poster, animeId, animeTitle, animeCover,
+  poster, animeId, malId, animeTitle, animeCover,
   episode = 1, totalEpisodes = 0,
   providersData, selectedProvider, audio,
   onProviderChange, onAudioChange,
@@ -152,20 +150,28 @@ export function DownPlayer({
   const [showCtrl,    setShowCtrl]    = useState(true);
   const [sourceOpen,  setSourceOpen]  = useState(false);
 
-  // ── Caption & speed state (persisted to localStorage) ────────────────────
-  const [captionsOn,    setCaptionsOn]    = useState(() => lsGet("bankai-captions", "true") !== "false");
-  const [captionSize,   setCaptionSize]   = useState(() => lsGet("bankai-caption-size", "100"));
-  const [captionColor,  setCaptionColor]  = useState(() => lsGet("bankai-caption-color", "#ffffff"));
-  const [captionBg,     setCaptionBg]     = useState(() => lsGet("bankai-caption-bg", "rgba(0,0,0,0.75)"));
-  const [captionFont,   setCaptionFont]   = useState(() => lsGet("bankai-caption-font", "inherit"));
-  const [selectedTrack,  setSelectedTrack]  = useState(0);
-  const [speed,          setSpeed]          = useState(() => parseFloat(lsGet("bankai-speed", "1")));
-  const [hlsLevels,      setHlsLevels]      = useState<HLSLevel[]>([]);
-  const [selectedLevel,  setSelectedLevel]  = useState(-1); // -1 = Auto
+  // ── Caption & speed state (persisted via Zustand → synced cross-device) ──
+  const captionsOn   = usePlayerPrefsStore((s) => s.captionsOn);
+  const captionSize  = usePlayerPrefsStore((s) => s.captionSize);
+  const captionColor = usePlayerPrefsStore((s) => s.captionColor);
+  const captionBg    = usePlayerPrefsStore((s) => s.captionBg);
+  const captionFont  = usePlayerPrefsStore((s) => s.captionFont);
+  const speed        = usePlayerPrefsStore((s) => s.speed);
+  const setCaptionsOn   = usePlayerPrefsStore((s) => s.setCaptionsOn);
+  const setCaptionSize  = usePlayerPrefsStore((s) => s.setCaptionSize);
+  const setCaptionColor = usePlayerPrefsStore((s) => s.setCaptionColor);
+  const setCaptionBg    = usePlayerPrefsStore((s) => s.setCaptionBg);
+  const setCaptionFont  = usePlayerPrefsStore((s) => s.setCaptionFont);
+  const setSpeed        = usePlayerPrefsStore((s) => s.setSpeed);
+
+  const [selectedTrack,    setSelectedTrack]    = useState(0);
+  const [hlsLevels,        setHlsLevels]        = useState<HLSLevel[]>([]);
+  const [selectedLevel,    setSelectedLevel]    = useState(-1); // -1 = Auto
   const [captionPanelOpen, setCaptionPanelOpen] = useState(false);
   const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
 
+  // Ref kept in sync with the Zustand speed value for use inside stable callbacks
   useEffect(() => { speedRef.current = speed; }, [speed]);
 
   const availableProviders = providersData
@@ -185,12 +191,6 @@ export function DownPlayer({
     }
     const pct = parseFloat(captionSize) / 100;
     el.textContent = `video::cue { font-size: ${pct}em; color: ${captionColor}; background-color: ${captionBg}; font-family: ${captionFont}; }`;
-    try {
-      localStorage.setItem("bankai-caption-size",  captionSize);
-      localStorage.setItem("bankai-caption-color", captionColor);
-      localStorage.setItem("bankai-caption-bg",    captionBg);
-      localStorage.setItem("bankai-caption-font",  captionFont);
-    } catch {}
   }, [captionSize, captionColor, captionBg, captionFont]);
 
   // ── Caption on/off — only show the selectedTrack index, hide all others ─────
@@ -210,7 +210,6 @@ export function DownPlayer({
     applyModes();
     const timer = setTimeout(applyModes, 100);
     video.textTracks.addEventListener("addtrack", applyModes);
-    try { localStorage.setItem("bankai-captions", captionsOn ? "true" : "false"); } catch {}
 
     return () => {
       clearTimeout(timer);
@@ -222,7 +221,6 @@ export function DownPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (video) video.playbackRate = speed;
-    try { localStorage.setItem("bankai-speed", speed.toString()); } catch {}
   }, [speed]);
 
   // ── Player initialisation ─────────────────────────────────────────────────
@@ -260,7 +258,7 @@ export function DownPlayer({
         try { return parseInt(sessionStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; }
       })();
 
-      const [res, apiProgress] = await Promise.all([
+      const [res, apiProgress, skipTimes] = await Promise.all([
         fetch(apiUrl),
         currentUserRef.current
           ? fetch(`/api/history?username=${encodeURIComponent(currentUserRef.current)}`)
@@ -274,6 +272,12 @@ export function DownPlayer({
               })
               .catch(() => 0)
           : Promise.resolve(0),
+        // AniSkip: provider-independent skip times (uses MAL ID, cached 1 h)
+        malId
+          ? fetch(`/api/skip-times?malId=${malId}&ep=${episode}`)
+              .then((r) => r.ok ? r.json() : null)
+              .catch(() => null)
+          : Promise.resolve(null),
       ]);
 
       // Prefer whichever position is further along
@@ -293,8 +297,12 @@ export function DownPlayer({
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      if (data.intro)             setIntro(data.intro);
-      if (data.outro)             setOutro(data.outro);
+      // AniSkip is the primary source (community-verified, provider-independent).
+      // Fall back to the provider's own timestamps if AniSkip has no data.
+      const intro = skipTimes?.intro ?? data.intro ?? null;
+      const outro = skipTimes?.outro ?? data.outro ?? null;
+      if (intro) setIntro(intro);
+      if (outro) setOutro(outro);
       if (data.subtitles?.length) setSubtitles(data.subtitles);
 
       if (Hls.isSupported()) {
@@ -343,7 +351,7 @@ export function DownPlayer({
       setLoading(false);
       onErrorRef.current?.(selectedProvider);
     }
-  }, [animeId, episode, selectedProvider, audio]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [animeId, episode, selectedProvider, audio, malId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     initPlayer();
@@ -434,13 +442,13 @@ export function DownPlayer({
       if (e.code === "ArrowUp")    { e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); }
       if (e.code === "ArrowDown")  { e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); }
       if (e.code === "KeyM")       { video.muted = !video.muted; }
-      if (e.code === "KeyC")       { setCaptionsOn((v) => !v); }
+      if (e.code === "KeyC")       { setCaptionsOn(!usePlayerPrefsStore.getState().captionsOn); }
       if (e.code === "KeyF") {
         e.preventDefault();
         toggleFullscreen();
       }
-      if (e.code === "Comma")  { setSpeed((s) => { const i = SPEEDS.indexOf(s); return SPEEDS[Math.max(0, i - 1)]; }); }
-      if (e.code === "Period") { setSpeed((s) => { const i = SPEEDS.indexOf(s); return SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]; }); }
+      if (e.code === "Comma")  { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.max(0, i - 1)]); }
+      if (e.code === "Period") { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -853,7 +861,7 @@ export function DownPlayer({
                     <div className="mb-3 flex items-center justify-between">
                       <span className="text-xs text-white/70">Show Captions</span>
                       <button
-                        onClick={() => setCaptionsOn((v) => !v)}
+                        onClick={() => setCaptionsOn(!captionsOn)}
                         className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
                           captionsOn ? "bg-primary" : "bg-white/15"].join(" ")}
                       >

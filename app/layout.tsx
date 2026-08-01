@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SettingsSync } from "@/components/layout/settings-sync";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
+        <SettingsSync />
         {children}
         <MobileNav />
       </body>

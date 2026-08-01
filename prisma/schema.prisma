@@ -152,6 +152,7 @@ model User {
   updatedAt     DateTime       @updatedAt
   passwordHash  String?
   username      String?        @unique
+  settings      Json?
   Account       Account[]
   Comment       Comment[]
   EpisodeSource EpisodeSource[]
