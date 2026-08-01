@@ -156,6 +156,8 @@ export function WatchView({
           <DownPlayer
             poster={detail.bannerImage ?? detail.coverImage.large}
             animeId={animeId}
+            animeTitle={detail.title.english ?? detail.title.romaji ?? undefined}
+            animeCover={detail.coverImage.large ?? undefined}
             episode={episode}
             providersData={providersData}
             selectedProvider={selectedProvider}

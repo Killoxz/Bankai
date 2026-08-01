@@ -45,8 +45,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, animeId, episodeNumber, progress, duration, completed, episodeThumbnail } =
-      await req.json();
+    const {
+      username, animeId, episodeNumber, progress, duration, completed,
+      episodeThumbnail, animeTitle, animeCover,
+    } = await req.json();
     const un = (typeof username === "string" ? username : "").trim();
     if (!un || !animeId) return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
 
@@ -55,6 +57,23 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+    // Ensure the Anime row exists — WatchHistory has a required FK to Anime.
+    // Use the animeId as both id and a URL-safe slug so the upsert always succeeds.
+    const slug = String(animeId).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+    await prisma.anime.upsert({
+      where: { id: animeId },
+      create: {
+        id: animeId,
+        slug,
+        title: animeTitle || animeId,
+        coverImage: animeCover || null,
+      },
+      update: {
+        ...(animeTitle ? { title: animeTitle } : {}),
+        ...(animeCover ? { coverImage: animeCover } : {}),
+      },
+    });
 
     const entry = await prisma.watchHistory.upsert({
       where: { userId_animeId_episodeNumber: { userId: user.id, animeId, episodeNumber } },

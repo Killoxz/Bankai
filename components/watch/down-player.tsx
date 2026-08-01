@@ -16,6 +16,8 @@ interface SubtitleTrack { file: string; label?: string; kind?: string }
 interface DownPlayerProps {
   poster?: string;
   animeId: number;
+  animeTitle?: string;
+  animeCover?: string;
   episode?: number;
   totalEpisodes?: number;
   currentEpisode?: number;
@@ -89,7 +91,8 @@ function lsGet(key: string, fallback: string) {
 }
 
 export function DownPlayer({
-  poster, animeId, episode = 1, totalEpisodes = 0,
+  poster, animeId, animeTitle, animeCover,
+  episode = 1, totalEpisodes = 0,
   providersData, selectedProvider, audio,
   onProviderChange, onAudioChange,
   autoplay, autoNext, autoSkip, lightsOff,
@@ -114,6 +117,8 @@ export function DownPlayer({
   const selectedProviderRef = useRef(selectedProvider);
   const audioRef            = useRef(audio);
   const speedRef            = useRef(1);
+  const animeTitleRef       = useRef(animeTitle);
+  const animeCoverRef       = useRef(animeCover);
 
   useEffect(() => { autoplayRef.current         = autoplay;         }, [autoplay]);
   useEffect(() => { autoSkipRef.current         = autoSkip;         }, [autoSkip]);
@@ -123,6 +128,8 @@ export function DownPlayer({
   useEffect(() => { providersDataRef.current    = providersData;    }, [providersData]);
   useEffect(() => { selectedProviderRef.current = selectedProvider; }, [selectedProvider]);
   useEffect(() => { audioRef.current            = audio;            }, [audio]);
+  useEffect(() => { animeTitleRef.current       = animeTitle;       }, [animeTitle]);
+  useEffect(() => { animeCoverRef.current       = animeCover;       }, [animeCover]);
 
   // ── Stream state ──────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(false);
@@ -145,12 +152,13 @@ export function DownPlayer({
   const [sourceOpen,  setSourceOpen]  = useState(false);
 
   // ── Caption & speed state (persisted to localStorage) ────────────────────
-  const [captionsOn,   setCaptionsOn]   = useState(() => lsGet("bankai-captions", "true") !== "false");
-  const [captionSize,  setCaptionSize]  = useState(() => lsGet("bankai-caption-size", "100"));
-  const [captionColor, setCaptionColor] = useState(() => lsGet("bankai-caption-color", "#ffffff"));
-  const [captionBg,    setCaptionBg]    = useState(() => lsGet("bankai-caption-bg", "rgba(0,0,0,0.75)"));
-  const [captionFont,  setCaptionFont]  = useState(() => lsGet("bankai-caption-font", "inherit"));
-  const [speed,        setSpeed]        = useState(() => parseFloat(lsGet("bankai-speed", "1")));
+  const [captionsOn,    setCaptionsOn]    = useState(() => lsGet("bankai-captions", "true") !== "false");
+  const [captionSize,   setCaptionSize]   = useState(() => lsGet("bankai-caption-size", "100"));
+  const [captionColor,  setCaptionColor]  = useState(() => lsGet("bankai-caption-color", "#ffffff"));
+  const [captionBg,     setCaptionBg]     = useState(() => lsGet("bankai-caption-bg", "rgba(0,0,0,0.75)"));
+  const [captionFont,   setCaptionFont]   = useState(() => lsGet("bankai-caption-font", "inherit"));
+  const [selectedTrack, setSelectedTrack] = useState(0);
+  const [speed,         setSpeed]         = useState(() => parseFloat(lsGet("bankai-speed", "1")));
   const [captionPanelOpen, setCaptionPanelOpen] = useState(false);
   const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
 
@@ -181,15 +189,25 @@ export function DownPlayer({
     } catch {}
   }, [captionSize, captionColor, captionBg, captionFont]);
 
-  // ── Caption on/off — toggle TextTrack mode ────────────────────────────────
+  // ── Caption on/off — only show the selectedTrack index, hide all others ─────
+  // "hidden" keeps the track data loaded (instant toggle); "showing" renders cues.
+  // We also listen to addtrack because the browser may override modes when tracks load.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    for (let i = 0; i < video.textTracks.length; i++) {
-      video.textTracks[i].mode = captionsOn ? "showing" : "hidden";
-    }
+
+    const applyModes = () => {
+      for (let i = 0; i < video.textTracks.length; i++) {
+        video.textTracks[i].mode = captionsOn && i === selectedTrack ? "showing" : "hidden";
+      }
+    };
+
+    applyModes();
+    video.textTracks.addEventListener("addtrack", applyModes);
     try { localStorage.setItem("bankai-captions", captionsOn ? "true" : "false"); } catch {}
-  }, [captionsOn, subtitles]); // subtitles dep re-runs after tracks load
+
+    return () => { video.textTracks.removeEventListener("addtrack", applyModes); };
+  }, [captionsOn, subtitles, selectedTrack]); // subtitles dep re-runs after <track> elements render
 
   // ── Playback speed ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -215,6 +233,7 @@ export function DownPlayer({
     setCurrentTime(0);
     setDuration(0);
     setPlaying(false);
+    setSelectedTrack(0);
 
     try {
       const epId = providersDataRef.current?.[selectedProvider]?.episodes?.[audio]
@@ -224,7 +243,13 @@ export function DownPlayer({
         ? `/api/stream?episodeId=${encodeURIComponent(epId)}`
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
-      const [res, resumeAt] = await Promise.all([
+      // Local progress stored in sessionStorage as an instant, auth-independent fallback.
+      const ssKey = `bankai-progress-${animeId}-${episode}`;
+      const localProgress = (() => {
+        try { return parseInt(sessionStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; }
+      })();
+
+      const [res, apiProgress] = await Promise.all([
         fetch(apiUrl),
         currentUserRef.current
           ? fetch(`/api/history?username=${encodeURIComponent(currentUserRef.current)}`)
@@ -239,6 +264,9 @@ export function DownPlayer({
               .catch(() => 0)
           : Promise.resolve(0),
       ]);
+
+      // Prefer whichever position is further along
+      const resumeAt = Math.max(localProgress, apiProgress);
 
       if (!res.ok) throw new Error(`Server error ${res.status}`);
 
@@ -400,9 +428,15 @@ export function DownPlayer({
     const video = videoRef.current;
     if (!video) return;
     let lastSave = 0;
+    const ssKey  = `bankai-progress-${animeId}-${episode}`;
 
     function saveProgress(completed = false) {
-      if (!currentUserRef.current || !video || !video.duration) return;
+      if (!video || !video.duration) return;
+      const pos = Math.floor(video.currentTime);
+      // Always save to sessionStorage — works even when not logged in
+      try { sessionStorage.setItem(ssKey, String(pos)); } catch {}
+
+      if (!currentUserRef.current) return;
       const pData    = providersDataRef.current;
       const provider = selectedProviderRef.current ?? "";
       const aud      = audioRef.current;
@@ -414,13 +448,15 @@ export function DownPlayer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: currentUserRef.current,
-          animeId: `anilist:${animeId}`,
-          episodeNumber: episode,
-          progress: Math.floor(video.currentTime),
-          duration: Math.floor(video.duration),
+          username:        currentUserRef.current,
+          animeId:         `anilist:${animeId}`,
+          episodeNumber:   episode,
+          progress:        pos,
+          duration:        Math.floor(video.duration),
           completed,
           episodeThumbnail: thumbnail,
+          animeTitle:      animeTitleRef.current,
+          animeCover:      animeCoverRef.current,
         }),
       }).catch(() => {});
     }
@@ -721,6 +757,22 @@ export function DownPlayer({
                           captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
                       </button>
                     </div>
+
+                    {/* Subtitle track selector — only shown when >1 track available */}
+                    {subtitles.length > 1 && (
+                      <>
+                        <p className="mb-1 text-[10px] font-medium text-white/35">TRACK</p>
+                        <div className="mb-3 flex flex-wrap gap-1.5">
+                          {subtitles.map((s, i) => (
+                            <button key={i} onClick={() => { setSelectedTrack(i); setCaptionsOn(true); }}
+                              className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                                selectedTrack === i && captionsOn ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
+                              {s.label || `Track ${i + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
 
                     {/* Size */}
                     <p className="mb-1 text-[10px] font-medium text-white/35">SIZE</p>
