@@ -272,11 +272,17 @@ export function DownPlayer({
     return () => video.removeEventListener("timeupdate", handler);
   }, [intro, outro]);
 
-  // Fullscreen change
+  // Fullscreen change — covers both standard and webkit (iOS Safari)
   useEffect(() => {
-    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    const onChange = () => setFullscreen(
+      !!document.fullscreenElement || !!(document as unknown as Record<string,unknown>).webkitFullscreenElement
+    );
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
   }, []);
 
   // Keyboard shortcuts (videoRef and containerRef are stable — no deps needed)
@@ -296,14 +302,49 @@ export function DownPlayer({
       if (e.code === "ArrowDown")  { e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); }
       if (e.code === "KeyM")       { video.muted = !video.muted; }
       if (e.code === "KeyF") {
-        const el = containerRef.current;
-        if (!el) return;
-        document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+        e.preventDefault();
+        toggleFullscreen();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Persist watch progress ────────────────────────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    let lastSave = 0;
+
+    function saveProgress(completed = false) {
+      if (!currentUserRef.current || !video || !video.duration) return;
+      fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: currentUserRef.current,
+          animeId: `anilist:${animeId}`,
+          episodeNumber: episode,
+          progress: Math.floor(video.currentTime),
+          duration: Math.floor(video.duration),
+          completed,
+        }),
+      }).catch(() => {});
+    }
+
+    const onTime   = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
+    const onPause  = () => saveProgress();
+    const onEnded  = () => saveProgress(true);
+
+    video.addEventListener("timeupdate", onTime);
+    video.addEventListener("pause",      onPause);
+    video.addEventListener("ended",      onEnded);
+    return () => {
+      video.removeEventListener("timeupdate", onTime);
+      video.removeEventListener("pause",      onPause);
+      video.removeEventListener("ended",      onEnded);
+    };
+  }, [animeId, episode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Control visibility auto-hide ──────────────────────────────────────────
   function bumpControls() {
@@ -322,9 +363,23 @@ export function DownPlayer({
   }
 
   function toggleFullscreen() {
-    const el = containerRef.current;
-    if (!el) return;
-    document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+    const el    = containerRef.current;
+    const video = videoRef.current;
+    if (!el || !video) return;
+    const doc = document as unknown as Record<string, unknown>;
+    const isFs = !!document.fullscreenElement || !!doc.webkitFullscreenElement;
+    if (isFs) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else (doc.webkitExitFullscreen as (() => void) | undefined)?.();
+    } else if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {
+        (video as unknown as Record<string, unknown>).webkitEnterFullscreen &&
+          ((video as unknown as Record<string, () => void>).webkitEnterFullscreen)();
+      });
+    } else {
+      // iOS Safari — only video element supports fullscreen
+      (video as unknown as Record<string, () => void>).webkitEnterFullscreen?.();
+    }
   }
 
   function seek(clientX: number) {
@@ -422,18 +477,26 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Skip intro/outro */}
-        {!loading && !error && skipZone && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const target = skipZone === "intro" ? intro : outro;
-              if (videoRef.current && target) videoRef.current.currentTime = target.end;
-            }}
-            className="absolute bottom-20 right-4 z-10 rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-all"
-          >
-            Skip {skipZone === "intro" ? "Intro" : "Outro"} →
-          </button>
+        {/* Skip intro/outro — visible whenever timestamp data exists, not just when inside the zone */}
+        {!loading && !error && (
+          <div className="absolute bottom-20 right-4 z-10 flex flex-col items-end gap-2">
+            {intro && currentTime < intro.end && (
+              <button
+                onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = intro.end; }}
+                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+              >
+                Skip Intro →
+              </button>
+            )}
+            {outro && currentTime >= Math.max(0, outro.start - 30) && currentTime < outro.end && (
+              <button
+                onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = outro.end; }}
+                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+              >
+                Skip Outro →
+              </button>
+            )}
+          </div>
         )}
 
         {/* ── Custom control overlay ───────────────────────────────────────── */}
