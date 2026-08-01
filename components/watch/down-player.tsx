@@ -713,7 +713,7 @@ export function DownPlayer({
             {intro && currentTime >= intro.start && currentTime < intro.end && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = intro.end; }}
-                className="flex items-center gap-2 rounded-lg border border-primary/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-primary shadow-lg backdrop-blur-sm transition-all hover:bg-primary/20 active:scale-95 [touch-action:manipulation]"
+                className="flex items-center gap-2 rounded-lg border border-amber-700/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-amber-500 shadow-lg backdrop-blur-sm transition-all hover:bg-amber-700/20 active:scale-95 [touch-action:manipulation]"
               >
                 <SkipForward className="size-4" />
                 Skip Intro
@@ -761,7 +761,7 @@ export function DownPlayer({
               {/* Intro zone — primary color on timeline */}
               {intro && duration > 0 && (
                 <div
-                  className="pointer-events-none absolute inset-y-0 bg-primary/70"
+                  className="pointer-events-none absolute inset-y-0 bg-amber-800/70"
                   style={{
                     left:  `${(intro.start / duration) * 100}%`,
                     width: `${((intro.end - intro.start) / duration) * 100}%`,
