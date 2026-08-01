@@ -89,21 +89,21 @@ function ContinueWatchingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
-      className="relative flex-shrink-0 w-[140px]"
+      className="relative flex-shrink-0 w-[260px]"
     >
       <Link href={href} className="group block">
         <motion.div
           whileHover={{ scale: 1.03 }}
           transition={{ duration: 0.2 }}
-          className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5"
+          className="relative aspect-video overflow-hidden rounded-xl bg-white/5"
         >
           {bgImage && (
             <Image
               src={bgImage}
               alt={anime.title}
               fill
-              sizes="140px"
-              className="object-cover object-top"
+              sizes="260px"
+              className="object-cover"
             />
           )}
 
@@ -133,7 +133,7 @@ function ContinueWatchingCard({
           </div>
 
           {/* EP badge — bottom left */}
-          <span className="absolute bottom-4 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+          <span className="absolute bottom-5 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
             EP {entry.episodeNumber}
           </span>
 

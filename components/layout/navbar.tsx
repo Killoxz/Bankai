@@ -85,12 +85,12 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full">
       {/* Status banner */}
-      <div className="flex items-center justify-center gap-1.5 border-b border-white/10 bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-sm">
+      <div className="flex items-center justify-center gap-1.5 border-b border-white/[0.06] bg-black/20 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-md">
         <AlertCircle className="size-3.5 shrink-0 text-green-400/70" />
         Streaming Services Are Back Online, Enjoy!
       </div>
 
-      <div className="flex h-16 items-center gap-5 bg-[#141414]/95 px-8 backdrop-blur-md">
+      <div className="flex h-16 items-center gap-5 bg-[#141414]/60 px-8 backdrop-blur-md">
         {/* Logo */}
         <Link href="/" aria-label="Bankai home" className="shrink-0">
           <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto" priority />
