@@ -4,11 +4,12 @@ import { STREAMING_BASE } from "@/lib/streaming";
 interface StreamEntry {
   url:      string;
   type?:    string;
-  server?:  string;
+  quality?: string;   // Miruro API: "1080p", "720p", etc.
+  server?:  string;   // Anivexa API
   referer?: string;
   headers?: Record<string, string>;
-  priority?: number;
-  isActive?: boolean;
+  priority?: number;  // Anivexa API
+  isActive?: boolean; // Anivexa API
 }
 
 interface WatchResponse {
@@ -32,17 +33,23 @@ interface WatchResponse {
 function pickStream(data: WatchResponse): { url: string; referer: string } | null {
   const streams = data.streams ?? [];
 
-  // Sort: active first, then by priority descending
-  const sorted = [...streams].sort((a, b) => {
-    if ((b.isActive ? 1 : 0) !== (a.isActive ? 1 : 0))
-      return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
-    return (b.priority ?? 0) - (a.priority ?? 0);
-  });
+  // Miruro API: streams are pre-sorted by quality (1080p first), no isActive field.
+  // Anivexa API: streams have isActive + priority flags.
+  const hasActiveFlag = streams.some((s) => s.isActive !== undefined);
 
-  // Prefer HLS; fall back to first active stream of any type
+  const sorted = hasActiveFlag
+    ? [...streams].sort((a, b) => {
+        if ((b.isActive ? 1 : 0) !== (a.isActive ? 1 : 0))
+          return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
+        return (b.priority ?? 0) - (a.priority ?? 0);
+      })
+    : streams; // Miruro API: already in preferred order
+
+  // Prefer HLS type; fall back to whatever is first
   const best =
-    sorted.find((s) => s.isActive && s.type === "hls") ??
-    sorted.find((s) => s.isActive) ??
+    (hasActiveFlag
+      ? sorted.find((s) => s.isActive && s.type === "hls") ?? sorted.find((s) => s.isActive)
+      : null) ??
     sorted.find((s) => s.type === "hls") ??
     sorted[0];
 

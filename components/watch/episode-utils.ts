@@ -23,7 +23,12 @@ export interface ProviderData {
 export type EpisodesMap = Record<string, ProviderData>;
 
 export const PROVIDER_LABELS: Record<string, string> = {
-  // Anivexa API v2.2 providers
+  // Miruro API providers
+  kiwi: "Kiwi",
+  arc:  "Arc",
+  zoro: "Zoro",
+  hop:  "Hop",
+  // Legacy / fallback
   allmanga:   "AllManga",
   reanime:    "Reanime",
   anikoto:    "AniKoto",
@@ -113,9 +118,11 @@ export function hasAudio(
 export function mergedEpisodeList(providers: EpisodesMap, audio: "sub" | "dub"): ProviderEpisode[] {
   const byNumber = new Map<number, ProviderEpisode>();
 
-  // Process lowest-priority first; later entries overwrite with better data.
-  // anizone / anibd / senshi tend to have the richest titles + images.
+  // Lowest-priority first; later entries overwrite with richer data.
+  // zoro (hianime) has the best episode titles + images so it goes last.
   const PRIORITY = [
+    "kiwi", "hop", "arc", "zoro",
+    // legacy providers kept as fallback
     "kaa", "allmanga", "anineko", "animegg", "anikoto", "animedunya",
     "animenosub", "2dhive", "anidbapp", "reanime", "senshi", "anibd", "anizone",
   ];
