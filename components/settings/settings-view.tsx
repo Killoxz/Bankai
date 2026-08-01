@@ -27,46 +27,32 @@ import { cn } from "@/lib/utils";
 type Section = "account" | "appearance" | "language" | "notifications" | "privacy";
 
 const SECTIONS: { key: Section; label: string; icon: typeof User }[] = [
-  { key: "account", label: "Account", icon: User },
-  { key: "appearance", label: "Appearance", icon: Monitor },
-  { key: "language", label: "Language", icon: Globe },
-  { key: "notifications", label: "Notifications", icon: Bell },
-  { key: "privacy", label: "Privacy & Data", icon: Shield },
+  { key: "account",       label: "Account",       icon: User    },
+  { key: "appearance",    label: "Appearance",    icon: Monitor },
+  { key: "language",      label: "Language",      icon: Globe   },
+  { key: "notifications", label: "Notifications", icon: Bell    },
+  { key: "privacy",       label: "Privacy & Data", icon: Shield },
 ];
 
 const TITLE_LANGUAGES: { value: TitleLanguage; label: string; hint: string }[] = [
-  { value: "english", label: "English", hint: "Prefer English titles when available" },
-  { value: "romaji", label: "Romaji", hint: "Romanized Japanese titles" },
-  { value: "native", label: "Native (日本語)", hint: "Original Japanese titles" },
+  { value: "english", label: "English",        hint: "Prefer English titles when available" },
+  { value: "romaji",  label: "Romaji",         hint: "Romanized Japanese titles" },
+  { value: "native",  label: "Native (日本語)", hint: "Original Japanese titles" },
 ];
 
-function SettingRow({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-4 border-b border-gray-200 dark:border-white/8 last:border-0">
+    <div className="flex items-center justify-between gap-6 py-4 border-b border-border last:border-0">
       <div>
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
-        {hint && <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">{hint}</p>}
+        <p className="text-sm font-medium text-card-foreground">{label}</p>
+        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
   );
 }
 
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       role="switch"
@@ -77,45 +63,35 @@ function Toggle({
         checked ? "bg-primary" : "bg-gray-300 dark:bg-white/20"
       )}
     >
-      <span
-        className={cn(
-          "inline-block size-5 rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-5" : "translate-x-0.5"
-        )}
-      />
+      <span className={cn("inline-block size-5 rounded-full bg-white shadow transition-transform", checked ? "translate-x-5" : "translate-x-0.5")} />
     </button>
   );
 }
 
 export function SettingsView() {
-  const router = useRouter();
+  const router      = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const logout = useAuthStore((s) => s.logout);
-  const remember = useAuthStore((s) => s.remember);
+  const logout      = useAuthStore((s) => s.logout);
+  const remember    = useAuthStore((s) => s.remember);
   const setRemember = useAuthStore((s) => s.setRemember);
-  const titleLanguage = useLanguageStore((s) => s.titleLanguage);
+  const titleLanguage    = useLanguageStore((s) => s.titleLanguage);
   const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
-  const defaultAudio = useLanguageStore((s) => s.defaultAudio);
-  const setDefaultAudio = useLanguageStore((s) => s.setDefaultAudio);
+  const defaultAudio     = useLanguageStore((s) => s.defaultAudio);
+  const setDefaultAudio  = useLanguageStore((s) => s.setDefaultAudio);
   const { resolvedTheme, setTheme } = useTheme();
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted]       = useState(false);
   const [activeSection, setActiveSection] = useState<Section>("account");
-
-  // notification toggles (UI-only for now)
-  const [notifNewEp, setNotifNewEp] = useState(true);
+  const [notifNewEp, setNotifNewEp]       = useState(true);
   const [notifTrending, setNotifTrending] = useState(false);
 
   useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (mounted && !currentUser) router.replace("/login");
-  }, [mounted, currentUser, router]);
+  useEffect(() => { if (mounted && !currentUser) router.replace("/login"); }, [mounted, currentUser, router]);
 
   if (!mounted) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
-        <div className="size-8 animate-spin rounded-full border-2 border-gray-200 dark:border-white/20 border-t-primary" />
+        <div className="size-8 animate-spin rounded-full border-2 border-border border-t-primary" />
       </div>
     );
   }
@@ -126,7 +102,7 @@ export function SettingsView() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-8 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">Settings</h1>
+        <h1 className="mb-8 text-2xl font-bold text-foreground sm:text-3xl">Settings</h1>
 
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           {/* Sidebar */}
@@ -148,54 +124,40 @@ export function SettingsView() {
             ))}
           </nav>
 
-          {/* Content */}
+          {/* Content card — uses bg-card so CSS variable handles light/dark */}
           <motion.div
             key={activeSection}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/4 p-6"
+            className="rounded-2xl border border-border bg-card p-6"
           >
             {activeSection === "account" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Account</h2>
-                <SettingRow
-                  label="Username"
-                  hint="Your unique display name on Bankai"
-                >
-                  <span className="text-sm text-gray-500 dark:text-white/60">{currentUser}</span>
+                <h2 className="mb-5 text-base font-bold text-card-foreground">Account</h2>
+                <SettingRow label="Username" hint="Your unique display name on Bankai">
+                  <span className="text-sm text-muted-foreground">{currentUser}</span>
                 </SettingRow>
-                <SettingRow
-                  label="Stay signed in"
-                  hint="Keep your session after closing the browser"
-                >
+                <SettingRow label="Stay signed in" hint="Keep your session after closing the browser">
                   <Toggle checked={remember} onChange={setRemember} />
                 </SettingRow>
                 <SettingRow label="Profile" hint="Edit avatar, banner and display info">
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-1 text-sm font-medium text-primary"
-                  >
-                    Go to Profile
-                    <ChevronRight className="size-4" />
+                  <Link href="/profile" className="flex items-center gap-1 text-sm font-medium text-primary">
+                    Go to Profile <ChevronRight className="size-4" />
                   </Link>
                 </SettingRow>
 
-                <div className="mt-6 space-y-3 border-t border-gray-200 dark:border-white/8 pt-6">
+                <div className="mt-6 space-y-3 border-t border-border pt-6">
                   <button
-                    onClick={() => {
-                      logout();
-                      router.replace("/");
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-gray-200 dark:border-white/10 px-4 py-3 text-sm font-medium text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
+                    onClick={() => { logout(); router.replace("/"); }}
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-border px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
-                    <LogOut className="size-4" />
-                    Sign out
+                    <LogOut className="size-4" /> Sign out
                   </button>
                   <button className="flex w-full items-center gap-2.5 rounded-xl border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm font-medium text-red-500 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/8">
                     <Trash2 className="size-4" />
                     Delete account
-                    <span className="ml-auto text-xs text-gray-400 dark:text-white/30">Coming soon</span>
+                    <span className="ml-auto text-xs text-muted-foreground">Coming soon</span>
                   </button>
                 </div>
               </div>
@@ -203,18 +165,14 @@ export function SettingsView() {
 
             {activeSection === "appearance" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Appearance</h2>
+                <h2 className="mb-5 text-base font-bold text-card-foreground">Appearance</h2>
                 <SettingRow label="Theme" hint="Choose your preferred appearance">
                   <div className="flex gap-1.5">
                     {([
                       { value: "dark",  label: "Dark",  Icon: Moon },
                       { value: "light", label: "Light", Icon: Sun  },
                     ] as const).map(({ value, label, Icon }) => {
-                      // resolvedTheme is undefined until next-themes hydrates;
-                      // treat undefined as dark (matching defaultTheme)
-                      const active = value === "dark"
-                        ? resolvedTheme !== "light"
-                        : resolvedTheme === "light";
+                      const active = value === "dark" ? resolvedTheme !== "light" : resolvedTheme === "light";
                       return (
                         <button
                           key={value}
@@ -223,7 +181,7 @@ export function SettingsView() {
                             "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all",
                             active
                               ? "border-primary bg-primary/15 text-primary"
-                              : "border-gray-200 dark:border-white/10 text-gray-400 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20 hover:text-gray-600 dark:hover:text-white/60"
+                              : "border-border text-muted-foreground hover:text-card-foreground hover:border-primary/30"
                           )}
                         >
                           <Icon className="size-4" />
@@ -235,7 +193,7 @@ export function SettingsView() {
                   </div>
                 </SettingRow>
                 <SettingRow label="Card size" hint="Coming in a future update">
-                  <span className="text-xs text-gray-400 dark:text-white/35">Coming soon</span>
+                  <span className="text-xs text-muted-foreground">Coming soon</span>
                 </SettingRow>
                 <SettingRow label="Autoplay next episode" hint="Automatically start the next episode when one ends">
                   <Toggle checked={true} onChange={() => {}} />
@@ -245,7 +203,7 @@ export function SettingsView() {
 
             {activeSection === "language" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Language & Titles</h2>
+                <h2 className="mb-5 text-base font-bold text-card-foreground">Language & Titles</h2>
                 <div className="space-y-2">
                   {TITLE_LANGUAGES.map(({ value, label, hint }) => (
                     <button
@@ -255,30 +213,23 @@ export function SettingsView() {
                         "flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
                         titleLanguage === value
                           ? "border-primary/50 bg-primary/10"
-                          : "border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5"
+                          : "border-border hover:border-primary/30 hover:bg-accent"
                       )}
                     >
                       <div>
-                        <p
-                          className={cn(
-                            "text-sm font-semibold",
-                            titleLanguage === value ? "text-primary" : "text-gray-900 dark:text-white"
-                          )}
-                        >
+                        <p className={cn("text-sm font-semibold", titleLanguage === value ? "text-primary" : "text-card-foreground")}>
                           {label}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">{hint}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
                       </div>
-                      {titleLanguage === value && (
-                        <Check className="size-4 shrink-0 text-primary" />
-                      )}
+                      {titleLanguage === value && <Check className="size-4 shrink-0 text-primary" />}
                     </button>
                   ))}
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Default Audio</h3>
-                  <p className="mb-3 text-xs text-gray-500 dark:text-white/40">
+                  <h3 className="mb-1 text-sm font-semibold text-card-foreground">Default Audio</h3>
+                  <p className="mb-3 text-xs text-muted-foreground">
                     Applied when you open a watch page. Falls back to sub if the anime has no dub.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -290,14 +241,14 @@ export function SettingsView() {
                           "flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
                           defaultAudio === a
                             ? "border-primary/50 bg-primary/10"
-                            : "border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5"
+                            : "border-border hover:border-primary/30 hover:bg-accent"
                         )}
                       >
                         <div>
-                          <p className={cn("text-sm font-semibold", defaultAudio === a ? "text-primary" : "text-gray-900 dark:text-white")}>
+                          <p className={cn("text-sm font-semibold", defaultAudio === a ? "text-primary" : "text-card-foreground")}>
                             {a === "sub" ? "Sub" : "Dub"}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {a === "sub" ? "Original with subtitles" : "English audio track"}
                           </p>
                         </div>
@@ -311,20 +262,14 @@ export function SettingsView() {
 
             {activeSection === "notifications" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Notifications</h2>
-                <SettingRow
-                  label="New episode alerts"
-                  hint="Notify when a new episode drops for anime in your Watching list"
-                >
+                <h2 className="mb-5 text-base font-bold text-card-foreground">Notifications</h2>
+                <SettingRow label="New episode alerts" hint="Notify when a new episode drops for anime in your Watching list">
                   <Toggle checked={notifNewEp} onChange={setNotifNewEp} />
                 </SettingRow>
-                <SettingRow
-                  label="Trending highlights"
-                  hint="Weekly digest of what's blowing up this season"
-                >
+                <SettingRow label="Trending highlights" hint="Weekly digest of what's blowing up this season">
                   <Toggle checked={notifTrending} onChange={setNotifTrending} />
                 </SettingRow>
-                <p className="mt-6 text-xs text-gray-400 dark:text-white/30">
+                <p className="mt-6 text-xs text-muted-foreground">
                   Push notifications require a supported browser and your permission. Actual delivery is coming in a future update.
                 </p>
               </div>
@@ -332,26 +277,17 @@ export function SettingsView() {
 
             {activeSection === "privacy" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Privacy & Data</h2>
-                <SettingRow
-                  label="Watch history"
-                  hint="Records episodes you've watched for the Continue Watching section"
-                >
+                <h2 className="mb-5 text-base font-bold text-card-foreground">Privacy & Data</h2>
+                <SettingRow label="Watch history" hint="Records episodes you've watched for the Continue Watching section">
                   <Toggle checked={true} onChange={() => {}} />
                 </SettingRow>
-                <SettingRow
-                  label="Clear watch history"
-                  hint="Remove all history entries — this cannot be undone"
-                >
-                  <button className="rounded-lg border border-gray-200 dark:border-white/15 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-white/60 transition-colors hover:border-gray-300 dark:hover:border-white/30 hover:text-gray-900 dark:hover:text-white">
+                <SettingRow label="Clear watch history" hint="Remove all history entries — this cannot be undone">
+                  <button className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-card-foreground">
                     Clear History
                   </button>
                 </SettingRow>
-                <SettingRow
-                  label="Export my data"
-                  hint="Download a copy of your lists and history"
-                >
-                  <span className="text-xs text-gray-400 dark:text-white/30">Coming soon</span>
+                <SettingRow label="Export my data" hint="Download a copy of your lists and history">
+                  <span className="text-xs text-muted-foreground">Coming soon</span>
                 </SettingRow>
               </div>
             )}
