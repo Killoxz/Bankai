@@ -656,23 +656,25 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Skip intro/outro — only visible while inside the actual timestamp zone */}
+        {/* Skip intro/outro — pops up only while inside the timestamp zone */}
         {!loading && !error && (
           <div className="absolute bottom-20 right-4 z-10 flex flex-col items-end gap-2">
             {intro && currentTime >= intro.start && currentTime < intro.end && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = intro.end; }}
-                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20 [touch-action:manipulation]"
+                className="flex items-center gap-2 rounded-lg border border-yellow-400/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-yellow-300 shadow-lg backdrop-blur-sm transition-all hover:bg-yellow-400/20 active:scale-95 [touch-action:manipulation]"
               >
-                Skip Intro →
+                <SkipForward className="size-4" />
+                Skip Intro
               </button>
             )}
             {outro && currentTime >= outro.start && currentTime < outro.end && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = outro.end; }}
-                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20 [touch-action:manipulation]"
+                className="flex items-center gap-2 rounded-lg border border-violet-400/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-violet-300 shadow-lg backdrop-blur-sm transition-all hover:bg-violet-400/20 active:scale-95 [touch-action:manipulation]"
               >
-                Skip Outro →
+                <SkipForward className="size-4" />
+                Skip Outro
               </button>
             )}
           </div>
@@ -704,6 +706,28 @@ export function DownPlayer({
                 style={{ width: `${bufferedPct}%` }} />
               <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
                 style={{ width: `${progress}%` }} />
+
+              {/* Intro zone — yellow highlight on timeline */}
+              {intro && duration > 0 && (
+                <div
+                  className="pointer-events-none absolute inset-y-0 bg-yellow-400/70"
+                  style={{
+                    left:  `${(intro.start / duration) * 100}%`,
+                    width: `${((intro.end - intro.start) / duration) * 100}%`,
+                  }}
+                />
+              )}
+              {/* Outro zone — violet highlight on timeline */}
+              {outro && duration > 0 && (
+                <div
+                  className="pointer-events-none absolute inset-y-0 bg-violet-400/70"
+                  style={{
+                    left:  `${(outro.start / duration) * 100}%`,
+                    width: `${((outro.end - outro.start) / duration) * 100}%`,
+                  }}
+                />
+              )}
+
               <div
                 className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
                 style={{ left: `${progress}%` }}
