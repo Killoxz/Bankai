@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
+import { STREAMING_BASE } from "@/lib/streaming";
 
-const STREAMING_BASE =
-  (process.env.STREAMING_API_URL?.trim() ?? "https://bankai-s-api.onrender.com")
-    .replace(/\/$/, "")
-    .replace(/^(?!https?:\/\/)/, "https://");
-
-/** Normalise the many response shapes across Anivexa providers into one URL. */
 function extractStreamUrl(data: Record<string, unknown>): string | null {
   if (typeof data.stream_url === "string") return data.stream_url;
-  if (typeof data.hls === "string") return data.hls;
-  if (typeof data.url === "string") return data.url;
+  if (typeof data.hls       === "string") return data.hls;
+  if (typeof data.url       === "string") return data.url;
   if (typeof data.streamUrl === "string") return data.streamUrl;
   const streams = data.streams;
   if (Array.isArray(streams) && streams.length > 0) {
@@ -31,7 +26,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing id parameter." }, { status: 400 });
   }
 
-  // Anivexa API: /watch/:provider/:anilistId/sub|dub/:provider-:ep
   const targetUrl = provider
     ? `${STREAMING_BASE}/watch/${provider}/${animeId}/${audio}/${provider}-${episode}`
     : `${STREAMING_BASE}/api/watch/${animeId}?ep=${episode}`;
@@ -49,9 +43,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const data = await upstream.json();
-    const streamUrl = extractStreamUrl(data as Record<string, unknown>);
-
+    const data = await upstream.json() as Record<string, unknown>;
+    const streamUrl = extractStreamUrl(data);
     return NextResponse.json({ ...data, stream_url: streamUrl ?? data.stream_url ?? null });
   } catch (err) {
     console.error("[stream proxy] error:", err);

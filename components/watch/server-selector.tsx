@@ -33,12 +33,15 @@ export function ServerSelector({
 }: ServerSelectorProps) {
   const [tab, setTab] = useState<Tab>("server");
 
-  // All providers that have this episode for the current audio
-  const servers = providersData
-    ? Object.entries(providersData)
-        .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
-        .map(([name]) => name)
-    : [];
+  // All providers from the API response — include errored ones so users can
+  // see every server and try them. Unavailable/errored ones render dimmed.
+  const servers = providersData ? Object.keys(providersData) : [];
+
+  // Per-provider availability checks (used for styling, not filtering)
+  function serverHasEpisode(name: string) {
+    const d = providersData?.[name];
+    return !d?.error && (d?.episodes?.[audio] ?? []).some((e) => e.number === episode);
+  }
 
   const serverCount = servers.length;
 
@@ -155,22 +158,27 @@ export function ServerSelector({
         {tab === "server" && (
           <div className="flex flex-wrap items-center gap-2">
             {servers.length === 0 ? (
-              <p className="text-xs text-white/30">No servers available</p>
+              <p className="text-xs text-white/30">Loading servers…</p>
             ) : (
               servers.map((name) => {
-                const isActive = name === selectedProvider;
-                const isFailed = failedProviders.has(name);
+                const isActive    = name === selectedProvider;
+                const isFailed    = failedProviders.has(name);
+                const isAvailable = serverHasEpisode(name);
+                const hasError    = !!providersData?.[name]?.error;
                 return (
                   <button
                     key={name}
                     onClick={() => onProviderChange(name)}
+                    title={hasError ? `${providerLabel(name)}: unavailable` : undefined}
                     className={[
                       "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors",
                       isFailed
                         ? "bg-red-500/10 text-red-400 ring-1 ring-red-500/30 line-through"
                         : isActive
                         ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                        : "bg-white/8 text-white/70 hover:bg-white/14 hover:text-white",
+                        : isAvailable
+                        ? "bg-white/8 text-white/70 hover:bg-white/14 hover:text-white"
+                        : "bg-white/4 text-white/30 cursor-pointer hover:bg-white/8 hover:text-white/50",
                     ].join(" ")}
                   >
                     <Zap className="size-3.5 shrink-0" />

@@ -46,7 +46,9 @@ export function parseProviders(raw: Record<string, unknown>): EpisodesMap {
     if (["mappings", "page", "type", "_unknownProviders"].includes(key)) continue;
     if (typeof val !== "object" || val === null) continue;
     const v = val as Record<string, unknown>;
-    if (v.episodes && typeof v.episodes === "object") {
+    // Keep ALL provider entries: those with episodes AND those with errors.
+    // Error providers are shown in the server selector so users know they exist.
+    if (v.episodes || v.error) {
       result[key] = v as ProviderData;
     }
   }

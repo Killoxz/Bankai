@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
+import { fetchEpisodesRaw } from "@/lib/streaming";
 import { Navbar } from "@/components/layout/navbar";
 import { WatchView } from "@/components/watch/watch-view";
 
@@ -29,18 +30,23 @@ export default async function WatchPage({
   const anilistId = Number(id);
   if (!Number.isInteger(anilistId)) notFound();
 
-  const detail = await getAnimeDetail(anilistId).catch(() => null);
+  // Fetch AniList detail + streaming episodes in parallel server-side.
+  // Episodes are cached for 5 min (revalidate: 300 in fetchEpisodesRaw),
+  // so subsequent page loads are instant — no client-side waterfall.
+  const [detail, episodesRaw] = await Promise.all([
+    getAnimeDetail(anilistId).catch(() => null),
+    fetchEpisodesRaw(anilistId),
+  ]);
+
   if (!detail) notFound();
 
   const initialEpisode = Math.max(1, Number(sp.ep ?? 1) || 1);
-  const title = preferredTitle(detail);
+  const title    = preferredTitle(detail);
   const subtitle = [
     detail.episodes ? `${detail.episodes} Episodes` : null,
     detail.format,
     detail.genres.slice(0, 2).join(", "),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="min-h-screen bg-[#141414]">
@@ -49,7 +55,12 @@ export default async function WatchPage({
         <h1 className="mb-1 text-xl font-bold text-white sm:text-2xl">{title}</h1>
         {subtitle && <p className="mb-6 text-sm text-white/50">{subtitle}</p>}
         <Suspense>
-          <WatchView detail={detail} animeId={anilistId} initialEpisode={initialEpisode} />
+          <WatchView
+            detail={detail}
+            animeId={anilistId}
+            initialEpisode={initialEpisode}
+            initialEpisodesRaw={episodesRaw}
+          />
         </Suspense>
       </div>
     </div>

@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const STREAMING_BASE =
-  (process.env.STREAMING_API_URL?.trim() ?? "https://bankai-s-api.onrender.com")
-    .replace(/\/$/, "")
-    .replace(/^(?!https?:\/\/)/, "https://");
+import { STREAMING_BASE } from "@/lib/streaming";
 
 export async function GET(
   _req: NextRequest,
@@ -24,8 +20,7 @@ export async function GET(
       );
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(await res.json());
   } catch (err) {
     console.error("[episodes proxy] error:", err);
     return NextResponse.json(

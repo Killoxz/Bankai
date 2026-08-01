@@ -23,58 +23,75 @@ interface WatchViewProps {
   detail: AnimeDetail;
   animeId: number;
   initialEpisode?: number;
+  /** Pre-fetched episodes payload from the server component — eliminates the
+   *  client-side fetch waterfall so providers appear instantly on page load. */
+  initialEpisodesRaw?: Record<string, unknown> | null;
 }
 
-export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProps) {
-  const router      = useRouter();
+function initFromRaw(raw: Record<string, unknown> | null | undefined, episode: number) {
+  if (!raw) return { providers: null, provider: null, audio: "sub" as const, epList: [] };
+  const parsed = parseProviders(raw);
+  const first  =
+    firstAvailableProvider(parsed, "sub", episode) ??
+    firstAvailableProvider(parsed, "dub", episode);
+  const audio  = first && !hasAudio(parsed, "sub", episode) ? "dub" as const : "sub" as const;
+  const sub    = mergedEpisodeList(parsed, "sub");
+  const dub    = mergedEpisodeList(parsed, "dub");
+  return {
+    providers: parsed,
+    provider:  first ?? null,
+    audio,
+    epList: sub.length >= dub.length ? sub : dub,
+  };
+}
+
+export function WatchView({
+  detail,
+  animeId,
+  initialEpisode = 1,
+  initialEpisodesRaw,
+}: WatchViewProps) {
+  const router       = useRouter();
   const searchParams = useSearchParams();
 
-  // ── Episode + source state ─────────────────────────────────────────────────
+  // Initialise all episode state synchronously from the SSR payload so
+  // the player and provider list are ready on first render with zero delay.
+  const init = initFromRaw(initialEpisodesRaw, initialEpisode);
+
   const [episode, setEpisode]               = useState(initialEpisode);
-  const [providersData, setProvidersData]   = useState<EpisodesMap | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [audio, setAudio]                   = useState<"sub" | "dub">("sub");
-  const [epListData, setEpListData]         = useState<ProviderEpisode[]>([]);
+  const [providersData, setProvidersData]   = useState<EpisodesMap | null>(init.providers);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(init.provider);
+  const [audio, setAudio]                   = useState<"sub" | "dub">(init.audio);
+  const [epListData, setEpListData]         = useState<ProviderEpisode[]>(init.epList);
 
-  // ── Player preference state ────────────────────────────────────────────────
-  const [autoNext, setAutoNext]     = useState(true);
-  const [autoplay, setAutoplay]     = useState(true);
-  const [autoSkip, setAutoSkip]     = useState(true);
-  const [lightsOff, setLightsOff]   = useState(false);
+  const [autoNext,  setAutoNext]  = useState(true);
+  const [autoplay,  setAutoplay]  = useState(true);
+  const [autoSkip,  setAutoSkip]  = useState(true);
+  const [lightsOff, setLightsOff] = useState(false);
 
-  // ── Failed provider tracking (marked red in ServerSelector) ───────────────
   const [failedProviders, setFailedProviders] = useState<Set<string>>(new Set());
-
   const handleProviderError = useCallback((provider: string) => {
     setFailedProviders((prev) => new Set([...prev, provider]));
   }, []);
-
-  // Clear failed list when episode or audio changes
   useEffect(() => { setFailedProviders(new Set()); }, [episode, audio]);
 
-  // ── Fetch Anivexa episode data once per anime ──────────────────────────────
+  // If there was no SSR data (e.g. first ever cold cache miss), fall back to
+  // a client-side fetch so nothing is permanently broken.
   useEffect(() => {
+    if (initialEpisodesRaw) return; // SSR data already applied above
     let cancelled = false;
-    setProvidersData(null);
-    setSelectedProvider(null);
 
     fetch(`/api/episodes/${animeId}`)
       .then((r) => r.json())
       .then((raw) => {
         if (cancelled) return;
         const parsed = parseProviders(raw as Record<string, unknown>);
-        setProvidersData(parsed);
-
-        // Pick first provider that has this episode
-        const first =
+        const first  =
           firstAvailableProvider(parsed, "sub", episode) ??
           firstAvailableProvider(parsed, "dub", episode);
-        if (first) {
-          setSelectedProvider(first);
-          if (!hasAudio(parsed, "sub", episode)) setAudio("dub");
-        }
-
-        // Build merged episode list for the episode list panel
+        setProvidersData(parsed);
+        setSelectedProvider(first ?? null);
+        if (first && !hasAudio(parsed, "sub", episode)) setAudio("dub");
         const sub = mergedEpisodeList(parsed, "sub");
         const dub = mergedEpisodeList(parsed, "dub");
         setEpListData(sub.length >= dub.length ? sub : dub);
@@ -84,21 +101,19 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
     return () => { cancelled = true; };
   }, [animeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Re-select provider when episode changes ────────────────────────────────
+  // Re-select provider when episode or audio changes
   useEffect(() => {
     if (!providersData || !selectedProvider) return;
-    const epObj = (providersData[selectedProvider]?.episodes?.[audio] ?? [])
-      .find((e) => e.number === episode);
-    if (!epObj) {
-      // current provider missing this episode — try another
+    const hasEp = (providersData[selectedProvider]?.episodes?.[audio] ?? [])
+      .some((e) => e.number === episode);
+    if (!hasEp) {
       const next =
         firstAvailableProvider(providersData, audio, episode) ??
         firstAvailableProvider(providersData, audio === "sub" ? "dub" : "sub", episode);
       setSelectedProvider(next);
     }
-  }, [episode, providersData, selectedProvider, audio]);
+  }, [episode, audio, providersData, selectedProvider]);
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
   function handleSelectEpisode(ep: number) {
     setEpisode(ep);
     const sp = new URLSearchParams(searchParams.toString());
@@ -106,31 +121,26 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
     router.replace(`/watch/${animeId}?${sp.toString()}`, { scroll: false });
   }
 
-  const totalEpisodes = detail.episodes ?? 0;
-
+  const totalEpisodes = detail.episodes ?? epListData.length;
   function handlePrevEp() { if (episode > 1) handleSelectEpisode(episode - 1); }
   function handleNextEp() { if (episode < totalEpisodes) handleSelectEpisode(episode + 1); }
 
-  // ── Sidebar recommendations ────────────────────────────────────────────────
   const recs = detail.recommendations.nodes
     .map((n) => n.mediaRecommendation)
     .filter((m): m is NonNullable<typeof m> => !!m);
 
+  const currentCover = detail.coverImage.extraLarge ?? detail.coverImage.large;
+
   return (
     <>
-      {/* Lights off overlay */}
       {lightsOff && (
-        <div
-          className="fixed inset-0 z-10 bg-black/85 pointer-events-none"
-          aria-hidden
-        />
+        <div className="fixed inset-0 z-10 bg-black/85 pointer-events-none" aria-hidden />
       )}
 
-      {/* Main grid: player left, episode list right */}
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Left column: player + comments */}
+        {/* Left: player + server selector + comments */}
         <motion.div
-          className="relative z-20 min-w-0 space-y-6"
+          className="relative z-20 min-w-0 space-y-4"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -174,12 +184,12 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
           <CommentsSection animeId={animeId} />
         </motion.div>
 
-        {/* Right column: episode list → seasons → related */}
+        {/* Right: episode list → seasons → related */}
         <motion.div
-          className="space-y-6"
+          className="space-y-4"
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
         >
           <EpisodeList
             totalEpisodes={totalEpisodes}
@@ -190,7 +200,12 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
             hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
             currentAudio={audio}
           />
-          <SeasonsPanel relations={detail.relations.edges} currentAnimeId={animeId} />
+          <SeasonsPanel
+            relations={detail.relations.edges}
+            currentAnimeId={animeId}
+            currentCover={currentCover}
+            currentTitle={detail.title.english ?? detail.title.romaji}
+          />
           <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
         </motion.div>
       </div>
