@@ -43,6 +43,21 @@ interface DownPlayerProps {
   onError?: (provider: string) => void;
 }
 
+/**
+ * Normalise a timestamp from any provider/AniSkip format and validate it.
+ * Accepts {start,end} and {startTime,endTime} field names.
+ * Returns null if the segment is invalid (zero-length, negative, or < 5 s long).
+ */
+function parseTimestamp(raw: Timestamp | Record<string, number> | null | undefined): Timestamp | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, number>;
+  const start = r.start   ?? r.startTime   ?? -1;
+  const end   = r.end     ?? r.endTime     ?? -1;
+  if (typeof start !== "number" || typeof end !== "number") return null;
+  if (start < 0 || end <= start + 5) return null; // at least 5 s long
+  return { start, end };
+}
+
 function fmt(s: number): string {
   if (!isFinite(s) || s < 0) return "0:00";
   const h = Math.floor(s / 3600);
@@ -258,7 +273,7 @@ export function DownPlayer({
         try { return parseInt(sessionStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; }
       })();
 
-      const [res, apiProgress, skipTimes] = await Promise.all([
+      const [res, apiProgress] = await Promise.all([
         fetch(apiUrl),
         currentUserRef.current
           ? fetch(`/api/history?username=${encodeURIComponent(currentUserRef.current)}`)
@@ -272,12 +287,6 @@ export function DownPlayer({
               })
               .catch(() => 0)
           : Promise.resolve(0),
-        // AniSkip: provider-independent skip times (uses MAL ID, cached 1 h)
-        malId
-          ? fetch(`/api/skip-times?malId=${malId}&ep=${episode}`)
-              .then((r) => r.ok ? r.json() : null)
-              .catch(() => null)
-          : Promise.resolve(null),
       ]);
 
       // Prefer whichever position is further along
@@ -297,12 +306,29 @@ export function DownPlayer({
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      // AniSkip is the primary source (community-verified, provider-independent).
-      // Fall back to the provider's own timestamps if AniSkip has no data.
-      const intro = skipTimes?.intro ?? data.intro ?? null;
-      const outro = skipTimes?.outro ?? data.outro ?? null;
-      if (intro) setIntro(intro);
-      if (outro) setOutro(outro);
+      // Use provider timestamps immediately — they're already available.
+      // AniSkip fires async below and will override these if it has better data.
+      const providerIntro = parseTimestamp(data.intro);
+      const providerOutro = parseTimestamp(data.outro);
+      if (providerIntro) setIntro(providerIntro);
+      if (providerOutro) setOutro(providerOutro);
+
+      // AniSkip: community-verified, provider-independent skip times.
+      // Non-blocking — fires after the stream is set up so it never delays playback.
+      // Overrides provider timestamps when it arrives (AniSkip is more accurate).
+      if (malId != null && malId > 0) {
+        fetch(`/api/skip-times?malId=${malId}&ep=${episode}`, {
+          signal: AbortSignal.timeout(8000),
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .catch(() => null)
+          .then((skipTimes: { intro?: Timestamp; outro?: Timestamp } | null) => {
+            const aniIntro = parseTimestamp(skipTimes?.intro);
+            const aniOutro = parseTimestamp(skipTimes?.outro);
+            if (aniIntro) setIntro(aniIntro);
+            if (aniOutro) setOutro(aniOutro);
+          });
+      }
       if (data.subtitles?.length) {
         setSubtitles(data.subtitles);
       } else if (audio === "dub") {
