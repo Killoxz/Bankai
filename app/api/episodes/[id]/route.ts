@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const STREAMING_BASE =
-  process.env.STREAMING_API_URL?.replace(/\/$/, "") ??
-  "https://bankai-api-production.up.railway.app";
+  (process.env.STREAMING_API_URL?.trim() ?? "https://zenin-api-production.up.railway.app")
+    .replace(/\/$/, "")
+    .replace(/^(?!https?:\/\/)/, "https://");
 
 export async function GET(
   _req: NextRequest,

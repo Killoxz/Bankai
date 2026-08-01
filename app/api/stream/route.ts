@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 const STREAMING_BASE =
-  process.env.STREAMING_API_URL?.replace(/\/$/, "") ??
-  "https://bankai-api-production.up.railway.app";
+  (process.env.STREAMING_API_URL?.trim() ?? "https://zenin-api-production.up.railway.app")
+    .replace(/\/$/, "")
+    .replace(/^(?!https?:\/\/)/, "https://");
 
 /** Normalise the many response shapes across Anivexa providers into one URL. */
 function extractStreamUrl(data: Record<string, unknown>): string | null {
