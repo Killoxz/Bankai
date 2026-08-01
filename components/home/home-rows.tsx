@@ -89,7 +89,7 @@ function ContinueWatchingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
-      className="relative flex-shrink-0 w-[260px]"
+      className="relative flex-shrink-0 w-[200px] sm:w-[260px]"
     >
       <Link href={href} className="group block">
         <motion.div
@@ -102,7 +102,7 @@ function ContinueWatchingCard({
               src={bgImage}
               alt={anime.title}
               fill
-              sizes="260px"
+              sizes="(max-width: 640px) 200px, 260px"
               className="object-cover"
             />
           )}
@@ -213,11 +213,21 @@ export function HomeRows({
         ) : (
           <section>
             <h2 className="mb-4 text-base font-semibold text-white">Continue Watching</h2>
-            <p className="rounded-xl bg-white/5 py-8 text-center text-sm text-white/40">
-              {loggedIn
-                ? "Nothing here yet — start watching something and it'll appear here."
-                : "Log in to see your watch history here."}
-            </p>
+            {loggedIn ? (
+              <p className="rounded-xl bg-white/5 py-8 text-center text-sm text-white/40">
+                Nothing here yet — start watching something and it&apos;ll appear here.
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 py-8 text-center">
+                <p className="text-sm text-white/40">Log in to see your watch history on any device.</p>
+                <Link
+                  href="/login"
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
+                >
+                  Log In
+                </Link>
+              </div>
+            )}
           </section>
         )
       )}
