@@ -44,8 +44,19 @@ export async function GET(request: Request) {
     }
 
     const data = await upstream.json() as Record<string, unknown>;
-    const streamUrl = extractStreamUrl(data);
-    return NextResponse.json({ ...data, stream_url: streamUrl ?? data.stream_url ?? null });
+    const rawUrl = extractStreamUrl(data);
+
+    // Route every HLS request (manifest + segments) through our proxy so
+    // HLS.js never hits a CORS restriction from the CDN.
+    let proxiedUrl: string | null = null;
+    if (rawUrl) {
+      // Use the CDN's own origin as the Referer so hotlink checks pass.
+      let ref = STREAMING_BASE;
+      try { ref = new URL(rawUrl).origin; } catch {}
+      proxiedUrl = `/api/hls?url=${encodeURIComponent(rawUrl)}&ref=${encodeURIComponent(ref)}`;
+    }
+
+    return NextResponse.json({ ...data, stream_url: proxiedUrl ?? null });
   } catch (err) {
     console.error("[stream proxy] error:", err);
     return NextResponse.json(
