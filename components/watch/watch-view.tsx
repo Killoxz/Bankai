@@ -69,16 +69,20 @@ export function WatchView({
   const [autoSkip,  setAutoSkip]  = useState(true);
   const [lightsOff, setLightsOff] = useState(false);
 
-  const [failedProviders, setFailedProviders] = useState<Set<string>>(new Set());
+  const [isLoadingSources, setIsLoadingSources] = useState(!initialEpisodesRaw);
+  const [failedProviders, setFailedProviders]   = useState<Set<string>>(new Set());
   const handleProviderError = useCallback((provider: string) => {
     setFailedProviders((prev) => new Set([...prev, provider]));
   }, []);
   useEffect(() => { setFailedProviders(new Set()); }, [episode, audio]);
 
-  // If there was no SSR data (e.g. first ever cold cache miss), fall back to
-  // a client-side fetch so nothing is permanently broken.
+  // Always ping the streaming API on mount so it starts waking up immediately —
+  // even when SSR data exists, the user will likely switch episodes and need it warm.
+  useEffect(() => { fetch("/api/ping").catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If SSR timed out (cold API), fall back to a client-side fetch.
   useEffect(() => {
-    if (initialEpisodesRaw) return; // SSR data already applied above
+    if (initialEpisodesRaw) return;
     let cancelled = false;
 
     fetch(`/api/episodes/${animeId}`)
@@ -95,8 +99,9 @@ export function WatchView({
         const sub = mergedEpisodeList(parsed, "sub");
         const dub = mergedEpisodeList(parsed, "dub");
         setEpListData(sub.length >= dub.length ? sub : dub);
+        setIsLoadingSources(false);
       })
-      .catch(() => {});
+      .catch(() => { setIsLoadingSources(false); });
 
     return () => { cancelled = true; };
   }, [animeId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -180,6 +185,7 @@ export function WatchView({
             selectedProvider={selectedProvider}
             onProviderChange={setSelectedProvider}
             failedProviders={failedProviders}
+            isLoading={isLoadingSources}
           />
           <CommentsSection animeId={animeId} />
         </motion.div>

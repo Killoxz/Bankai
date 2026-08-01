@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mic2, Zap, Flag, Download, Share2 } from "lucide-react";
+import { Mic2, Zap, Flag, Download, Share2, Loader2 } from "lucide-react";
 import { providerLabel, hasAudio, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
 
 interface ServerSelectorProps {
@@ -15,6 +15,7 @@ interface ServerSelectorProps {
   selectedProvider: string | null;
   onProviderChange: (p: string) => void;
   failedProviders?: Set<string>;
+  isLoading?: boolean;
 }
 
 type Tab = "audio" | "server";
@@ -30,6 +31,7 @@ export function ServerSelector({
   selectedProvider,
   onProviderChange,
   failedProviders = new Set(),
+  isLoading = false,
 }: ServerSelectorProps) {
   const [tab, setTab] = useState<Tab>("server");
 
@@ -157,8 +159,13 @@ export function ServerSelector({
         {/* SERVER tab: provider chips */}
         {tab === "server" && (
           <div className="flex flex-wrap items-center gap-2">
-            {servers.length === 0 ? (
-              <p className="text-xs text-white/30">Loading servers…</p>
+            {isLoading || servers.length === 0 ? (
+              <div className="flex items-center gap-2 py-1">
+                <Loader2 className="size-3.5 animate-spin text-white/40" />
+                <span className="text-xs text-white/40">
+                  {isLoading ? "Waking up streaming servers…" : "No servers found"}
+                </span>
+              </div>
             ) : (
               servers.map((name) => {
                 const isActive    = name === selectedProvider;

@@ -8,7 +8,10 @@ export const STREAMING_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https:/
 export async function fetchEpisodesRaw(anilistId: number): Promise<Record<string, unknown> | null> {
   try {
     const res = await fetch(`${STREAMING_BASE}/episodes/${anilistId}`, {
-      next: { revalidate: 300 },
+      // 4-second SSR timeout — if the streaming API is cold/sleeping, don't
+      // block the entire page. The client-side fallback fetch will pick it up.
+      signal: AbortSignal.timeout(4000),
+      next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
     return (await res.json()) as Record<string, unknown>;

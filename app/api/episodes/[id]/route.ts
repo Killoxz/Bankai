@@ -10,7 +10,7 @@ export async function GET(
   try {
     const res = await fetch(`${STREAMING_BASE}/episodes/${id}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 300 },
+      next: { revalidate: 3600 },
     });
 
     if (!res.ok) {
