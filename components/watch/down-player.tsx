@@ -33,6 +33,7 @@ interface DownPlayerProps {
   onPrevEpisode: () => void;
   onNextEpisode: () => void;
   onEpisodeEnd?: () => void;
+  onError?: (provider: string) => void;
 }
 
 function ControlToggle({
@@ -94,6 +95,7 @@ export function DownPlayer({
   onPrevEpisode,
   onNextEpisode,
   onEpisodeEnd,
+  onError,
 }: DownPlayerProps) {
   const videoRef    = useRef<HTMLVideoElement | null>(null);
   const hlsRef      = useRef<Hls | null>(null);
@@ -166,7 +168,11 @@ export function DownPlayer({
         });
 
         hls.on(Hls.Events.ERROR, (_ev, d) => {
-          if (d.fatal) { setError("Playback error — try a different source."); setLoading(false); }
+          if (d.fatal) {
+            setError("Playback error — try a different source.");
+            setLoading(false);
+            if (selectedProvider) onError?.(selectedProvider);
+          }
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
@@ -180,8 +186,9 @@ export function DownPlayer({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Streaming is unavailable.");
       setLoading(false);
+      if (selectedProvider) onError?.(selectedProvider);
     }
-  }, [animeId, episode, selectedProvider, audio, autoplay, currentUser]);
+  }, [animeId, episode, selectedProvider, audio, autoplay, currentUser, onError]);
 
   useEffect(() => {
     initPlayer();

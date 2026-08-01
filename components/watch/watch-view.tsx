@@ -8,6 +8,7 @@ import { CommentsSection } from "./comments-section";
 import { SeriesSidebar } from "./series-sidebar";
 import { EpisodeList } from "./episode-list";
 import { SeasonsPanel } from "./seasons-panel";
+import { ServerSelector } from "./server-selector";
 import type { AnimeDetail } from "@/lib/anilist";
 import {
   parseProviders,
@@ -40,6 +41,16 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
   const [autoplay, setAutoplay]     = useState(true);
   const [autoSkip, setAutoSkip]     = useState(true);
   const [lightsOff, setLightsOff]   = useState(false);
+
+  // ── Failed provider tracking (marked red in ServerSelector) ───────────────
+  const [failedProviders, setFailedProviders] = useState<Set<string>>(new Set());
+
+  function handleProviderError(provider: string) {
+    setFailedProviders((prev) => new Set([...prev, provider]));
+  }
+
+  // Clear failed list when episode or audio changes
+  useEffect(() => { setFailedProviders(new Set()); }, [episode, audio]);
 
   // ── Fetch Anivexa episode data once per anime ──────────────────────────────
   useEffect(() => {
@@ -146,6 +157,19 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
             onEpisodeEnd={autoNext ? handleNextEp : undefined}
             currentEpisode={episode}
             totalEpisodes={totalEpisodes}
+            onError={handleProviderError}
+          />
+          <ServerSelector
+            episode={episode}
+            episodeMeta={epListData.find((e) => e.number === episode) ?? null}
+            audio={audio}
+            hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
+            hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
+            onAudioChange={setAudio}
+            providersData={providersData}
+            selectedProvider={selectedProvider}
+            onProviderChange={setSelectedProvider}
+            failedProviders={failedProviders}
           />
           <CommentsSection animeId={animeId} />
         </motion.div>
