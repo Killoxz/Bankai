@@ -97,14 +97,7 @@ export function Navbar() {
         Streaming Services Are Back Online, Enjoy!
       </div>
 
-      <div
-        className={cn(
-          "flex h-16 items-center gap-5 px-8 transition-all duration-300",
-          scrolled
-            ? "bg-[#141414]/95 shadow-lg backdrop-blur-md"
-            : "bg-gradient-to-b from-black/70 to-transparent"
-        )}
-      >
+      <div className="flex h-16 items-center gap-5 bg-[#141414]/95 px-8 backdrop-blur-md">
         {/* Logo */}
         <Link href="/" aria-label="Bankai home" className="shrink-0">
           <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto" priority />

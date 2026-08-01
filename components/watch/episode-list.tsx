@@ -81,9 +81,9 @@ export function EpisodeList({
   });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/8 bg-[#111]">
+    <div className="overflow-hidden rounded-xl border border-white/[0.05] bg-[#111]">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
         {/* Batch range picker */}
         <div className="relative">
           <button
@@ -95,7 +95,7 @@ export function EpisodeList({
           </button>
 
           {batchOpen && (
-            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-white/8 bg-[#1a1a1a] py-1 shadow-2xl">
+            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-white/[0.05] bg-[#1a1a1a] py-1 shadow-2xl">
               {Array.from({ length: totalBatches }, (_, i) => {
                 const s = i * BATCH + 1;
                 const e = Math.min(s + BATCH - 1, totalEpisodes);
@@ -125,7 +125,7 @@ export function EpisodeList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search episodes…"
-            className="w-full rounded-md border border-white/8 bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/20"
+            className="w-full rounded-md border border-white/[0.05] bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/20"
           />
         </div>
 

@@ -611,7 +611,7 @@ export function DownPlayer({
       </div>
 
       {/* ── Settings bar below video ──────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#111] px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/[0.05] bg-[#111] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-4">
           <Toggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
           <Toggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
@@ -639,7 +639,7 @@ export function DownPlayer({
                 {selectedProvider ? providerLabel(selectedProvider) : "Source"} ▾
               </button>
               {sourceOpen && (
-                <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/8 bg-[#1a1a1a] shadow-2xl">
+                <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
                   <div className="flex border-b border-white/10">
                     {(["sub", "dub"] as const).map((a) => (
                       <button key={a} onClick={() => handleAudioChange(a)}

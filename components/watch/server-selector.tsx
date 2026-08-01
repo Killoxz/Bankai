@@ -66,7 +66,7 @@ export function ServerSelector({
     : 0;
 
   return (
-    <div className="rounded-xl border border-white/8 bg-[#111] px-5 py-4">
+    <div className="rounded-xl border border-white/[0.05] bg-[#111] px-5 py-4">
       {/* ── Top row: title + tabs ───────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Left: episode title */}

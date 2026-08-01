@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { fetchEpisodesRaw } from "@/lib/streaming";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { WatchView } from "@/components/watch/watch-view";
 
 export const revalidate = 3600;
@@ -63,6 +64,7 @@ export default async function WatchPage({
           />
         </Suspense>
       </div>
+      <Footer />
     </div>
   );
 }
