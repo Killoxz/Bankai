@@ -17,7 +17,7 @@ export default async function SchedulePage() {
   return (
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
-      <div className="mx-auto max-w-[900px] px-6 pb-16 pt-24 sm:px-10">
+      <div className="mx-auto max-w-[900px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white sm:text-4xl">Airing Schedule</h1>
           <p className="mt-2 text-sm text-white/50">

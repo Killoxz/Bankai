@@ -120,7 +120,7 @@ export function SettingsView() {
   return (
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
-      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-24 sm:px-10">
+      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
         <h1 className="mb-8 text-2xl font-bold text-white sm:text-3xl">Settings</h1>
 
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">

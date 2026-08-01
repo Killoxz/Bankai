@@ -36,7 +36,6 @@ export function Navbar() {
   const [search, setSearch]           = useState("");
   const [results, setResults]         = useState<SearchResult[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [scrolled, setScrolled]       = useState(false);
   const [menuOpen, setMenuOpen]       = useState(false);
   const [mounted, setMounted]         = useState(false);
 
@@ -57,12 +56,6 @@ export function Navbar() {
     return () => { cancelled = true; };
   }, [currentUser, setAvatar]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Debounced live search
   useEffect(() => {
@@ -90,7 +83,7 @@ export function Navbar() {
   const showResults = searchFocused && search.trim().length >= 2 && results.length > 0;
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className="sticky top-0 z-50 w-full">
       {/* Status banner */}
       <div className="flex items-center justify-center gap-1.5 border-b border-white/10 bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-sm">
         <AlertCircle className="size-3.5 shrink-0 text-green-400/70" />

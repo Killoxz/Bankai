@@ -133,7 +133,7 @@ export function ProfileView() {
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
 
-      <div className="pt-24">
+      <div>
         {/* Banner — blank (site background) when nothing's set, no fake default */}
         <div className="relative h-44 w-full overflow-hidden bg-[#1c1c1c] sm:h-56">
           {data?.banner && (

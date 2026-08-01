@@ -52,7 +52,7 @@ export default async function WatchPage({
   return (
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
-      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-28 sm:px-10">
+      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10">
         <h1 className="mb-1 text-xl font-bold text-white sm:text-2xl">{title}</h1>
         {subtitle && <p className="mb-6 text-sm text-white/50">{subtitle}</p>}
         <Suspense>

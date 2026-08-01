@@ -101,7 +101,7 @@ export function HistoryView() {
   return (
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
-      <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-24 sm:px-10">
+      <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white sm:text-3xl">Watch History</h1>
