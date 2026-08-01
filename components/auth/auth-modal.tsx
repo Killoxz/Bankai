@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -77,7 +77,7 @@ export function AuthModal({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#141414] px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
       {/* Blurred backdrop */}
       <Image
         src={BACKDROP}

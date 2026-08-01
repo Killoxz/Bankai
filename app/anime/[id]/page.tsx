@@ -41,7 +41,7 @@ export default async function AnimeDetailPage({
   const malScore = detail.idMal ? await getMalScore(detail.idMal).catch(() => null) : null;
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       {/* Banner */}

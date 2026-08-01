@@ -51,7 +51,7 @@ export default async function WatchPage({
   ].filter(Boolean).join(" · ");
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10">
         <h1 className="mb-1 text-xl font-bold text-white sm:text-2xl">{title}</h1>

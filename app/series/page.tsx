@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { BrowseView } from "@/components/browse/browse-view";
@@ -24,7 +24,7 @@ export default async function SeriesPage({
   const availableTags = await getTagCollection().catch(() => []);
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
         <h1 className="mb-6 text-2xl font-bold text-white sm:text-3xl">

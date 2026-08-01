@@ -18,18 +18,18 @@ const SOCIAL = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 px-8 py-6 sm:px-12">
+    <footer className="border-t border-gray-200 dark:border-white/10 px-8 py-6 sm:px-12">
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2">
             <Image src="/bankai-logo.svg" alt="Bankai" width={70} height={22} className="h-5 w-auto opacity-90" />
-            <span className="text-[10px] font-medium text-white/30">v{pkg.version}</span>
+            <span className="text-[10px] font-medium text-gray-400 dark:text-white/30">v{pkg.version}</span>
           </div>
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="text-xs font-medium text-white/50 transition-colors hover:text-white"
+              className="text-xs font-medium text-gray-500 dark:text-white/50 transition-colors hover:text-gray-900 dark:hover:text-white"
             >
               {l.label}
             </Link>
@@ -42,7 +42,7 @@ export function Footer() {
               key={label}
               href={href}
               aria-label={label}
-              className="grid size-8 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white hover:text-black"
+              className="grid size-8 place-items-center rounded-full bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-900 dark:hover:bg-white hover:text-white dark:hover:text-black"
             >
               <Icon className="size-4" />
             </a>

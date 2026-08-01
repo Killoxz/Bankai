@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Send, MessageCircle, Youtube, Instagram } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -14,7 +14,7 @@ const CHANNELS = [
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-2xl px-6 pb-16 pt-6 text-center sm:px-10">
         <h1 className="text-3xl font-bold text-white">Get in Touch</h1>

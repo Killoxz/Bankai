@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { ScheduleView } from "@/components/schedule/schedule-view";
@@ -15,7 +15,7 @@ export default async function SchedulePage() {
   const entries = await getWeeklySchedule().catch(() => []);
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[900px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8">

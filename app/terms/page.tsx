@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -46,7 +46,7 @@ const SECTIONS: { heading: string; body: string[] }[] = [
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10">
         <h1 className="text-3xl font-bold text-white">Terms &amp; Privacy</h1>

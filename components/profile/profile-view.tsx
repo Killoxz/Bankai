@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -102,7 +102,7 @@ export function ProfileView() {
 
   if (!mounted || (loading && !data)) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#141414]">
+      <div className="grid min-h-screen place-items-center bg-background">
         <div className="size-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
       </div>
     );
@@ -112,7 +112,7 @@ export function ProfileView() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#141414] px-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-4 text-center">
         <p className="text-white/60">{error}</p>
         <Link href="/" className="text-sm text-primary hover:underline">
           Back to Home
@@ -130,7 +130,7 @@ export function ProfileView() {
   const activeLabel = TABS.find((t) => t.key === tab)?.label ?? "";
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <div>

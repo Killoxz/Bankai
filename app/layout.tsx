@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SettingsSync } from "@/components/layout/settings-sync";
+import { Providers } from "@/components/layout/providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,11 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
-        <SettingsSync />
-        {children}
-        <MobileNav />
+        <Providers>
+          <SettingsSync />
+          {children}
+          <MobileNav />
+        </Providers>
       </body>
     </html>
   );

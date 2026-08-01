@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import {
   User,
@@ -13,6 +14,7 @@ import {
   ChevronRight,
   Check,
   Moon,
+  Sun,
   Monitor,
   Trash2,
 } from "lucide-react";
@@ -48,10 +50,10 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-4 border-b border-white/8 last:border-0">
+    <div className="flex items-center justify-between gap-6 py-4 border-b border-gray-200 dark:border-white/8 last:border-0">
       <div>
-        <p className="text-sm font-medium text-white">{label}</p>
-        {hint && <p className="mt-0.5 text-xs text-white/45">{hint}</p>}
+        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+        {hint && <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -72,7 +74,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-        checked ? "bg-primary" : "bg-white/20"
+        checked ? "bg-primary" : "bg-gray-300 dark:bg-white/20"
       )}
     >
       <span
@@ -95,6 +97,7 @@ export function SettingsView() {
   const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
   const defaultAudio = useLanguageStore((s) => s.defaultAudio);
   const setDefaultAudio = useLanguageStore((s) => s.setDefaultAudio);
+  const { resolvedTheme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState<Section>("account");
@@ -111,8 +114,8 @@ export function SettingsView() {
 
   if (!mounted) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#141414]">
-        <div className="size-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
+      <div className="grid min-h-screen place-items-center bg-background">
+        <div className="size-8 animate-spin rounded-full border-2 border-gray-200 dark:border-white/20 border-t-primary" />
       </div>
     );
   }
@@ -120,10 +123,10 @@ export function SettingsView() {
   if (!currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-8 text-2xl font-bold text-white sm:text-3xl">Settings</h1>
+        <h1 className="mb-8 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">Settings</h1>
 
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           {/* Sidebar */}
@@ -136,7 +139,7 @@ export function SettingsView() {
                   "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
                   activeSection === key
                     ? "bg-primary/15 text-primary"
-                    : "text-white/60 hover:bg-white/6 hover:text-white"
+                    : "text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
                 )}
               >
                 <Icon className="size-4 shrink-0" />
@@ -151,16 +154,16 @@ export function SettingsView() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="rounded-2xl border border-white/10 bg-white/4 p-6"
+            className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/4 p-6"
           >
             {activeSection === "account" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-white">Account</h2>
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Account</h2>
                 <SettingRow
                   label="Username"
                   hint="Your unique display name on Bankai"
                 >
-                  <span className="text-sm text-white/60">{currentUser}</span>
+                  <span className="text-sm text-gray-500 dark:text-white/60">{currentUser}</span>
                 </SettingRow>
                 <SettingRow
                   label="Stay signed in"
@@ -178,21 +181,21 @@ export function SettingsView() {
                   </Link>
                 </SettingRow>
 
-                <div className="mt-6 space-y-3 border-t border-white/8 pt-6">
+                <div className="mt-6 space-y-3 border-t border-gray-200 dark:border-white/8 pt-6">
                   <button
                     onClick={() => {
                       logout();
                       router.replace("/");
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/6 hover:text-white"
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-gray-200 dark:border-white/10 px-4 py-3 text-sm font-medium text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
                   >
                     <LogOut className="size-4" />
                     Sign out
                   </button>
-                  <button className="flex w-full items-center gap-2.5 rounded-xl border border-red-500/30 px-4 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/8">
+                  <button className="flex w-full items-center gap-2.5 rounded-xl border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm font-medium text-red-500 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/8">
                     <Trash2 className="size-4" />
                     Delete account
-                    <span className="ml-auto text-xs text-white/30">Coming soon</span>
+                    <span className="ml-auto text-xs text-gray-400 dark:text-white/30">Coming soon</span>
                   </button>
                 </div>
               </div>
@@ -200,16 +203,37 @@ export function SettingsView() {
 
             {activeSection === "appearance" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-white">Appearance</h2>
-                <SettingRow label="Theme" hint="Bankai always runs in dark mode for the best viewing experience">
-                  <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5">
-                    <Moon className="size-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">Dark</span>
-                    <Check className="size-3.5 text-primary" />
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Appearance</h2>
+                <SettingRow label="Theme" hint="Choose your preferred appearance">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
+                        resolvedTheme === "dark"
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-gray-300 dark:border-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
+                      )}
+                    >
+                      <Moon className="size-4" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
+                        resolvedTheme === "light"
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-gray-300 dark:border-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
+                      )}
+                    >
+                      <Sun className="size-4" />
+                      Light
+                    </button>
                   </div>
                 </SettingRow>
                 <SettingRow label="Card size" hint="Coming in a future update">
-                  <span className="text-xs text-white/35">Coming soon</span>
+                  <span className="text-xs text-gray-400 dark:text-white/35">Coming soon</span>
                 </SettingRow>
                 <SettingRow label="Autoplay next episode" hint="Automatically start the next episode when one ends">
                   <Toggle checked={true} onChange={() => {}} />
@@ -219,7 +243,7 @@ export function SettingsView() {
 
             {activeSection === "language" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-white">Language & Titles</h2>
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Language & Titles</h2>
                 <div className="space-y-2">
                   {TITLE_LANGUAGES.map(({ value, label, hint }) => (
                     <button
@@ -229,19 +253,19 @@ export function SettingsView() {
                         "flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
                         titleLanguage === value
                           ? "border-primary/50 bg-primary/10"
-                          : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                          : "border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5"
                       )}
                     >
                       <div>
                         <p
                           className={cn(
                             "text-sm font-semibold",
-                            titleLanguage === value ? "text-primary" : "text-white"
+                            titleLanguage === value ? "text-primary" : "text-gray-900 dark:text-white"
                           )}
                         >
                           {label}
                         </p>
-                        <p className="mt-0.5 text-xs text-white/45">{hint}</p>
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">{hint}</p>
                       </div>
                       {titleLanguage === value && (
                         <Check className="size-4 shrink-0 text-primary" />
@@ -251,8 +275,8 @@ export function SettingsView() {
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="mb-1 text-sm font-semibold text-white">Default Audio</h3>
-                  <p className="mb-3 text-xs text-white/40">
+                  <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Default Audio</h3>
+                  <p className="mb-3 text-xs text-gray-500 dark:text-white/40">
                     Applied when you open a watch page. Falls back to sub if the anime has no dub.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -264,14 +288,14 @@ export function SettingsView() {
                           "flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
                           defaultAudio === a
                             ? "border-primary/50 bg-primary/10"
-                            : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                            : "border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5"
                         )}
                       >
                         <div>
-                          <p className={cn("text-sm font-semibold", defaultAudio === a ? "text-primary" : "text-white")}>
+                          <p className={cn("text-sm font-semibold", defaultAudio === a ? "text-primary" : "text-gray-900 dark:text-white")}>
                             {a === "sub" ? "Sub" : "Dub"}
                           </p>
-                          <p className="mt-0.5 text-xs text-white/45">
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-white/45">
                             {a === "sub" ? "Original with subtitles" : "English audio track"}
                           </p>
                         </div>
@@ -285,7 +309,7 @@ export function SettingsView() {
 
             {activeSection === "notifications" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-white">Notifications</h2>
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Notifications</h2>
                 <SettingRow
                   label="New episode alerts"
                   hint="Notify when a new episode drops for anime in your Watching list"
@@ -298,7 +322,7 @@ export function SettingsView() {
                 >
                   <Toggle checked={notifTrending} onChange={setNotifTrending} />
                 </SettingRow>
-                <p className="mt-6 text-xs text-white/30">
+                <p className="mt-6 text-xs text-gray-400 dark:text-white/30">
                   Push notifications require a supported browser and your permission. Actual delivery is coming in a future update.
                 </p>
               </div>
@@ -306,7 +330,7 @@ export function SettingsView() {
 
             {activeSection === "privacy" && (
               <div>
-                <h2 className="mb-5 text-base font-bold text-white">Privacy & Data</h2>
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Privacy & Data</h2>
                 <SettingRow
                   label="Watch history"
                   hint="Records episodes you've watched for the Continue Watching section"
@@ -317,7 +341,7 @@ export function SettingsView() {
                   label="Clear watch history"
                   hint="Remove all history entries — this cannot be undone"
                 >
-                  <button className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-white/30 hover:text-white">
+                  <button className="rounded-lg border border-gray-200 dark:border-white/15 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-white/60 transition-colors hover:border-gray-300 dark:hover:border-white/30 hover:text-gray-900 dark:hover:text-white">
                     Clear History
                   </button>
                 </SettingRow>
@@ -325,7 +349,7 @@ export function SettingsView() {
                   label="Export my data"
                   hint="Download a copy of your lists and history"
                 >
-                  <span className="text-xs text-white/30">Coming soon</span>
+                  <span className="text-xs text-gray-400 dark:text-white/30">Coming soon</span>
                 </SettingRow>
               </div>
             )}

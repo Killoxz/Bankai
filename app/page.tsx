@@ -1,4 +1,4 @@
-import { getHomeData, type AnimeMedia } from "@/lib/anilist";
+﻿import { getHomeData, type AnimeMedia } from "@/lib/anilist";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { HeroCarousel } from "@/components/home/hero-carousel";
@@ -20,7 +20,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <HeroCarousel items={heroItems} />
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -78,7 +78,7 @@ export function HistoryView() {
 
   if (!mounted || loading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#141414]">
+      <div className="grid min-h-screen place-items-center bg-background">
         <div className="size-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
       </div>
     );
@@ -99,7 +99,7 @@ export function HistoryView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8 flex items-center justify-between">
