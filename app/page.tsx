@@ -9,8 +9,8 @@ export const revalidate = 3600;
 
 export default async function HomePage() {
   let heroItems: AnimeMedia[] = [];
-  let trending: AnimeMedia[] = [];
-  let topRated: AnimeMedia[] = [];
+  let trending: AnimeMedia[]  = [];
+  let topRated: AnimeMedia[]  = [];
   let newSeason: AnimeMedia[] = [];
 
   try {
@@ -24,7 +24,7 @@ export default async function HomePage() {
       <Navbar />
       <HeroCarousel items={heroItems} />
 
-      <div className="relative z-10 -mt-4 space-y-10 px-8 pb-16 sm:px-12">
+      <div className="relative z-10 -mt-4 space-y-10 px-6 pb-16 sm:px-10">
         {trending.length === 0 ? (
           <p className="py-16 text-center text-sm text-white/40">
             Couldn&apos;t load anime right now — refresh to try again.

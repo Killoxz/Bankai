@@ -349,8 +349,8 @@ export function BrowseView({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {items.map((anime) => (
-                <AnimeCard key={anime.id} anime={anime} statusLabel={activeStatusLabel} />
+              {items.map((anime, i) => (
+                <AnimeCard key={anime.id} anime={anime} statusLabel={activeStatusLabel} index={i} />
               ))}
             </div>
 

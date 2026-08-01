@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, Search, Tv, Bookmark, User, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 
 interface NavItem {
@@ -14,17 +15,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "home", label: "Home", href: "/", icon: Home },
-  { key: "series", label: "Series", href: "/series", icon: Tv },
-  { key: "search", label: "Search", icon: Search },
-  { key: "list", label: "My List", href: "/my-list", icon: Bookmark },
+  { key: "home",    label: "Home",    href: "/",       icon: Home },
+  { key: "series",  label: "Browse",  href: "/browse", icon: Tv },
+  { key: "search",  label: "Search",                   icon: Search },
+  { key: "list",    label: "My List", href: "/my-list", icon: Bookmark },
   { key: "profile", label: "Profile", href: "/profile", icon: User },
 ];
 
 export function MobileNav() {
-  const pathname = usePathname();
+  const pathname    = usePathname();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted]     = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -59,7 +60,10 @@ export function MobileNav() {
                 className="relative flex flex-1 flex-col items-center gap-1 py-1"
               >
                 {active && (
-                  <span className="absolute -top-2 h-0.5 w-5 rounded-full bg-primary" />
+                  <motion.span
+                    layoutId="mobile-tab-indicator"
+                    className="absolute -top-2 h-0.5 w-5 rounded-full bg-primary"
+                  />
                 )}
                 <Icon className={active ? "size-5 text-primary" : "size-5 text-white/50"} />
                 <span
@@ -77,7 +81,9 @@ export function MobileNav() {
         </div>
       </nav>
 
-      {searchOpen && <MobileSearchOverlay onClose={() => setSearchOpen(false)} />}
+      <AnimatePresence>
+        {searchOpen && <MobileSearchOverlay onClose={() => setSearchOpen(false)} />}
+      </AnimatePresence>
     </>
   );
 }
@@ -91,15 +97,12 @@ interface SearchResult {
 }
 
 function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery]     = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
-      setResults([]);
-      return;
-    }
+    if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
         const res = await fetch("https://graphql.anilist.co", {
@@ -114,15 +117,19 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
         });
         const json = await res.json();
         setResults(json.data?.Page?.media ?? []);
-      } catch {
-        setResults([]);
-      }
+      } catch { setResults([]); }
     }, 350);
     return () => clearTimeout(t);
   }, [query]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#141414] md:hidden">
+    <motion.div
+      className="fixed inset-0 z-50 flex flex-col bg-[#141414] md:hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ duration: 0.2 }}
+    >
       <div className="flex min-w-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2.5">
           <Search className="size-4 shrink-0 text-white/45" />
@@ -152,16 +159,38 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
             <img src={r.coverImage.medium} alt="" className="h-14 w-10 shrink-0 rounded object-cover" />
             <div className="min-w-0">
               <p className="truncate text-sm text-white">{r.title.english || r.title.romaji}</p>
-              <p className="text-xs text-white/40">
-                {[r.seasonYear, r.format].filter(Boolean).join(" · ")}
-              </p>
+              <p className="text-xs text-white/40">{[r.seasonYear, r.format].filter(Boolean).join(" · ")}</p>
             </div>
           </Link>
         ))}
         {query.trim().length >= 2 && results.length === 0 && (
           <p className="py-10 text-center text-sm text-white/40">No results for &quot;{query}&quot;.</p>
         )}
+        {!query.trim() && (
+          <div className="pt-6">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/30">Quick Links</p>
+            <div className="space-y-1">
+              {[
+                { label: "Trending", href: "/trending" },
+                { label: "Schedule", href: "/schedule" },
+                { label: "Movies",   href: "/browse?format=MOVIE" },
+                { label: "History",  href: "/history" },
+                { label: "Settings", href: "/settings" },
+              ].map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={onClose}
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/6 hover:text-white"
+                >
+                  {l.label}
+                  <span className="text-white/30">→</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -109,7 +109,7 @@ export function MyListView() {
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {items.map((anime) => (
-                <Link key={anime.id} href={`/anime/${anime.slug}`} className="group">
+                <Link key={anime.id} href={`/anime/${anime.id.replace("anilist:", "")}`} className="group">
                   <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
                     {anime.coverImage && (
                       <Image

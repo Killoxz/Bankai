@@ -205,6 +205,87 @@ export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
   return data.Media;
 }
 
+export interface AiringEntry {
+  id: number;
+  airingAt: number;
+  episode: number;
+  media: AnimeMedia & { season: string | null };
+}
+
+export async function getWeeklySchedule(): Promise<AiringEntry[]> {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysFromMonday);
+  monday.setHours(0, 0, 0, 0);
+  const nextSunday = new Date(monday);
+  nextSunday.setDate(monday.getDate() + 13);
+  nextSunday.setHours(23, 59, 59, 999);
+
+  const weekStart = Math.floor(monday.getTime() / 1000);
+  const weekEnd = Math.floor(nextSunday.getTime() / 1000);
+
+  const scheduleFields = `
+    id
+    title { romaji english native }
+    coverImage { large extraLarge }
+    bannerImage
+    description(asHtml: false)
+    genres
+    averageScore
+    episodes
+    status
+    format
+    seasonYear
+    season
+  `;
+
+  // Fetch up to 3 pages to get the full two-week window
+  async function fetchPage(page: number) {
+    return gql<{
+      Page: {
+        pageInfo: { hasNextPage: boolean };
+        airingSchedules: AiringEntry[];
+      };
+    }>(
+      `query($page: Int, $weekStart: Int, $weekEnd: Int) {
+        Page(page: $page, perPage: 50) {
+          pageInfo { hasNextPage }
+          airingSchedules(airingAt_greater: $weekStart, airingAt_lesser: $weekEnd, sort: TIME) {
+            id
+            airingAt
+            episode
+            media { ${scheduleFields} }
+          }
+        }
+      }`,
+      { page, weekStart, weekEnd }
+    );
+  }
+
+  const results: AiringEntry[] = [];
+  for (let p = 1; p <= 3; p++) {
+    const data = await fetchPage(p);
+    const entries = data.Page.airingSchedules.filter((e) => e.media);
+    results.push(...entries);
+    if (!data.Page.pageInfo.hasNextPage) break;
+  }
+
+  // De-duplicate by media id+episode
+  const seen = new Set<string>();
+  return results.filter((e) => {
+    const key = `${e.media.id}-${e.episode}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function getTrendingPage(page: number): Promise<BrowsePage> {
+  return browseAnime({ sort: "TRENDING_DESC", page });
+}
+
 export const ANIME_GENRES = [
   "Action",
   "Fantasy",

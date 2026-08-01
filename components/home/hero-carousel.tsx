@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { Play, Info } from "lucide-react";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 import { stripHtml } from "@/lib/utils";
 
@@ -14,7 +15,6 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   const [index, setIndex] = useState(0);
   const count = items.length;
 
-  // Auto-advance; re-arms after every slide change (manual or automatic)
   useEffect(() => {
     if (count < 2) return;
     const t = setTimeout(() => setIndex((i) => (i + 1) % count), INTERVAL_MS);
@@ -27,9 +27,13 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
 
   return (
     <section className="relative w-full overflow-hidden" style={HERO_HEIGHT}>
-      {items.map((anime, i) => (
-        <HeroSlide key={anime.id} anime={anime} active={i === index} priority={i === 0} />
-      ))}
+      <AnimatePresence mode="wait" initial={false}>
+        <HeroSlide
+          key={items[index].id}
+          anime={items[index]}
+          priority={index === 0}
+        />
+      </AnimatePresence>
 
       {/* Slide indicators */}
       {count > 1 && (
@@ -51,25 +55,17 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   );
 }
 
-function HeroSlide({
-  anime,
-  active,
-  priority,
-}: {
-  anime: AnimeMedia;
-  active: boolean;
-  priority: boolean;
-}) {
+function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }) {
   const title = usePreferredTitle(anime);
-  const desc = anime.description ? stripHtml(anime.description) : "";
+  const desc  = anime.description ? stripHtml(anime.description) : "";
 
   return (
-    <div
-      aria-hidden={!active}
-      className={[
-        "absolute inset-0 transition-opacity duration-700",
-        active ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0",
-      ].join(" ")}
+    <motion.div
+      className="absolute inset-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6, ease: "easeInOut" }}
     >
       <Image
         src={anime.bannerImage!}
@@ -80,44 +76,104 @@ function HeroSlide({
         className="object-cover object-top"
       />
 
-      {/* Left gradient — keeps text readable */}
+      {/* Gradients */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to right, #141414 0%, rgba(20,20,20,.85) 30%, rgba(20,20,20,.4) 60%, transparent 85%)",
+            "linear-gradient(to right, #141414 0%, rgba(20,20,20,.88) 28%, rgba(20,20,20,.45) 58%, transparent 85%)",
         }}
       />
-      {/* Bottom fade into page */}
       <div
-        className="absolute inset-x-0 bottom-0 h-40"
+        className="absolute inset-x-0 bottom-0 h-48"
         style={{ background: "linear-gradient(to top, #141414 0%, transparent 100%)" }}
       />
 
+      {/* Content */}
       <div className="absolute bottom-20 left-0 right-0 px-8 sm:px-12">
-        <div className="max-w-lg">
-          <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl">{title}</h1>
-          <p className="mt-4 text-sm leading-relaxed text-white/60 line-clamp-3">
-            {desc.slice(0, 220)}
-            {desc.length > 220 ? "…" : ""}
-          </p>
-          <div className="mt-6 flex items-center gap-3">
+        <div className="max-w-xl">
+          {/* Genre badges */}
+          {anime.genres.length > 0 && (
+            <motion.div
+              className="mb-3 flex flex-wrap gap-2"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              {anime.genres.slice(0, 3).map((g) => (
+                <span
+                  key={g}
+                  className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-sm"
+                >
+                  {g}
+                </span>
+              ))}
+            </motion.div>
+          )}
+
+          <motion.h1
+            className="text-4xl font-bold leading-tight text-white sm:text-5xl"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            {title}
+          </motion.h1>
+
+          <motion.p
+            className="mt-4 text-sm leading-relaxed text-white/60 line-clamp-3"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.22 }}
+          >
+            {desc.slice(0, 220)}{desc.length > 220 ? "…" : ""}
+          </motion.p>
+
+          {/* Metadata row */}
+          <motion.div
+            className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/45"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.28 }}
+          >
+            {anime.averageScore && (
+              <span className="flex items-center gap-1">
+                <span className="text-primary">★</span>
+                {(anime.averageScore / 10).toFixed(1)}
+              </span>
+            )}
+            {anime.episodes && <span>{anime.episodes} episodes</span>}
+            {anime.seasonYear && <span>{anime.seasonYear}</span>}
+            {anime.status === "RELEASING" && (
+              <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">
+                Airing
+              </span>
+            )}
+          </motion.div>
+
+          <motion.div
+            className="mt-6 flex items-center gap-3"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.32 }}
+          >
             <Link
               href={`/watch/${anime.id}`}
-              className="flex items-center gap-2 rounded-full border border-white bg-white/10 px-6 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-black transition hover:brightness-110 active:scale-95"
             >
-              <Play className="size-4 fill-white" />
-              Play
+              <Play className="size-4 fill-black" />
+              Watch Now
             </Link>
             <Link
               href={`/anime/${anime.id}`}
-              className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:border-white/50"
+              className="flex items-center gap-2 rounded-full border border-white/25 bg-white/8 px-6 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:border-white/50 hover:bg-white/15"
             >
+              <Info className="size-4" />
               More Info
             </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

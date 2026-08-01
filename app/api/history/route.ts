@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(req: NextRequest) {
+  const username = req.nextUrl.searchParams.get("username")?.trim();
+  if (!username)
+    return NextResponse.json({ error: "Username required." }, { status: 400 });
+
+  const user = await prisma.user.findFirst({
+    where: { username: { equals: username, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+  const history = await prisma.watchHistory.findMany({
+    where: { userId: user.id },
+    orderBy: { watchedAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      animeId: true,
+      episodeNumber: true,
+      progress: true,
+      duration: true,
+      completed: true,
+      watchedAt: true,
+      Anime: {
+        select: {
+          id: true,
+          title: true,
+          coverImage: true,
+          episodes: true,
+          format: true,
+          seasonYear: true,
+          genres: true,
+        },
+      },
+    },
+  });
+
+  return NextResponse.json({ history });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { username, animeId, episodeNumber, progress, duration, completed } =
+      await req.json();
+    const un = (typeof username === "string" ? username : "").trim();
+    if (!un || !animeId) return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+
+    const user = await prisma.user.findFirst({
+      where: { username: { equals: un, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+    const entry = await prisma.watchHistory.upsert({
+      where: { userId_animeId_episodeNumber: { userId: user.id, animeId, episodeNumber } },
+      create: {
+        userId: user.id,
+        animeId,
+        episodeNumber,
+        progress: progress ?? 0,
+        duration: duration ?? 0,
+        completed: completed ?? false,
+        watchedAt: new Date(),
+      },
+      update: {
+        progress: progress ?? 0,
+        duration: duration ?? 0,
+        completed: completed ?? false,
+        watchedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ entry });
+  } catch (e) {
+    console.error("history POST error", e);
+    return NextResponse.json({ error: "Failed to save history." }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const username = req.nextUrl.searchParams.get("username")?.trim();
+  if (!username)
+    return NextResponse.json({ error: "Username required." }, { status: 400 });
+
+  const user = await prisma.user.findFirst({
+    where: { username: { equals: username, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+  await prisma.watchHistory.deleteMany({ where: { userId: user.id } });
+  return NextResponse.json({ ok: true });
+}

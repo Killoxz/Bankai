@@ -2,24 +2,26 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, User, LogOut, ChevronDown, AlertCircle } from "lucide-react";
+import { Search, Bell, User, LogOut, ChevronDown, AlertCircle, Settings, History } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 
 const NAV_LINKS = [
-  { label: "Home",    href: "/" },
-  { label: "My List", href: "/my-list" },
-  { label: "Movie",   href: "/browse?format=MOVIE" },
-  { label: "Series",  href: "/series" },
+  { label: "Home",     href: "/" },
+  { label: "Trending", href: "/trending" },
+  { label: "Schedule", href: "/schedule" },
+  { label: "My List",  href: "/my-list" },
+  { label: "Movie",    href: "/browse?format=MOVIE" },
 ];
 
 const LANGUAGE_OPTIONS: { label: string; value: TitleLanguage }[] = [
   { label: "English", value: "english" },
-  { label: "Romaji", value: "romaji" },
-  { label: "Native", value: "native" },
+  { label: "Romaji",  value: "romaji" },
+  { label: "Native",  value: "native" },
 ];
 
 interface SearchResult {
@@ -31,39 +33,28 @@ interface SearchResult {
 }
 
 export function Navbar() {
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [search, setSearch]           = useState("");
+  const [results, setResults]         = useState<SearchResult[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled]       = useState(false);
+  const [menuOpen, setMenuOpen]       = useState(false);
+  const [mounted, setMounted]         = useState(false);
+
   const currentUser = useAuthStore((s) => s.currentUser);
-  const logout = useAuthStore((s) => s.logout);
-  const avatar = useAuthStore((s) => s.avatar);
-  const setAvatar = useAuthStore((s) => s.setAvatar);
+  const logout      = useAuthStore((s) => s.logout);
+  const avatar      = useAuthStore((s) => s.avatar);
+  const setAvatar   = useAuthStore((s) => s.setAvatar);
 
   useEffect(() => setMounted(true), []);
 
-  // Cached in the persistent auth store (not local state) so it's already
-  // there on the very next render — Navbar is remounted fresh on every
-  // page navigation (it isn't hoisted into a shared layout), and local
-  // state would otherwise reset to null and flash the letter-avatar before
-  // this fetch resolves.
   useEffect(() => {
-    if (!currentUser) {
-      setAvatar(null);
-      return;
-    }
+    if (!currentUser) { setAvatar(null); return; }
     let cancelled = false;
     fetch(`/api/profile?username=${encodeURIComponent(currentUser)}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled && !json.error) setAvatar(json.image ?? null);
-      })
+      .then((r) => r.json())
+      .then((json) => { if (!cancelled && !json.error) setAvatar(json.image ?? null); })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [currentUser, setAvatar]);
 
   useEffect(() => {
@@ -73,13 +64,10 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Debounced live search against AniList
+  // Debounced live search
   useEffect(() => {
     const q = search.trim();
-    if (q.length < 2) {
-      setResults([]);
-      return;
-    }
+    if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
         const res = await fetch("https://graphql.anilist.co", {
@@ -94,9 +82,7 @@ export function Navbar() {
         });
         const json = await res.json();
         setResults(json.data?.Page?.media ?? []);
-      } catch {
-        setResults([]);
-      }
+      } catch { setResults([]); }
     }, 350);
     return () => clearTimeout(t);
   }, [search]);
@@ -105,7 +91,7 @@ export function Navbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      {/* Site-wide status notice */}
+      {/* Status banner */}
       <div className="flex items-center justify-center gap-1.5 border-b border-white/10 bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-sm">
         <AlertCircle className="size-3.5 shrink-0 text-white/40" />
         Streaming Services Are Currently Down At The Moment.
@@ -115,170 +101,163 @@ export function Navbar() {
         className={cn(
           "flex h-16 items-center gap-5 px-8 transition-all duration-300",
           scrolled
-            ? "bg-[#141414]/95 backdrop-blur-sm"
+            ? "bg-[#141414]/95 shadow-lg backdrop-blur-md"
             : "bg-gradient-to-b from-black/70 to-transparent"
         )}
       >
-      {/* Logo */}
-      <Link href="/" aria-label="Bankai home" className="shrink-0">
-        <Image
-          src="/bankai-logo.svg"
-          alt="Bankai"
-          width={90}
-          height={28}
-          className="h-7 w-auto"
-          priority
-        />
-      </Link>
+        {/* Logo */}
+        <Link href="/" aria-label="Bankai home" className="shrink-0">
+          <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto" priority />
+        </Link>
 
-      {/* Nav links */}
-      <Suspense fallback={<NavLinks pathname={null} searchParams={null} />}>
-        <NavLinksWithSearchParams />
-      </Suspense>
+        {/* Nav links */}
+        <Suspense fallback={<NavLinks pathname={null} searchParams={null} />}>
+          <NavLinksWithSearchParams />
+        </Suspense>
 
-      <div className="flex-1" />
+        <div className="flex-1" />
 
-      {/* Live search */}
-      <div
-        className="relative hidden sm:block"
-        onFocus={() => setSearchFocused(true)}
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false);
-        }}
-      >
-        <div className="flex w-52 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 transition-colors focus-within:border-white/35">
-          <input
-            type="text"
-            placeholder="Search here ..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
-          />
-          <Link href="/browse" aria-label="Advanced search" className="shrink-0 text-white/45 transition-colors hover:text-white">
-            <Search className="size-4" />
-          </Link>
-        </div>
-
-        {showResults && (
-          <div className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1.5 shadow-2xl">
-            {results.map((r) => (
-              <Link
-                key={r.id}
-                href={`/anime/${r.id}`}
-                onClick={() => {
-                  setSearch("");
-                  setSearchFocused(false);
-                }}
-                className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-white/5"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={r.coverImage.medium} alt="" className="h-12 w-9 shrink-0 rounded object-cover" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-white">{r.title.english || r.title.romaji}</p>
-                  <p className="text-xs text-white/40">
-                    {[r.seasonYear, r.format].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Bell */}
-      <button aria-label="Notifications" className="text-white/60 transition-colors hover:text-white">
-        <Bell className="size-5" />
-      </button>
-
-      {/* Account */}
-      {mounted && currentUser ? (
+        {/* Live search */}
         <div
-          className="relative"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenuOpen(false);
-          }}
+          className="relative hidden sm:block"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false); }}
         >
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label="Account menu"
-            className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-white/20"
-          >
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="size-full object-cover" />
-            ) : (
-              currentUser[0]?.toUpperCase()
+          <div className="flex w-52 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 transition-colors focus-within:border-white/35">
+            <input
+              type="text"
+              placeholder="Search here ..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
+            />
+            <Link href="/browse" aria-label="Advanced search" className="shrink-0 text-white/45 transition-colors hover:text-white">
+              <Search className="size-4" />
+            </Link>
+          </div>
+
+          <AnimatePresence>
+            {showResults && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1.5 shadow-2xl"
+              >
+                {results.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/anime/${r.id}`}
+                    onClick={() => { setSearch(""); setSearchFocused(false); }}
+                    className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-white/5"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={r.coverImage.medium} alt="" className="h-12 w-9 shrink-0 rounded object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-white">{r.title.english || r.title.romaji}</p>
+                      <p className="text-xs text-white/40">{[r.seasonYear, r.format].filter(Boolean).join(" · ")}</p>
+                    </div>
+                  </Link>
+                ))}
+              </motion.div>
             )}
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-11 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
-              <p className="px-4 py-2.5 text-xs text-white/50">
-                Signed in as <span className="font-semibold text-white">{currentUser}</span>
-              </p>
-              <div className="h-px bg-white/10" />
-              <Link
-                href="/profile"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/5"
-              >
-                <User className="size-4" />
-                Profile
-              </Link>
-              <button
-                onClick={() => {
-                  logout();
-                  setMenuOpen(false);
-                }}
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
-              >
-                <LogOut className="size-4" />
-                Sign out
-              </button>
-            </div>
-          )}
+          </AnimatePresence>
         </div>
-      ) : mounted ? (
-        <div className="flex shrink-0 items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+
+        {/* Bell */}
+        <button aria-label="Notifications" className="text-white/60 transition-colors hover:text-white">
+          <Bell className="size-5" />
+        </button>
+
+        {/* Account */}
+        {mounted && currentUser ? (
+          <div
+            className="relative"
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMenuOpen(false); }}
           >
-            Log In
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-black transition hover:brightness-110"
-          >
-            Sign Up
-          </Link>
-        </div>
-      ) : (
-        <div className="h-8 w-[124px] shrink-0" aria-hidden />
-      )}
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Account menu"
+              className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-white/20 transition hover:ring-white/40"
+            >
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="" className="size-full object-cover" />
+              ) : (
+                currentUser[0]?.toUpperCase()
+              )}
+            </button>
+
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-11 w-52 overflow-hidden rounded-xl border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl"
+                >
+                  <p className="px-4 py-2.5 text-xs text-white/50">
+                    Signed in as <span className="font-semibold text-white">{currentUser}</span>
+                  </p>
+                  <div className="h-px bg-white/10" />
+                  <Link
+                    href="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    <User className="size-4" /> Profile
+                  </Link>
+                  <Link
+                    href="/history"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    <History className="size-4" /> History
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    <Settings className="size-4" /> Settings
+                  </Link>
+                  <div className="h-px bg-white/10" />
+                  <button
+                    onClick={() => { logout(); setMenuOpen(false); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+                  >
+                    <LogOut className="size-4" /> Sign out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : mounted ? (
+          <div className="flex shrink-0 items-center gap-3">
+            <Link href="/login" className="text-sm font-medium text-white/70 transition-colors hover:text-white">
+              Log In
+            </Link>
+            <Link href="/signup" className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-black transition hover:brightness-110">
+              Sign Up
+            </Link>
+          </div>
+        ) : (
+          <div className="h-8 w-[124px] shrink-0" aria-hidden />
+        )}
       </div>
     </header>
   );
 }
 
-// useSearchParams() requires a Suspense boundary or static builds fail
-// ("missing-suspense-with-csr-bailout") on pages Next tries to fully
-// prerender (e.g. /terms, /contact — plain pages with no dynamic signal
-// of their own). Isolated here so only this small piece suspends; the
-// fallback renders the same links unhighlighted rather than blocking the
-// rest of the navbar.
 function NavLinksWithSearchParams() {
-  const pathname = usePathname();
+  const pathname    = usePathname();
   const searchParams = useSearchParams();
   return <NavLinks pathname={pathname} searchParams={searchParams} />;
 }
 
-function NavLinks({
-  pathname,
-  searchParams,
-}: {
-  pathname: string | null;
-  searchParams: URLSearchParams | null;
-}) {
+function NavLinks({ pathname, searchParams }: { pathname: string | null; searchParams: URLSearchParams | null }) {
   return (
     <nav className="hidden items-center gap-5 md:flex">
       {NAV_LINKS.map((link) => {
@@ -288,9 +267,6 @@ function NavLinks({
           if (link.href === "/") {
             active = pathname === "/";
           } else if (linkQuery) {
-            // Links with a query (e.g. Movie -> /browse?format=MOVIE) must
-            // match that query too, so plain /browse (from the search icon)
-            // doesn't falsely highlight them.
             const linkParams = new URLSearchParams(linkQuery);
             active =
               !!searchParams &&
@@ -306,9 +282,7 @@ function NavLinks({
             href={link.href}
             className={cn(
               "text-sm transition-colors",
-              active
-                ? "font-semibold text-white"
-                : "font-medium text-white/55 hover:text-white/90"
+              active ? "font-semibold text-white" : "font-medium text-white/55 hover:text-white/90"
             )}
           >
             {link.label}
@@ -321,47 +295,49 @@ function NavLinks({
 }
 
 function LanguageDropdown() {
-  const titleLanguage = useLanguageStore((s) => s.titleLanguage);
+  const titleLanguage    = useLanguageStore((s) => s.titleLanguage);
   const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]  = useState(false);
   const current = LANGUAGE_OPTIONS.find((o) => o.value === titleLanguage)?.label ?? "English";
 
   return (
     <div
       className="relative"
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
-      }}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}
     >
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1 text-sm font-medium text-white/55 transition-colors hover:text-white/90"
       >
-        Language
-        <ChevronDown className="size-3.5" />
+        Language <ChevronDown className="size-3.5" />
       </button>
-      {open && (
-        <div className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
-          <p className="px-3.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-white/40">
-            Title Language
-          </p>
-          {LANGUAGE_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              onClick={() => {
-                setTitleLanguage(o.value);
-                setOpen(false);
-              }}
-              className={cn(
-                "block w-full px-3.5 py-2 text-left text-sm transition-colors hover:bg-white/5",
-                o.value === titleLanguage ? "text-primary" : "text-white/80"
-              )}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl"
+          >
+            <p className="px-3.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-white/40">
+              Title Language
+            </p>
+            {LANGUAGE_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => { setTitleLanguage(o.value); setOpen(false); }}
+                className={cn(
+                  "block w-full px-3.5 py-2 text-left text-sm transition-colors hover:bg-white/5",
+                  o.value === titleLanguage ? "text-primary" : "text-white/80"
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <span className="sr-only">Currently: {current}</span>
     </div>
   );
