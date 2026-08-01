@@ -115,45 +115,46 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
         />
       )}
 
-      {/* Player — full width, above everything */}
-      <motion.div
-        className="relative z-20"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <DownPlayer
-          poster={detail.bannerImage ?? detail.coverImage.large}
-          animeId={animeId}
-          episode={episode}
-          providersData={providersData}
-          selectedProvider={selectedProvider}
-          audio={audio}
-          onProviderChange={setSelectedProvider}
-          onAudioChange={setAudio}
-          autoplay={autoplay}
-          autoNext={autoNext}
-          autoSkip={autoSkip}
-          lightsOff={lightsOff}
-          onAutoplayChange={setAutoplay}
-          onAutoNextChange={setAutoNext}
-          onAutoSkipChange={setAutoSkip}
-          onLightsOffChange={setLightsOff}
-          onPrevEpisode={handlePrevEp}
-          onNextEpisode={handleNextEp}
-          onEpisodeEnd={autoNext ? handleNextEp : undefined}
-          currentEpisode={episode}
-          totalEpisodes={totalEpisodes}
-        />
-      </motion.div>
-
-      {/* Below player */}
-      <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Left: episode list + comments */}
+      {/* Main grid: player left, episode list right */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* Left column: player + comments */}
         <motion.div
-          className="min-w-0 space-y-6"
+          className="relative z-20 min-w-0 space-y-6"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <DownPlayer
+            poster={detail.bannerImage ?? detail.coverImage.large}
+            animeId={animeId}
+            episode={episode}
+            providersData={providersData}
+            selectedProvider={selectedProvider}
+            audio={audio}
+            onProviderChange={setSelectedProvider}
+            onAudioChange={setAudio}
+            autoplay={autoplay}
+            autoNext={autoNext}
+            autoSkip={autoSkip}
+            lightsOff={lightsOff}
+            onAutoplayChange={setAutoplay}
+            onAutoNextChange={setAutoNext}
+            onAutoSkipChange={setAutoSkip}
+            onLightsOffChange={setLightsOff}
+            onPrevEpisode={handlePrevEp}
+            onNextEpisode={handleNextEp}
+            onEpisodeEnd={autoNext ? handleNextEp : undefined}
+            currentEpisode={episode}
+            totalEpisodes={totalEpisodes}
+          />
+          <CommentsSection animeId={animeId} />
+        </motion.div>
+
+        {/* Right column: episode list → seasons → related */}
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
           <EpisodeList
@@ -165,16 +166,6 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
             hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
             currentAudio={audio}
           />
-          <CommentsSection animeId={animeId} />
-        </motion.div>
-
-        {/* Right: seasons + related/suggestions */}
-        <motion.div
-          className="space-y-6"
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-        >
           <SeasonsPanel relations={detail.relations.edges} currentAnimeId={animeId} />
           <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
         </motion.div>
