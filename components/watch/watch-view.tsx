@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { DownPlayer } from "./down-player";
@@ -45,9 +45,9 @@ export function WatchView({ detail, animeId, initialEpisode = 1 }: WatchViewProp
   // ── Failed provider tracking (marked red in ServerSelector) ───────────────
   const [failedProviders, setFailedProviders] = useState<Set<string>>(new Set());
 
-  function handleProviderError(provider: string) {
+  const handleProviderError = useCallback((provider: string) => {
     setFailedProviders((prev) => new Set([...prev, provider]));
-  }
+  }, []);
 
   // Clear failed list when episode or audio changes
   useEffect(() => { setFailedProviders(new Set()); }, [episode, audio]);
