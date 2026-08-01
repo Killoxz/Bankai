@@ -24,11 +24,13 @@ export async function GET(req: NextRequest) {
       duration: true,
       completed: true,
       watchedAt: true,
+      episodeThumbnail: true,
       Anime: {
         select: {
           id: true,
           title: true,
           coverImage: true,
+          bannerImage: true,
           episodes: true,
           format: true,
           seasonYear: true,
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, animeId, episodeNumber, progress, duration, completed } =
+    const { username, animeId, episodeNumber, progress, duration, completed, episodeThumbnail } =
       await req.json();
     const un = (typeof username === "string" ? username : "").trim();
     if (!un || !animeId) return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
@@ -64,12 +66,14 @@ export async function POST(req: NextRequest) {
         duration: duration ?? 0,
         completed: completed ?? false,
         watchedAt: new Date(),
+        episodeThumbnail: episodeThumbnail ?? null,
       },
       update: {
         progress: progress ?? 0,
         duration: duration ?? 0,
         completed: completed ?? false,
         watchedAt: new Date(),
+        ...(episodeThumbnail ? { episodeThumbnail } : {}),
       },
     });
 
@@ -82,6 +86,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const username = req.nextUrl.searchParams.get("username")?.trim();
+  const animeId  = req.nextUrl.searchParams.get("animeId")?.trim();
   if (!username)
     return NextResponse.json({ error: "Username required." }, { status: 400 });
 
@@ -91,6 +96,10 @@ export async function DELETE(req: NextRequest) {
   });
   if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
-  await prisma.watchHistory.deleteMany({ where: { userId: user.id } });
+  if (animeId) {
+    await prisma.watchHistory.deleteMany({ where: { userId: user.id, animeId } });
+  } else {
+    await prisma.watchHistory.deleteMany({ where: { userId: user.id } });
+  }
   return NextResponse.json({ ok: true });
 }

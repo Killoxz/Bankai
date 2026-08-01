@@ -21,10 +21,12 @@ interface HistoryEntry {
   duration: number;
   completed: boolean;
   watchedAt: string;
+  episodeThumbnail: string | null;
   Anime: {
     id: string;
     title: string;
     coverImage: string | null;
+    bannerImage: string | null;
     episodes: number | null;
     format: string | null;
     seasonYear: number | null;
@@ -61,48 +63,68 @@ function useContinueWatching() {
       .finally(() => setLoading(false));
   }, [mounted, currentUser]);
 
-  return { items, loading, loggedIn: mounted && !!currentUser };
+  return { items, setItems, loading, loggedIn: mounted && !!currentUser };
 }
 
-function ContinueWatchingCard({ entry, index }: { entry: HistoryEntry; index: number }) {
+function ContinueWatchingCard({
+  entry,
+  index,
+  onDismiss,
+}: {
+  entry: HistoryEntry;
+  index: number;
+  onDismiss: (animeId: string) => void;
+}) {
   const anilistId = entry.animeId.replace("anilist:", "");
   const href      = `/watch/${anilistId}?ep=${entry.episodeNumber}`;
   const pct       = entry.duration > 0
     ? Math.min(100, Math.round((entry.progress / entry.duration) * 100))
     : 0;
-  const anime = entry.Anime!;
+  const anime   = entry.Anime!;
+  // Prefer episode thumbnail → anime banner → anime cover
+  const bgImage = entry.episodeThumbnail ?? anime.bannerImage ?? anime.coverImage;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
+      className="relative flex-shrink-0 w-[200px]"
     >
-      <Link href={href} className="group block w-[148px] flex-shrink-0">
+      {/* Dismiss button */}
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(entry.animeId); }}
+        className="absolute -right-1.5 -top-1.5 z-10 grid size-5 place-items-center rounded-full bg-[#222] text-white/60 shadow transition-colors hover:bg-white/20 hover:text-white"
+        aria-label="Remove"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="size-3">
+          <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      <Link href={href} className="group block">
         <motion.div
-          whileHover={{ scale: 1.04 }}
+          whileHover={{ scale: 1.03 }}
           transition={{ duration: 0.2 }}
           className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5"
         >
-          {anime.coverImage && (
+          {bgImage && (
             <Image
-              src={anime.coverImage}
+              src={bgImage}
               alt={anime.title}
               fill
-              sizes="148px"
-              className="object-cover"
+              sizes="200px"
+              className="object-cover object-top"
             />
           )}
 
-          {/* Episode badge */}
-          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-            EP {entry.episodeNumber}
-          </span>
+          {/* Dark gradient at bottom */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-          {/* Hover play button */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/30">
+          {/* Hover play overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
             <div className="scale-90 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
-              <div className="grid size-10 place-items-center rounded-full bg-primary shadow-lg">
+              <div className="grid size-11 place-items-center rounded-full bg-primary shadow-lg">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="size-5 text-black">
                   <path d="M8 5v14l11-7z" />
                 </svg>
@@ -110,18 +132,22 @@ function ContinueWatchingCard({ entry, index }: { entry: HistoryEntry; index: nu
             </div>
           </div>
 
-          <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/25" />
+          {/* EP badge — bottom left */}
+          <span className="absolute bottom-8 left-2.5 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+            EP {entry.episodeNumber}
+          </span>
 
-          {/* Real progress bar */}
+          {/* Progress bar */}
           <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20">
             <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
           </div>
+
+          <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/20" />
         </motion.div>
 
         <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-white/90">
           {anime.title}
         </p>
-        <p className="text-[11px] text-white/40">Episode {entry.episodeNumber}</p>
       </Link>
     </motion.div>
   );
@@ -140,10 +166,20 @@ export function HomeRows({
   const byGenre = (list: AnimeMedia[]) =>
     genre === "All Genres" ? list : list.filter((a) => a.genres.includes(genre));
 
-  const { items: continueItems, loading: watchingLoading, loggedIn } = useContinueWatching();
+  const { items: continueItems, setItems: setContinueItems, loading: watchingLoading, loggedIn } = useContinueWatching();
 
   const season      = byGenre(newSeason);
   const recommended = byGenre(topRated);
+
+  const currentUser = useAuthStore((s) => s.currentUser);
+
+  function dismissEntry(animeId: string) {
+    setContinueItems((prev) => prev.filter((e) => e.animeId !== animeId));
+    if (!currentUser) return;
+    fetch(`/api/history?username=${encodeURIComponent(currentUser)}&animeId=${encodeURIComponent(animeId)}`, {
+      method: "DELETE",
+    }).catch(() => {});
+  }
 
   return (
     <>
@@ -170,7 +206,7 @@ export function HomeRows({
             <h2 className="mb-4 text-base font-semibold text-white">Continue Watching</h2>
             <ScrollRow className="gap-3 pb-2">
               {continueItems.map((entry, i) => (
-                <ContinueWatchingCard key={entry.id} entry={entry} index={i} />
+                <ContinueWatchingCard key={entry.id} entry={entry} index={i} onDismiss={dismissEntry} />
               ))}
             </ScrollRow>
           </section>

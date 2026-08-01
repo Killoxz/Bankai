@@ -86,19 +86,23 @@ export function DownPlayer({
   const currentUser   = useAuthStore((s) => s.currentUser);
 
   // ── Stable refs so initPlayer deps stay minimal ───────────────────────────
-  const autoplayRef      = useRef(autoplay);
-  const autoSkipRef      = useRef(autoSkip);
-  const onErrorRef       = useRef(onError);
-  const onEpisodeEndRef  = useRef(onEpisodeEnd);
-  const currentUserRef   = useRef(currentUser);
-  const providersDataRef = useRef(providersData); // KEY FIX: prevents player restarts
+  const autoplayRef         = useRef(autoplay);
+  const autoSkipRef         = useRef(autoSkip);
+  const onErrorRef          = useRef(onError);
+  const onEpisodeEndRef     = useRef(onEpisodeEnd);
+  const currentUserRef      = useRef(currentUser);
+  const providersDataRef    = useRef(providersData);
+  const selectedProviderRef = useRef(selectedProvider);
+  const audioRef            = useRef(audio);
 
-  useEffect(() => { autoplayRef.current      = autoplay;      }, [autoplay]);
-  useEffect(() => { autoSkipRef.current      = autoSkip;      }, [autoSkip]);
-  useEffect(() => { onErrorRef.current       = onError;       }, [onError]);
-  useEffect(() => { onEpisodeEndRef.current  = onEpisodeEnd;  }, [onEpisodeEnd]);
-  useEffect(() => { currentUserRef.current   = currentUser;   }, [currentUser]);
-  useEffect(() => { providersDataRef.current = providersData; }, [providersData]);
+  useEffect(() => { autoplayRef.current         = autoplay;         }, [autoplay]);
+  useEffect(() => { autoSkipRef.current         = autoSkip;         }, [autoSkip]);
+  useEffect(() => { onErrorRef.current          = onError;          }, [onError]);
+  useEffect(() => { onEpisodeEndRef.current     = onEpisodeEnd;     }, [onEpisodeEnd]);
+  useEffect(() => { currentUserRef.current      = currentUser;      }, [currentUser]);
+  useEffect(() => { providersDataRef.current    = providersData;    }, [providersData]);
+  useEffect(() => { selectedProviderRef.current = selectedProvider; }, [selectedProvider]);
+  useEffect(() => { audioRef.current            = audio;            }, [audio]);
 
   // ── Stream state ──────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(false);
@@ -154,7 +158,23 @@ export function DownPlayer({
         ? `/api/stream?episodeId=${encodeURIComponent(epId)}`
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
-      const res = await fetch(apiUrl);
+      // Fetch stream + saved progress in parallel
+      const [res, resumeAt] = await Promise.all([
+        fetch(apiUrl),
+        currentUserRef.current
+          ? fetch(`/api/history?username=${encodeURIComponent(currentUserRef.current)}`)
+              .then((r) => r.ok ? r.json() : { history: [] })
+              .then((json) => {
+                const entry = (json?.history ?? []).find(
+                  (e: { animeId: string; episodeNumber: number; progress: number; completed: boolean }) =>
+                    e.animeId === `anilist:${animeId}` && e.episodeNumber === episode && !e.completed
+                );
+                return (entry?.progress ?? 0) > 30 ? (entry.progress as number) : 0;
+              })
+              .catch(() => 0)
+          : Promise.resolve(0),
+      ]);
+
       if (!res.ok) throw new Error(`Server error ${res.status}`);
 
       const data = await res.json() as {
@@ -169,9 +189,9 @@ export function DownPlayer({
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      if (data.intro)                setIntro(data.intro);
-      if (data.outro)                setOutro(data.outro);
-      if (data.subtitles?.length)    setSubtitles(data.subtitles);
+      if (data.intro)             setIntro(data.intro);
+      if (data.outro)             setOutro(data.outro);
+      if (data.subtitles?.length) setSubtitles(data.subtitles);
 
       if (Hls.isSupported()) {
         const hls = new Hls({ maxMaxBufferLength: 30 });
@@ -180,19 +200,8 @@ export function DownPlayer({
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
+          if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
-          if (currentUserRef.current) {
-            fetch("/api/history", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                username: currentUserRef.current,
-                animeId: `anilist:${animeId}`,
-                episodeNumber: episode,
-                progress: 0, duration: 0, completed: false,
-              }),
-            }).catch(() => {});
-          }
         });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) {
@@ -205,6 +214,7 @@ export function DownPlayer({
         video.src = streamUrl;
         video.onloadedmetadata = () => {
           setLoading(false);
+          if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
         };
       } else {
@@ -318,6 +328,13 @@ export function DownPlayer({
 
     function saveProgress(completed = false) {
       if (!currentUserRef.current || !video || !video.duration) return;
+      const pData    = providersDataRef.current;
+      const provider = selectedProviderRef.current ?? "";
+      const aud      = audioRef.current;
+      const epData   =
+        pData?.[provider]?.episodes?.[aud]?.find((e) => e.number === episode) ??
+        Object.values(pData ?? {}).flatMap((p) => p.episodes?.[aud] ?? []).find((e) => e.number === episode);
+      const thumbnail = epData?.thumbnail ?? epData?.image ?? null;
       fetch("/api/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -328,6 +345,7 @@ export function DownPlayer({
           progress: Math.floor(video.currentTime),
           duration: Math.floor(video.duration),
           completed,
+          episodeThumbnail: thumbnail,
         }),
       }).catch(() => {});
     }
