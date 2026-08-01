@@ -161,9 +161,13 @@ export function ServerSelector({
           <div className="flex flex-wrap items-center gap-2">
             {isLoading || servers.length === 0 ? (
               <div className="flex items-center gap-2 py-1">
-                <Loader2 className="size-3.5 animate-spin text-white/40" />
+                {isLoading ? (
+                  <Loader2 className="size-3.5 animate-spin text-white/40" />
+                ) : null}
                 <span className="text-xs text-white/40">
-                  {isLoading ? "Waking up streaming servers…" : "No servers found"}
+                  {isLoading
+                    ? "Loading streaming servers…"
+                    : "Streaming servers unavailable — try refreshing the page"}
                 </span>
               </div>
             ) : (

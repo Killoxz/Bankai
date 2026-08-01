@@ -85,8 +85,11 @@ export function WatchView({
     if (initialEpisodesRaw) return;
     let cancelled = false;
 
-    fetch(`/api/episodes/${animeId}`)
-      .then((r) => r.json())
+    fetch(`/api/episodes/${animeId}`, { signal: AbortSignal.timeout(15000) })
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
       .then((raw) => {
         if (cancelled) return;
         const parsed = parseProviders(raw as Record<string, unknown>);
@@ -101,7 +104,7 @@ export function WatchView({
         setEpListData(sub.length >= dub.length ? sub : dub);
         setIsLoadingSources(false);
       })
-      .catch(() => { setIsLoadingSources(false); });
+      .catch(() => { if (!cancelled) setIsLoadingSources(false); });
 
     return () => { cancelled = true; };
   }, [animeId]); // eslint-disable-line react-hooks/exhaustive-deps

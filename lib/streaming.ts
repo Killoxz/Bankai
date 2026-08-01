@@ -1,7 +1,7 @@
 // Shared streaming API base URL and server-side fetch helpers.
 // Used by both Next.js API routes and the watch page server component.
 
-export const STREAMING_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https://miruro-api-1gfopw.fly.dev")
+export const STREAMING_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https://miruro-api-production-55b5.up.railway.app")
   .replace(/\/$/, "")
   .replace(/^(?!https?:\/\/)/, "https://");
 

@@ -19,7 +19,7 @@ services:
       - key: AUTH_TRUST_HOST
         value: "true"
       - key: STREAMING_API_URL
-        value: https://miruro-api-1gfopw.fly.dev
+        value: https://miruro-api-production-55b5.up.railway.app
 
       # ── Secrets — add these in the Render dashboard manually ─────────────────
       # (Environment → Add Environment Variable)

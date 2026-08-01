@@ -88,14 +88,14 @@ export function EpisodeList({
         <div className="relative">
           <button
             onClick={() => setBatchOpen((o) => !o)}
-            className="flex items-center gap-1 rounded-md bg-white/6 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
+            className="flex items-center gap-1 rounded-md bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/12"
           >
             {batchStart}–{batchEnd}
             <ChevronDown className="size-3 text-white/40" />
           </button>
 
           {batchOpen && (
-            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-white/8 bg-[#1a1a1a] py-1 shadow-2xl">
               {Array.from({ length: totalBatches }, (_, i) => {
                 const s = i * BATCH + 1;
                 const e = Math.min(s + BATCH - 1, totalEpisodes);
@@ -125,7 +125,7 @@ export function EpisodeList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search episodes…"
-            className="w-full rounded-md border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/25"
+            className="w-full rounded-md border border-white/8 bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/20"
           />
         </div>
 

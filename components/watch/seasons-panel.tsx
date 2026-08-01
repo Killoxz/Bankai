@@ -32,9 +32,9 @@ export function SeasonsPanel({
         <h3 className="text-sm font-bold uppercase tracking-wider text-white">Seasons</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 p-3 sm:grid-cols-3">
         {/* Current anime — always first */}
-        <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-primary ring-1 ring-primary/40">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-lg ring-2 ring-primary/60">
           {currentCover ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -46,7 +46,7 @@ export function SeasonsPanel({
             <div className="size-full bg-primary/10" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          <span className="absolute left-1.5 top-1.5 rounded bg-primary/80 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black backdrop-blur-sm">
+          <span className="absolute left-1.5 top-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
             Watching
           </span>
           <div className="absolute inset-x-0 bottom-0 p-2">
@@ -68,10 +68,10 @@ export function SeasonsPanel({
               key={node.id}
               href={`/watch/${node.id}`}
               className={[
-                "group relative aspect-[2/3] overflow-hidden rounded-lg border-2 transition-all",
+                "group relative aspect-[2/3] overflow-hidden rounded-lg ring-1 transition-all duration-200",
                 isActive
-                  ? "border-primary ring-1 ring-primary/40"
-                  : "border-transparent hover:border-white/30",
+                  ? "ring-primary/60"
+                  : "ring-white/0 hover:ring-white/20",
               ].join(" ")}
             >
               {node.coverImage.large ? (
@@ -88,7 +88,7 @@ export function SeasonsPanel({
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-              <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+              <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 backdrop-blur-sm">
                 {label}
               </span>
 

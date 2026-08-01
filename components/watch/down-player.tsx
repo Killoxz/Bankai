@@ -53,15 +53,17 @@ function Toggle({ label, active, accent, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={[
-        "flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors",
-        active && accent ? "text-primary" : active ? "text-white" : "text-white/40 hover:text-white/70",
-      ].join(" ")}
+      className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80"
     >
       <span className={[
-        "size-3 shrink-0 rounded-[2px] border transition-colors",
-        active && accent ? "border-primary bg-primary" : active ? "border-white bg-white" : "border-white/30",
-      ].join(" ")} />
+        "relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors duration-200",
+        active && accent ? "bg-primary" : active ? "bg-white/50" : "bg-white/15",
+      ].join(" ")}>
+        <span className={[
+          "absolute size-2.5 rounded-full bg-white shadow transition-transform duration-200",
+          active ? "translate-x-[11px]" : "translate-x-[1px]",
+        ].join(" ")} />
+      </span>
       {label}
     </button>
   );
@@ -514,7 +516,7 @@ export function DownPlayer({
                     v.muted  = val === 0;
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/25 accent-primary"
+                  className="w-16 cursor-pointer accent-primary"
                 />
               </div>
 
@@ -528,16 +530,21 @@ export function DownPlayer({
       </div>
 
       {/* ── Settings bar below video ──────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#141414] px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#111] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-4">
           <Toggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
           <Toggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
           <Toggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
           <button
             onClick={() => onLightsOffChange(!lightsOff)}
-            className={["text-xs font-medium transition-colors", lightsOff ? "text-primary" : "text-white/40 hover:text-white/70"].join(" ")}
+            className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80"
           >
-            ☽ Lights Off
+            <span className={["relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors duration-200",
+              lightsOff ? "bg-primary" : "bg-white/15"].join(" ")}>
+              <span className={["absolute size-2.5 rounded-full bg-white shadow transition-transform duration-200",
+                lightsOff ? "translate-x-[11px]" : "translate-x-[1px]"].join(" ")} />
+            </span>
+            Lights Off
           </button>
 
           {/* Source picker */}
@@ -551,7 +558,7 @@ export function DownPlayer({
                 {selectedProvider ? providerLabel(selectedProvider) : "Source"} ▾
               </button>
               {sourceOpen && (
-                <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/12 bg-[#1c1c1c] shadow-2xl">
+                <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/8 bg-[#1a1a1a] shadow-2xl">
                   <div className="flex border-b border-white/10">
                     {(["sub", "dub"] as const).map((a) => (
                       <button key={a} onClick={() => handleAudioChange(a)}

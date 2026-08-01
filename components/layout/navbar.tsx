@@ -93,8 +93,8 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50">
       {/* Status banner */}
       <div className="flex items-center justify-center gap-1.5 border-b border-white/10 bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/60 backdrop-blur-sm">
-        <AlertCircle className="size-3.5 shrink-0 text-white/40" />
-        Streaming Services Are Currently Down At The Moment.
+        <AlertCircle className="size-3.5 shrink-0 text-green-400/70" />
+        Streaming Services Are Back Online, Enjoy!
       </div>
 
       <div
