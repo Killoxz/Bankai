@@ -89,19 +89,8 @@ function ContinueWatchingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
-      className="relative flex-shrink-0 w-[200px]"
+      className="relative flex-shrink-0 w-[140px]"
     >
-      {/* Dismiss button */}
-      <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(entry.animeId); }}
-        className="absolute -right-1.5 -top-1.5 z-10 grid size-5 place-items-center rounded-full bg-[#222] text-white/60 shadow transition-colors hover:bg-white/20 hover:text-white"
-        aria-label="Remove"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="size-3">
-          <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-        </svg>
-      </button>
-
       <Link href={href} className="group block">
         <motion.div
           whileHover={{ scale: 1.03 }}
@@ -113,7 +102,7 @@ function ContinueWatchingCard({
               src={bgImage}
               alt={anime.title}
               fill
-              sizes="200px"
+              sizes="140px"
               className="object-cover object-top"
             />
           )}
@@ -121,11 +110,22 @@ function ContinueWatchingCard({
           {/* Dark gradient at bottom */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
+          {/* Dismiss button — inside card, top-right */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(entry.animeId); }}
+            className="absolute right-1.5 top-1.5 z-10 grid size-6 place-items-center rounded-full bg-black/60 text-white/70 shadow backdrop-blur-sm transition-colors hover:bg-black/85 hover:text-white"
+            aria-label="Remove"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="size-3">
+              <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+
           {/* Hover play overlay */}
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
             <div className="scale-90 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
-              <div className="grid size-11 place-items-center rounded-full bg-primary shadow-lg">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="size-5 text-black">
+              <div className="grid size-10 place-items-center rounded-full bg-primary shadow-lg">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="size-4 text-black">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
@@ -133,7 +133,7 @@ function ContinueWatchingCard({
           </div>
 
           {/* EP badge — bottom left */}
-          <span className="absolute bottom-8 left-2.5 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+          <span className="absolute bottom-4 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
             EP {entry.episodeNumber}
           </span>
 
