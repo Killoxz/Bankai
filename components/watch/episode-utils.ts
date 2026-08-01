@@ -1,12 +1,14 @@
-// Shared types and helpers for the Anivexa episode data used across watch components
+// Shared types and helpers for the streaming API episode data
 
 export interface ProviderEpisode {
-  id: string;            // "watch/reanime/21/sub/reanime-1"
+  id: string;            // e.g. "watch/kiwi/178005/sub/animepahe-1" — use directly as watch URL
   number: number;
   title?: string | null;
   thumbnail?: string | null;
   image?: string | null;
   airDate?: string | null;
+  duration?: number | null;
+  filler?: boolean;
 }
 
 export interface ProviderData {
@@ -21,12 +23,18 @@ export interface ProviderData {
 export type EpisodesMap = Record<string, ProviderData>;
 
 export const PROVIDER_LABELS: Record<string, string> = {
+  // Current API providers
+  kiwi:       "Kiwi",
+  arc:        "Arc",
+  zoro:       "Zoro",
+  hop:        "Hop",
+  // Legacy providers (kept for compatibility)
   allmanga:   "AllManga",
   reanime:    "Reanime",
   anikoto:    "AniKoto",
   animegg:    "AnimeGG",
   anineko:    "AniNeko",
-  anidbapp:   "AniDB App",
+  anidbapp:   "AniDB",
   "2dhive":   "2DHive",
   animenosub: "AnimeNoSub",
   anizone:    "AniZone",
@@ -40,14 +48,25 @@ export function providerLabel(name: string): string {
   return PROVIDER_LABELS[name] ?? name;
 }
 
+/**
+ * Normalise a raw API response into EpisodesMap.
+ * The new API wraps providers under a top-level "providers" key:
+ *   { mappings: {...}, providers: { kiwi: {...}, zoro: {...} } }
+ * The old API had providers at the top level — both shapes are handled.
+ */
 export function parseProviders(raw: Record<string, unknown>): EpisodesMap {
   const result: EpisodesMap = {};
-  for (const [key, val] of Object.entries(raw)) {
+
+  const src = (
+    typeof raw.providers === "object" && raw.providers !== null
+      ? raw.providers
+      : raw
+  ) as Record<string, unknown>;
+
+  for (const [key, val] of Object.entries(src)) {
     if (["mappings", "page", "type", "_unknownProviders"].includes(key)) continue;
     if (typeof val !== "object" || val === null) continue;
     const v = val as Record<string, unknown>;
-    // Keep ALL provider entries: those with episodes AND those with errors.
-    // Error providers are shown in the server selector so users know they exist.
     if (v.episodes || v.error) {
       result[key] = v as ProviderData;
     }
@@ -95,42 +114,38 @@ export function hasAudio(
   );
 }
 
-/** Picks the provider with the richest episode metadata for display purposes. */
-export function bestMetadataProvider(providers: EpisodesMap, audio: "sub" | "dub"): string | null {
-  const PREFERRED = ["anizone", "anibd", "reanime", "anikoto", "animegg"];
-  for (const name of PREFERRED) {
-    const list = providers[name]?.episodes?.[audio] ?? [];
-    if (list.length > 0 && list.some((e) => e.title && e.title !== `Episode ${e.number}`)) {
-      return name;
-    }
-  }
-  // fall back to any provider with episodes
-  for (const [name, data] of Object.entries(providers)) {
-    if (!data.error && (data.episodes?.[audio] ?? []).length > 0) return name;
-  }
-  return null;
-}
-
-/** Merge episode metadata across all providers: prefer providers with real titles/thumbnails. */
+/** Merge episode metadata across all providers, highest-quality source wins. */
 export function mergedEpisodeList(providers: EpisodesMap, audio: "sub" | "dub"): ProviderEpisode[] {
   const byNumber = new Map<number, ProviderEpisode>();
 
-  // Process lowest-priority providers first, then overwrite with better ones
-  const PRIORITY = ["kaa", "allmanga", "anineko", "animegg", "anikoto", "animedunya",
-                    "animenosub", "senshi", "2dhive", "anidbapp", "reanime", "anibd", "anizone"];
+  // Process lowest-priority first; later entries overwrite with better data.
+  // zoro/arc tend to have the best titles and images so they go last (highest priority).
+  const PRIORITY = [
+    "kiwi", "hop",
+    "kaa", "allmanga", "anineko", "animegg", "anikoto", "animedunya",
+    "animenosub", "senshi", "2dhive", "anidbapp", "reanime", "anibd", "anizone",
+    "arc", "zoro",
+  ];
 
-  for (const provName of PRIORITY) {
+  // Also include any providers not in the explicit list
+  const allProviders = [
+    ...PRIORITY,
+    ...Object.keys(providers).filter((k) => !PRIORITY.includes(k)),
+  ];
+
+  for (const provName of allProviders) {
     const list = providers[provName]?.episodes?.[audio] ?? [];
     for (const ep of list) {
       const existing = byNumber.get(ep.number);
       if (!existing) {
         byNumber.set(ep.number, { ...ep });
       } else {
-        // Overwrite with better data
         if (ep.title && ep.title !== `Episode ${ep.number}`) existing.title = ep.title;
         if (ep.thumbnail) existing.thumbnail = ep.thumbnail;
-        if (ep.image) existing.image = ep.image;
-        if (ep.airDate) existing.airDate = ep.airDate;
+        if (ep.image)     existing.image     = ep.image;
+        if (ep.airDate)   existing.airDate   = ep.airDate;
+        if (ep.duration)  existing.duration  = ep.duration;
+        if (ep.filler !== undefined) existing.filler = ep.filler;
       }
     }
   }

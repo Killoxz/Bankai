@@ -10,6 +10,9 @@ import {
   type EpisodesMap,
 } from "./episode-utils";
 
+interface Timestamp { start: number; end: number }
+interface SubtitleTrack { file: string; label?: string; kind?: string }
+
 interface DownPlayerProps {
   poster?: string;
   animeId: number;
@@ -100,9 +103,7 @@ export function DownPlayer({
   const hlsRef   = useRef<Hls | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
 
-  // ── Refs for values that must NOT trigger player restarts ──────────────────
-  // Using refs means initPlayer's useCallback deps stay stable while still
-  // reading the latest value when the callback fires.
+  // Refs for values that must NOT trigger player restarts
   const autoplayRef     = useRef(autoplay);
   const autoSkipRef     = useRef(autoSkip);
   const onErrorRef      = useRef(onError);
@@ -120,7 +121,13 @@ export function DownPlayer({
   const [retryKey, setRetryKey] = useState(0);
   const [providerOpen, setProviderOpen] = useState(false);
 
-  // Available providers for the current episode + audio (for the mini dropdown)
+  // Skip intro / outro state
+  const [intro, setIntro]           = useState<Timestamp | null>(null);
+  const [outro, setOutro]           = useState<Timestamp | null>(null);
+  const [skipZone, setSkipZone]     = useState<"intro" | "outro" | null>(null);
+  const [subtitles, setSubtitles]   = useState<SubtitleTrack[]>([]);
+
+  // Available providers for the mini dropdown
   const availableProviders = providersData
     ? Object.entries(providersData)
         .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
@@ -128,8 +135,6 @@ export function DownPlayer({
     : [];
 
   // ── Player init ────────────────────────────────────────────────────────────
-  // ONLY depends on things that should actually reload the stream.
-  // autoplay/onError/currentUser go through refs to avoid spurious restarts.
   const initPlayer = useCallback(async () => {
     if (!selectedProvider) return;
 
@@ -139,17 +144,40 @@ export function DownPlayer({
 
     setLoading(true);
     setError(null);
+    setIntro(null);
+    setOutro(null);
+    setSkipZone(null);
+    setSubtitles([]);
 
     try {
-      const res = await fetch(
-        `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`
-      );
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const data = await res.json() as Record<string, unknown>;
-      if (data.error) throw new Error(data.error as string);
+      // Resolve the episode's watch ID from provider data — this is used
+      // directly as the API path (e.g. "watch/kiwi/178005/sub/animepahe-1").
+      const episodeId = providersData?.[selectedProvider]?.episodes?.[audio]
+        ?.find((e) => e.number === episode)?.id;
 
-      const streamUrl = data.stream_url as string | undefined;
+      const url = episodeId
+        ? `/api/stream?episodeId=${encodeURIComponent(episodeId)}`
+        : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+      const data = await res.json() as {
+        stream_url?: string;
+        subtitles?: SubtitleTrack[];
+        intro?: Timestamp;
+        outro?: Timestamp;
+        error?: string;
+      };
+      if (data.error) throw new Error(data.error);
+
+      const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
+
+      // Store skip timestamps and subtitle tracks
+      if (data.intro)     setIntro(data.intro);
+      if (data.outro)     setOutro(data.outro);
+      if (data.subtitles) setSubtitles(data.subtitles);
 
       if (Hls.isSupported()) {
         const hls = new Hls({ maxMaxBufferLength: 30 });
@@ -159,9 +187,7 @@ export function DownPlayer({
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
-          if (autoplayRef.current) {
-            video.play().catch(() => {});
-          }
+          if (autoplayRef.current) video.play().catch(() => {});
           if (currentUserRef.current) {
             fetch("/api/history", {
               method: "POST",
@@ -200,7 +226,7 @@ export function DownPlayer({
       setLoading(false);
       onErrorRef.current?.(selectedProvider);
     }
-  }, [animeId, episode, selectedProvider, audio]); // ← stable: no autoplay/onError/currentUser
+  }, [animeId, episode, selectedProvider, audio, providersData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     initPlayer();
@@ -209,18 +235,27 @@ export function DownPlayer({
     };
   }, [initPlayer, retryKey]);
 
-  // Auto-skip intro when autoSkip is enabled (reads from ref — no restart)
+  // Track which skip zone the current time falls in
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const handler = () => {
-      if (autoSkipRef.current && video.currentTime > 5 && video.currentTime < 120) {
-        video.currentTime = 90;
+      const t = video.currentTime;
+      if (intro && t >= intro.start && t < intro.end) {
+        setSkipZone("intro");
+      } else if (outro && t >= outro.start && t < outro.end) {
+        setSkipZone("outro");
+      } else {
+        setSkipZone(null);
+      }
+      // Auto-skip intro if enabled
+      if (autoSkipRef.current && intro && t >= intro.start && t < intro.end) {
+        video.currentTime = intro.end;
       }
     };
-    video.addEventListener("timeupdate", handler, { once: true });
+    video.addEventListener("timeupdate", handler);
     return () => video.removeEventListener("timeupdate", handler);
-  }, [episode, selectedProvider]); // re-arm when episode/source changes
+  }, [intro, outro]);
 
   // Episode end → auto next
   useEffect(() => {
@@ -229,9 +264,15 @@ export function DownPlayer({
     const handler = () => onEpisodeEndRef.current?.();
     video.addEventListener("ended", handler);
     return () => video.removeEventListener("ended", handler);
-  }, []); // fire once; reads latest callback via ref
+  }, []);
 
-  // Audio change: also switch to a provider that has the new audio
+  function handleSkip(zone: "intro" | "outro") {
+    const video = videoRef.current;
+    if (!video) return;
+    const target = zone === "intro" ? intro : outro;
+    if (target) video.currentTime = target.end;
+  }
+
   function handleAudioChange(a: "sub" | "dub") {
     onAudioChange(a);
     if (providersData) {
@@ -244,7 +285,6 @@ export function DownPlayer({
     <div className="overflow-hidden rounded-xl bg-black shadow-2xl">
       {/* ── Video ─────────────────────────────────────────────────────────── */}
       <div className="relative aspect-video w-full bg-black">
-        {/* Poster shown while loading */}
         {poster && (
           <img
             src={poster}
@@ -262,7 +302,17 @@ export function DownPlayer({
           playsInline
           className="size-full object-contain"
           style={{ display: error ? "none" : "block" }}
-        />
+        >
+          {subtitles.map((s, i) => (
+            <track
+              key={i}
+              kind={(s.kind as React.ComponentProps<"track">["kind"]) ?? "subtitles"}
+              src={s.file}
+              label={s.label ?? "Subtitles"}
+              default={i === 0}
+            />
+          ))}
+        </video>
 
         {/* Loading spinner */}
         {loading && (
@@ -280,9 +330,7 @@ export function DownPlayer({
             <AlertTriangle className="size-8 text-amber-400" />
             <p className="max-w-xs text-sm font-medium text-white">{error}</p>
             {availableProviders.length > 1 && (
-              <p className="text-xs text-white/50">
-                Select a different server below.
-              </p>
+              <p className="text-xs text-white/50">Select a different server below.</p>
             )}
             <button
               onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
@@ -293,11 +341,21 @@ export function DownPlayer({
             </button>
           </div>
         )}
+
+        {/* Skip intro / outro button */}
+        {!loading && !error && skipZone && (
+          <button
+            onClick={() => handleSkip(skipZone)}
+            className="absolute bottom-16 right-4 rounded-lg border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/15"
+          >
+            Skip {skipZone === "intro" ? "Intro" : "Outro"} →
+          </button>
+        )}
       </div>
 
       {/* ── Control bar ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#141414] px-4 py-2.5">
-        {/* Left: settings toggles + quick source picker */}
+        {/* Left: toggles + quick source picker */}
         <div className="flex flex-wrap items-center gap-4">
           <ControlToggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
           <ControlToggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
