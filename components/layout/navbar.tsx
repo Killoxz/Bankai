@@ -93,7 +93,7 @@ export function Navbar() {
       <div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-[#141414]/60 px-8 backdrop-blur-md">
         {/* Logo */}
         <Link href="/" aria-label="Bankai home" className="shrink-0">
-          <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto" priority />
+          <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto invert dark:invert-0" priority />
         </Link>
 
         {/* Nav links */}

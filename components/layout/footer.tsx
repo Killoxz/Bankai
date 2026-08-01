@@ -22,7 +22,7 @@ export function Footer() {
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2">
-            <Image src="/bankai-logo.svg" alt="Bankai" width={70} height={22} className="h-5 w-auto opacity-90" />
+            <Image src="/bankai-logo.svg" alt="Bankai" width={70} height={22} className="h-5 w-auto opacity-90 invert dark:invert-0" />
             <span className="text-[10px] font-medium text-gray-400 dark:text-white/30">v{pkg.version}</span>
           </div>
           {LINKS.map((l) => (

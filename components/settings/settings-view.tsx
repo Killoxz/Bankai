@@ -205,31 +205,33 @@ export function SettingsView() {
               <div>
                 <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-white">Appearance</h2>
                 <SettingRow label="Theme" hint="Choose your preferred appearance">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setTheme("dark")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
-                        resolvedTheme === "dark"
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-gray-300 dark:border-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
-                      )}
-                    >
-                      <Moon className="size-4" />
-                      Dark
-                    </button>
-                    <button
-                      onClick={() => setTheme("light")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
-                        resolvedTheme === "light"
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-gray-300 dark:border-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
-                      )}
-                    >
-                      <Sun className="size-4" />
-                      Light
-                    </button>
+                  <div className="flex gap-1.5">
+                    {([
+                      { value: "dark",  label: "Dark",  Icon: Moon },
+                      { value: "light", label: "Light", Icon: Sun  },
+                    ] as const).map(({ value, label, Icon }) => {
+                      // resolvedTheme is undefined until next-themes hydrates;
+                      // treat undefined as dark (matching defaultTheme)
+                      const active = value === "dark"
+                        ? resolvedTheme !== "light"
+                        : resolvedTheme === "light";
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setTheme(value)}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all",
+                            active
+                              ? "border-primary bg-primary/15 text-primary"
+                              : "border-gray-200 dark:border-white/10 text-gray-400 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20 hover:text-gray-600 dark:hover:text-white/60"
+                          )}
+                        >
+                          <Icon className="size-4" />
+                          {label}
+                          {active && <Check className="size-3 ml-0.5" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </SettingRow>
                 <SettingRow label="Card size" hint="Coming in a future update">
