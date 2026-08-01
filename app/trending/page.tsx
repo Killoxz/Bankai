@@ -24,8 +24,8 @@ export default async function TrendingPage({
       <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">Trending Now</h1>
-          <p className="mt-2 text-sm text-white/50">
+          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Trending Now</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-white/50">
             The most-watched anime this season, updated every 30 minutes.
           </p>
         </div>

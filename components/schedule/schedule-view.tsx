@@ -32,7 +32,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25 }}
-      className="group flex items-center gap-4 rounded-xl border border-white/8 bg-white/4 p-3 transition-colors hover:bg-white/8"
+      className="group flex items-center gap-4 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent"
     >
       {/* Cover */}
       <Link href={`/anime/${entry.media.id}`} className="shrink-0">
@@ -52,11 +52,11 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
       {/* Info */}
       <div className="min-w-0 flex-1">
         <Link href={`/anime/${entry.media.id}`}>
-          <p className="line-clamp-1 text-sm font-semibold text-white transition-colors hover:text-primary">
+          <p className="line-clamp-1 text-sm font-semibold text-card-foreground transition-colors hover:text-primary">
             {title}
           </p>
         </Link>
-        <p className="mt-0.5 text-xs text-white/50">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Episode {entry.episode}
           {entry.media.episodes && ` / ${entry.media.episodes}`}
         </p>
@@ -70,7 +70,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
           {entry.media.genres.slice(0, 2).map((g) => (
             <span
               key={g}
-              className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-medium text-white/55"
+              className="rounded-full bg-gray-100 dark:bg-white/8 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:text-white/55"
             >
               {g}
             </span>
@@ -83,7 +83,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
         <span className="text-xs font-medium text-primary">{formatTime(entry.airingAt)}</span>
         <Link
           href={`/watch/${entry.media.id}?ep=${entry.episode}`}
-          className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary hover:text-black"
+          className="flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-white/10 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-white transition-colors hover:bg-primary hover:text-black"
         >
           <Play className="size-3 fill-current" />
           Watch
@@ -140,7 +140,7 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
                 "relative flex flex-col items-center gap-0.5 rounded-xl px-4 py-2.5 text-center transition-all min-w-[72px]",
                 isActive
                   ? "bg-primary text-black"
-                  : "bg-white/6 text-white/60 hover:bg-white/10 hover:text-white",
+                  : "bg-gray-100 dark:bg-white/6 text-gray-500 dark:text-white/60 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white",
                 !hasEntries && !isActive && "opacity-40",
               ]
                 .filter(Boolean)
@@ -176,7 +176,7 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
       <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
           <CalendarDays className="size-4 text-primary" />
-          <h2 className="text-sm font-bold text-white">
+          <h2 className="text-sm font-bold text-foreground">
             {DAY_FULL[activeDay]}
             {activeDay === today && (
               <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
@@ -184,7 +184,7 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
               </span>
             )}
           </h2>
-          <span className="ml-auto text-xs text-white/40">{visibleEntries.length} episodes</span>
+          <span className="ml-auto text-xs text-muted-foreground">{visibleEntries.length} episodes</span>
         </div>
 
         <AnimatePresence mode="wait">

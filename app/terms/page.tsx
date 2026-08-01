@@ -49,15 +49,15 @@ export default function TermsPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="text-3xl font-bold text-white">Terms &amp; Privacy</h1>
-        <p className="mt-2 text-sm text-white/40">Last updated 2026-07-29.</p>
+        <h1 className="text-3xl font-bold text-foreground">Terms &amp; Privacy</h1>
+        <p className="mt-2 text-sm text-gray-500 dark:text-white/40">Last updated 2026-07-29.</p>
 
         <div className="mt-10 space-y-8">
           {SECTIONS.map((s) => (
             <section key={s.heading}>
-              <h2 className="mb-2 text-lg font-semibold text-white">{s.heading}</h2>
+              <h2 className="mb-2 text-lg font-semibold text-foreground">{s.heading}</h2>
               {s.body.map((p, i) => (
-                <p key={i} className="mt-2 text-sm leading-relaxed text-white/60">
+                <p key={i} className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-white/60">
                   {p}
                 </p>
               ))}

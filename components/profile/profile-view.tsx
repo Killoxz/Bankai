@@ -183,7 +183,7 @@ export function ProfileView() {
           </div>
 
           {/* Tabs */}
-          <div className="mt-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/10">
+          <div className="mt-8 flex flex-wrap items-end justify-between gap-4 border-b border-border">
             <div className="flex flex-wrap items-center gap-6">
               {TABS.map(({ key, label, icon: Icon }) => (
                 <button
@@ -192,13 +192,13 @@ export function ProfileView() {
                   className={[
                     "flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors",
                     tab === key
-                      ? "border-primary text-white"
-                      : "border-transparent text-white/45 hover:text-white/75",
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-gray-400 dark:text-white/45 hover:text-gray-700 dark:hover:text-white/75",
                   ].join(" ")}
                 >
                   <Icon className="size-4" />
                   {label}
-                  <span className="text-xs text-white/40">{counts[key]}</span>
+                  <span className="text-xs text-muted-foreground">{counts[key]}</span>
                 </button>
               ))}
             </div>
@@ -273,7 +273,7 @@ export function ProfileView() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {activeItems.map((anime) => (
                   <Link key={anime.id} href={`/anime/${anime.id.replace("anilist:", "")}`} className="group">
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
                       {anime.coverImage && (
                         <Image
                           src={anime.coverImage}
@@ -284,10 +284,10 @@ export function ProfileView() {
                         />
                       )}
                     </div>
-                    <p className="mt-2 line-clamp-2 text-sm font-medium text-white/90">
+                    <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90">
                       {anime.title}
                     </p>
-                    <p className="text-xs text-white/40">
+                    <p className="text-xs text-gray-500 dark:text-white/40">
                       {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
                     </p>
                   </Link>
@@ -317,8 +317,8 @@ export function ProfileView() {
 function EmptyState({ message, hint }: { message: string; hint?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1.5 py-16 text-center">
-      <p className="text-sm text-white/50">{message}</p>
-      {hint && <p className="text-xs text-white/30">{hint}</p>}
+      <p className="text-sm text-muted-foreground">{message}</p>
+      {hint && <p className="text-xs text-gray-400 dark:text-white/30">{hint}</p>}
     </div>
   );
 }

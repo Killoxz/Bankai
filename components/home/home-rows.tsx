@@ -95,7 +95,7 @@ function ContinueWatchingCard({
         <motion.div
           whileHover={{ scale: 1.03 }}
           transition={{ duration: 0.2 }}
-          className="relative aspect-video overflow-hidden rounded-xl bg-white/5"
+          className="relative aspect-video overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5"
         >
           {bgImage && (
             <Image
@@ -145,7 +145,7 @@ function ContinueWatchingCard({
           <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/20" />
         </motion.div>
 
-        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-white/90">
+        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-gray-800 dark:text-white/90">
           {anime.title}
         </p>
       </Link>
@@ -190,8 +190,8 @@ export function HomeRows({
             onClick={() => setGenre(g === genre ? "All Genres" : g)}
             className={
               g === genre
-                ? "flex-shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black"
-                : "flex-shrink-0 whitespace-nowrap rounded-full border border-white/25 px-4 py-1.5 text-sm font-medium text-white/75 transition-colors hover:border-white/50 hover:text-white"
+                ? "flex-shrink-0 whitespace-nowrap rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background"
+                : "flex-shrink-0 whitespace-nowrap rounded-full border border-gray-300 dark:border-white/25 px-4 py-1.5 text-sm font-medium text-gray-600 dark:text-white/75 transition-colors hover:border-gray-400 dark:hover:border-white/50 hover:text-gray-900 dark:hover:text-white"
             }
           >
             {g}
@@ -203,7 +203,7 @@ export function HomeRows({
       {!watchingLoading && (
         continueItems.length > 0 ? (
           <section>
-            <h2 className="mb-4 text-base font-semibold text-white">Continue Watching</h2>
+            <h2 className="mb-4 text-base font-semibold text-foreground">Continue Watching</h2>
             <ScrollRow className="gap-3 pb-2">
               {continueItems.map((entry, i) => (
                 <ContinueWatchingCard key={entry.id} entry={entry} index={i} onDismiss={dismissEntry} />
@@ -212,14 +212,14 @@ export function HomeRows({
           </section>
         ) : (
           <section>
-            <h2 className="mb-4 text-base font-semibold text-white">Continue Watching</h2>
+            <h2 className="mb-4 text-base font-semibold text-foreground">Continue Watching</h2>
             {loggedIn ? (
-              <p className="rounded-xl bg-white/5 py-8 text-center text-sm text-white/40">
+              <p className="rounded-xl bg-gray-100 dark:bg-white/5 py-8 text-center text-sm text-gray-400 dark:text-white/40">
                 Nothing here yet — start watching something and it&apos;ll appear here.
               </p>
             ) : (
-              <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 py-8 text-center">
-                <p className="text-sm text-white/40">Log in to see your watch history on any device.</p>
+              <div className="flex flex-col items-center gap-3 rounded-xl bg-gray-100 dark:bg-white/5 py-8 text-center">
+                <p className="text-sm text-gray-500 dark:text-white/40">Log in to see your watch history on any device.</p>
                 <Link
                   href="/login"
                   className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
@@ -236,7 +236,7 @@ export function HomeRows({
       <AnimeRow title="Recommended For You" items={recommended} />
 
       {season.length === 0 && recommended.length === 0 && continueItems.length === 0 && (
-        <p className="py-10 text-center text-sm text-white/40">
+        <p className="py-10 text-center text-sm text-gray-400 dark:text-white/40">
           Nothing in {genre} right now — try another genre.
         </p>
       )}

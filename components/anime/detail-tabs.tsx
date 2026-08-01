@@ -57,8 +57,8 @@ export function DetailTabs({ detail, animeId }: { detail: AnimeDetail; animeId: 
             className={[
               "border-b-2 pb-3 text-sm font-medium transition-colors",
               tab === key
-                ? "border-white text-white"
-                : "border-transparent text-white/45 hover:text-white/75",
+                ? "border-primary text-foreground"
+                : "border-transparent text-gray-400 dark:text-white/45 hover:text-gray-700 dark:hover:text-white/75",
             ].join(" ")}
           >
             {label}
@@ -103,22 +103,22 @@ function OverviewTab({ detail }: { detail: AnimeDetail }) {
     <div>
       <div className="grid gap-10 md:grid-cols-[220px_1fr]">
         <div>
-          <h2 className="mb-4 text-xl font-bold text-white">Details</h2>
+          <h2 className="mb-4 text-xl font-bold text-foreground">Details</h2>
           <dl className="space-y-3 text-sm">
             {details
               .filter(([, v]) => v)
               .map(([label, value]) => (
                 <div key={label} className="grid grid-cols-[90px_1fr] gap-3">
-                  <dt className="text-white/45">{label}</dt>
-                  <dd className="text-white/85">{value}</dd>
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="text-card-foreground">{value}</dd>
                 </div>
               ))}
           </dl>
         </div>
 
         <div>
-          <h2 className="mb-4 text-xl font-bold text-white">Description</h2>
-          <div className="space-y-4 text-sm leading-relaxed text-white/70">
+          <h2 className="mb-4 text-xl font-bold text-foreground">Description</h2>
+          <div className="space-y-4 text-sm leading-relaxed text-gray-600 dark:text-white/70">
             {(detail.description ?? "")
               .replace(/<br\s*\/?>/gi, "\n")
               .replace(/<[^>]+>/g, "")
@@ -134,7 +134,7 @@ function OverviewTab({ detail }: { detail: AnimeDetail }) {
 
       {recs.length > 0 && (
         <div className="mt-12">
-          <h2 className="mb-4 text-xl font-bold text-white">Special For You</h2>
+          <h2 className="mb-4 text-xl font-bold text-foreground">Special For You</h2>
           <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
             {recs.map((anime) => (
               <RecommendationCard key={anime.id} anime={anime} />
@@ -172,7 +172,7 @@ function RecommendationCard({ anime }: { anime: AnimeMedia }) {
   return (
     <div className="group w-[170px] shrink-0">
       <Link href={`/anime/${anime.id}`}>
-        <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
           {anime.coverImage.large && (
             <Image
               src={anime.coverImage.large}
@@ -195,8 +195,8 @@ function RecommendationCard({ anime }: { anime: AnimeMedia }) {
         <QuickAction icon={Check} active={status === "COMPLETED"} onClick={() => quickSet("COMPLETED")} />
       </div>
       <Link href={`/anime/${anime.id}`}>
-        <p className="mt-1.5 line-clamp-1 text-sm font-medium text-white/90">{title}</p>
-        <p className="text-xs text-white/40">
+        <p className="mt-1.5 line-clamp-1 text-sm font-medium text-gray-800 dark:text-white/90">{title}</p>
+        <p className="text-xs text-gray-500 dark:text-white/40">
           {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
         </p>
       </Link>
@@ -235,13 +235,13 @@ function RelationsTab({ edges }: { edges: RelationEntry[] }) {
   // anything else would 404 on click.
   const animeEdges = edges.filter(({ node }) => node.type === "ANIME");
   if (animeEdges.length === 0)
-    return <p className="text-sm text-white/40">No related anime found.</p>;
+    return <p className="text-sm text-muted-foreground">No related anime found.</p>;
 
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
       {animeEdges.map(({ relationType, node }) => (
         <Link key={node.id} href={`/anime/${node.id}`} className="group">
-          <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+          <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
             {node.coverImage.large && (
               <Image
                 src={node.coverImage.large}
@@ -255,7 +255,7 @@ function RelationsTab({ edges }: { edges: RelationEntry[] }) {
           <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-primary">
             {formatStatus(relationType)}
           </p>
-          <p className="line-clamp-2 text-sm font-medium text-white/90">
+          <p className="line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90">
             {node.title.english || node.title.romaji}
           </p>
         </Link>
@@ -272,21 +272,21 @@ function PeopleGrid({
   edges: (CharacterEntry | StaffEntry)[];
 }) {
   if (edges.length === 0)
-    return <p className="text-sm text-white/40">No {title.toLowerCase()} listed.</p>;
+    return <p className="text-sm text-muted-foreground">No {title.toLowerCase()} listed.</p>;
 
   return (
     <div>
-      <h2 className="mb-5 text-xl font-bold text-white">{title}</h2>
+      <h2 className="mb-5 text-xl font-bold text-foreground">{title}</h2>
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {edges.map(({ role, node }, i) => (
           <div key={`${node.id}-${role}-${i}`}>
-            <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-white/5">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
               {node.image.large && (
                 <Image src={node.image.large} alt="" fill sizes="180px" className="object-cover" />
               )}
             </div>
-            <p className="mt-2 line-clamp-1 text-sm font-medium text-white/90">{node.name.full}</p>
-            <p className="text-xs text-white/40">{formatStatus(role)}</p>
+            <p className="mt-2 line-clamp-1 text-sm font-medium text-gray-800 dark:text-white/90">{node.name.full}</p>
+            <p className="text-xs text-gray-500 dark:text-white/40">{formatStatus(role)}</p>
           </div>
         ))}
       </div>

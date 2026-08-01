@@ -21,7 +21,7 @@ export function AnimeRow({
 
   return (
     <section>
-      <h2 className="mb-4 text-base font-semibold text-white">{title}</h2>
+      <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       <ScrollRow className="gap-3 pb-2">
         {items.map((anime, i) => (
           <AnimeCard
@@ -62,7 +62,7 @@ function AnimeCard({
         <motion.div
           whileHover={{ scale: 1.04 }}
           transition={{ duration: 0.2 }}
-          className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5"
+          className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5"
         >
           {anime.coverImage.large && (
             <Image
@@ -106,9 +106,9 @@ function AnimeCard({
           )}
         </motion.div>
 
-        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-white/90">{title}</p>
+        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-gray-800 dark:text-white/90">{title}</p>
         {anime.seasonYear && (
-          <p className="text-[11px] text-white/40">{anime.seasonYear}</p>
+          <p className="text-[11px] text-gray-500 dark:text-white/40">{anime.seasonYear}</p>
         )}
       </Link>
     </motion.div>

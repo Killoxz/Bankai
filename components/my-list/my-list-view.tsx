@@ -77,9 +77,9 @@ export function MyListView() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-6 text-2xl font-bold text-white sm:text-3xl">My List</h1>
+        <h1 className="mb-6 text-2xl font-bold text-foreground sm:text-3xl">My List</h1>
 
-        <div className="flex flex-wrap items-center gap-6 border-b border-white/10">
+        <div className="flex flex-wrap items-center gap-6 border-b border-border">
           {TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -87,13 +87,13 @@ export function MyListView() {
               className={[
                 "flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors",
                 tab === key
-                  ? "border-primary text-white"
-                  : "border-transparent text-white/45 hover:text-white/75",
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-gray-400 dark:text-white/45 hover:text-gray-700 dark:hover:text-white/75",
               ].join(" ")}
             >
               <Icon className="size-4" />
               {label}
-              <span className="text-xs text-white/40">{counts[key]}</span>
+              <span className="text-xs text-muted-foreground">{counts[key]}</span>
             </button>
           ))}
         </div>
@@ -101,8 +101,8 @@ export function MyListView() {
         <div className="py-8">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-1.5 py-16 text-center">
-              <p className="text-sm text-white/50">Nothing in {activeLabel} yet.</p>
-              <p className="text-xs text-white/30">
+              <p className="text-sm text-muted-foreground">Nothing in {activeLabel} yet.</p>
+              <p className="text-xs text-gray-400 dark:text-white/30">
                 Anime you add to your list will show up here.
               </p>
             </div>
@@ -110,7 +110,7 @@ export function MyListView() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {items.map((anime) => (
                 <Link key={anime.id} href={`/anime/${anime.id.replace("anilist:", "")}`} className="group">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
                     {anime.coverImage && (
                       <Image
                         src={anime.coverImage}
@@ -121,10 +121,10 @@ export function MyListView() {
                       />
                     )}
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium text-white/90">
+                  <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90">
                     {anime.title}
                   </p>
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-gray-500 dark:text-white/40">
                     {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
                   </p>
                 </Link>

@@ -27,7 +27,7 @@ export default async function SeriesPage({
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-6 text-2xl font-bold text-white sm:text-3xl">
+        <h1 className="mb-6 text-2xl font-bold text-foreground sm:text-3xl">
           {sp.q ? `Results for "${sp.q}"` : "Series"}
         </h1>
         <BrowseView initial={filters} basePath="/series" availableTags={availableTags} />

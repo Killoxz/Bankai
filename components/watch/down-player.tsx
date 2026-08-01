@@ -303,7 +303,24 @@ export function DownPlayer({
       const outro = skipTimes?.outro ?? data.outro ?? null;
       if (intro) setIntro(intro);
       if (outro) setOutro(outro);
-      if (data.subtitles?.length) setSubtitles(data.subtitles);
+      if (data.subtitles?.length) {
+        setSubtitles(data.subtitles);
+      } else if (audio === "dub") {
+        // Dub streams often have no embedded subtitle tracks.
+        // Fetch the sub stream in the background and borrow its subtitles so
+        // the captions toggle still works when the user is watching dubbed audio.
+        const subEpId = providersDataRef.current?.[selectedProvider]?.episodes?.["sub"]
+          ?.find((e) => e.number === episode)?.id;
+        const subUrl = subEpId
+          ? `/api/stream?episodeId=${encodeURIComponent(subEpId)}`
+          : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=sub`;
+        fetch(subUrl)
+          .then((r) => r.ok ? r.json() : null)
+          .then((sd: { subtitles?: SubtitleTrack[] } | null) => {
+            if (sd?.subtitles?.length) setSubtitles(sd.subtitles);
+          })
+          .catch(() => {});
+      }
 
       if (Hls.isSupported()) {
         const hls = new Hls({ maxMaxBufferLength: 30 });

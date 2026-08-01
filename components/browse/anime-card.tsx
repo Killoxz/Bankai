@@ -67,10 +67,10 @@ export function AnimeCard({
           <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/25" />
         </motion.div>
 
-        <p className="mt-2 line-clamp-2 text-sm font-medium text-white/90 group-hover:text-white">
+        <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90 group-hover:text-gray-900 dark:group-hover:text-white">
           {title}
         </p>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-gray-500 dark:text-white/40">
           {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
         </p>
       </Link>
