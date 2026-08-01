@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: bankai
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      # ── Public / non-secret ───────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      - key: DATA_PROVIDER
+        value: anilist
+      - key: NEXT_PUBLIC_DATA_PROVIDER
+        value: anilist
+      - key: NEXT_PUBLIC_APP_NAME
+        value: Bankai
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: STREAMING_API_URL
+        value: https://bankai-s-api.onrender.com
+
+      # ── Secrets — add these in the Render dashboard manually ─────────────────
+      # (Environment → Add Environment Variable)
+      #
+      #   DATABASE_URL        your Neon PostgreSQL connection string
+      #   AUTH_SECRET         random secret, e.g. openssl rand -base64 32
+      #   BLOB_READ_WRITE_TOKEN   your Vercel Blob token
+      #   NEXT_PUBLIC_APP_URL     https://<your-render-subdomain>.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        sync: false
+      - key: BLOB_READ_WRITE_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
