@@ -1,180 +1,128 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { AlertTriangle, Loader2, RefreshCw, ChevronDown } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, ChevronDown, Play, SkipBack, SkipForward } from "lucide-react";
 import Hls from "hls.js";
 import { useAuthStore } from "@/store/auth-store";
-
-// ─── Anivexa episode/provider types ─────────────────────────────────────────
-
-interface ProviderEpisode {
-  id: string;       // "watch/reanime/21/sub/reanime-1"
-  number: number;
-  title?: string;
-  thumbnail?: string;
-}
-
-interface ProviderData {
-  provider?: string;
-  episodes?: {
-    sub?: ProviderEpisode[];
-    dub?: ProviderEpisode[];
-  };
-  error?: string;
-}
-
-type EpisodesMap = Record<string, ProviderData>;
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const PROVIDER_LABELS: Record<string, string> = {
-  allmanga:   "AllManga",
-  reanime:    "Reanime",
-  anikoto:    "AniKoto",
-  animegg:    "AnimeGG",
-  anineko:    "AniNeko",
-  anidbapp:   "AniDB App",
-  "2dhive":   "2DHive",
-  animenosub: "AnimeNoSub",
-  anizone:    "AniZone",
-  anibd:      "Anibd",
-  senshi:     "Senshi",
-  kaa:        "KickAss",
-  animedunya: "AnimeDunya",
-};
-
-function providerLabel(name: string): string {
-  return PROVIDER_LABELS[name] ?? name;
-}
-
-function parseProviders(raw: Record<string, unknown>): EpisodesMap {
-  const result: EpisodesMap = {};
-  for (const [key, val] of Object.entries(raw)) {
-    if (key === "mappings" || key === "page" || key === "type" || key === "_unknownProviders") continue;
-    if (typeof val !== "object" || val === null) continue;
-    const v = val as Record<string, unknown>;
-    if (v.episodes && typeof v.episodes === "object") {
-      result[key] = v as ProviderData;
-    }
-  }
-  return result;
-}
-
-function findEpisode(
-  providers: EpisodesMap,
-  provider: string,
-  audio: "sub" | "dub",
-  episodeNumber: number
-): ProviderEpisode | null {
-  const p = providers[provider];
-  if (!p?.episodes) return null;
-  const list = p.episodes[audio] ?? [];
-  return list.find((e) => e.number === episodeNumber) ?? null;
-}
-
-function firstAvailableProvider(
-  providers: EpisodesMap,
-  audio: "sub" | "dub",
-  episodeNumber: number
-): string | null {
-  for (const [name, data] of Object.entries(providers)) {
-    if (data.error) continue;
-    const list = data.episodes?.[audio] ?? [];
-    if (list.some((e) => e.number === episodeNumber)) return name;
-  }
-  return null;
-}
-
-function hasAudio(providers: EpisodesMap, audio: "sub" | "dub", episodeNumber: number): boolean {
-  return Object.values(providers).some(
-    (p) => !p.error && (p.episodes?.[audio] ?? []).some((e) => e.number === episodeNumber)
-  );
-}
-
-// ─── Component ──────────────────────────────────────────────────────────────
+import {
+  firstAvailableProvider,
+  hasAudio,
+  providerLabel,
+  type EpisodesMap,
+} from "./episode-utils";
 
 interface DownPlayerProps {
   poster?: string;
   animeId: number;
   episode?: number;
+  totalEpisodes?: number;
+  currentEpisode?: number;
+  providersData: EpisodesMap | null;
+  selectedProvider: string | null;
+  audio: "sub" | "dub";
+  onProviderChange: (p: string | null) => void;
+  onAudioChange: (a: "sub" | "dub") => void;
+  autoplay: boolean;
+  autoNext: boolean;
+  autoSkip: boolean;
+  lightsOff: boolean;
+  onAutoplayChange: (v: boolean) => void;
+  onAutoNextChange: (v: boolean) => void;
+  onAutoSkipChange: (v: boolean) => void;
+  onLightsOffChange: (v: boolean) => void;
+  onPrevEpisode: () => void;
+  onNextEpisode: () => void;
+  onEpisodeEnd?: () => void;
 }
 
-export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
+function ControlToggle({
+  label,
+  active,
+  accent,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  accent?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors",
+        active && accent
+          ? "text-primary"
+          : active
+          ? "text-white"
+          : "text-white/45 hover:text-white/70",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "size-3 shrink-0 rounded-[2px] border transition-colors",
+          active && accent
+            ? "border-primary bg-primary"
+            : active
+            ? "border-white bg-white"
+            : "border-white/30",
+        ].join(" ")}
+      />
+      {label}
+    </button>
+  );
+}
+
+export function DownPlayer({
+  poster,
+  animeId,
+  episode = 1,
+  totalEpisodes = 0,
+  providersData,
+  selectedProvider,
+  audio,
+  onProviderChange,
+  onAudioChange,
+  autoplay,
+  autoNext,
+  autoSkip,
+  lightsOff,
+  onAutoplayChange,
+  onAutoNextChange,
+  onAutoSkipChange,
+  onLightsOffChange,
+  onPrevEpisode,
+  onNextEpisode,
+  onEpisodeEnd,
+}: DownPlayerProps) {
   const videoRef    = useRef<HTMLVideoElement | null>(null);
   const hlsRef      = useRef<Hls | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
 
-  // Episode data from Anivexa
-  const [providers, setProviders] = useState<EpisodesMap | null>(null);
-  const [epLoading, setEpLoading] = useState(true);
-  const [epError, setEpError]     = useState<string | null>(null);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [retryKey, setRetryKey]     = useState(0);
+  const [paused, setPaused]         = useState(true);
+  const [providerOpen, setProviderOpen] = useState(false);
 
-  // Selected source
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [audio, setAudio]                       = useState<"sub" | "dub">("sub");
-  const [providerOpen, setProviderOpen]          = useState(false);
+  // Available providers for the current episode + audio
+  const availableProviders = providersData
+    ? Object.entries(providersData)
+        .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
+        .map(([n]) => n)
+    : [];
 
-  // Player state
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+  const hasSub = providersData ? hasAudio(providersData, "sub", episode) : false;
+  const hasDub = providersData ? hasAudio(providersData, "dub", episode) : false;
 
-  // Step 1: Fetch episodes data for this anime
-  useEffect(() => {
-    let cancelled = false;
-    setEpLoading(true);
-    setEpError(null);
-    setProviders(null);
-    setSelectedProvider(null);
-
-    fetch(`/api/episodes/${animeId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Episodes API returned ${r.status}`);
-        return r.json();
-      })
-      .then((raw) => {
-        if (cancelled) return;
-        const parsed = parseProviders(raw as Record<string, unknown>);
-        setProviders(parsed);
-        // Auto-pick first available provider for this episode + sub
-        const first = firstAvailableProvider(parsed, "sub", episode)
-          ?? firstAvailableProvider(parsed, "dub", episode);
-        if (first) {
-          setSelectedProvider(first);
-          const hasSub = hasAudio(parsed, "sub", episode);
-          if (!hasSub) setAudio("dub");
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          setEpError(e instanceof Error ? e.message : "Failed to load episode sources.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setEpLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [animeId, episode]);
-
-  // When provider/audio changes due to episode change, re-pick best provider
-  useEffect(() => {
-    if (!providers || selectedProvider) return;
-    const first = firstAvailableProvider(providers, audio, episode)
-      ?? firstAvailableProvider(providers, audio === "sub" ? "dub" : "sub", episode);
-    if (first) setSelectedProvider(first);
-  }, [providers, episode, audio, selectedProvider]);
-
-  // Step 2: Load stream whenever provider/audio/episode/retryKey changes
+  // Load stream when provider/audio/episode/retryKey changes
   const initPlayer = useCallback(async () => {
     if (!selectedProvider) return;
 
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     setLoading(true);
     setError(null);
+    setPaused(true);
 
     try {
       const res = await fetch(
@@ -185,7 +133,7 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
       if (data.error) throw new Error(data.error as string);
 
       const streamUrl = data.stream_url as string | undefined;
-      if (!streamUrl) throw new Error("No stream URL returned — try another source.");
+      if (!streamUrl) throw new Error("No stream URL — try another source.");
 
       const video = videoRef.current;
       if (!video) return;
@@ -198,7 +146,9 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
-          video.play().catch(() => {});
+          if (autoplay) {
+            video.play().then(() => setPaused(false)).catch(() => {});
+          }
           if (currentUser) {
             fetch("/api/history", {
               method: "POST",
@@ -216,17 +166,14 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
         });
 
         hls.on(Hls.Events.ERROR, (_ev, d) => {
-          if (d.fatal) {
-            setError("Playback error — try a different source.");
-            setLoading(false);
-          }
+          if (d.fatal) { setError("Playback error — try a different source."); setLoading(false); }
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = streamUrl;
-        video.addEventListener("loadedmetadata", () => {
+        video.onloadedmetadata = () => {
           setLoading(false);
-          video.play().catch(() => {});
-        });
+          if (autoplay) video.play().then(() => setPaused(false)).catch(() => {});
+        };
       } else {
         throw new Error("Your browser does not support HLS playback.");
       }
@@ -234,105 +181,58 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
       setError(err instanceof Error ? err.message : "Streaming is unavailable.");
       setLoading(false);
     }
-  }, [animeId, episode, selectedProvider, audio, currentUser]);
+  }, [animeId, episode, selectedProvider, audio, autoplay, currentUser]);
 
   useEffect(() => {
     initPlayer();
-    return () => {
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    };
+    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
   }, [initPlayer, retryKey]);
 
-  // ── Build provider list for current episode + audio ──────────────────────
-  const availableProviders = providers
-    ? Object.entries(providers)
-        .filter(([, data]) => !data.error && (data.episodes?.[audio] ?? []).some((e) => e.number === episode))
-        .map(([name]) => name)
-    : [];
+  // Auto-skip intro (~1:30) if enabled
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !autoSkip) return;
+    const handler = () => {
+      if (video.currentTime > 5 && video.currentTime < 120) {
+        video.currentTime = 90;
+      }
+    };
+    video.addEventListener("timeupdate", handler, { once: true });
+    return () => video.removeEventListener("timeupdate", handler);
+  }, [autoSkip, episode, selectedProvider]);
 
-  const hasSub = providers ? hasAudio(providers, "sub", episode) : false;
-  const hasDub = providers ? hasAudio(providers, "dub", episode) : false;
+  // Episode end → auto next
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !onEpisodeEnd) return;
+    const handler = () => onEpisodeEnd();
+    video.addEventListener("ended", handler);
+    return () => video.removeEventListener("ended", handler);
+  }, [onEpisodeEnd]);
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // Play/pause state sync
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onPlay  = () => setPaused(false);
+    const onPause = () => setPaused(true);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    return () => { video.removeEventListener("play", onPlay); video.removeEventListener("pause", onPause); };
+  }, []);
+
+  function handleAudioChange(a: "sub" | "dub") {
+    onAudioChange(a);
+    if (providersData) {
+      const next = firstAvailableProvider(providersData, a, episode);
+      onProviderChange(next);
+    }
+  }
+
   return (
-    <div className="space-y-2">
-      {/* Source bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Sub / Dub toggle */}
-        {(hasSub || hasDub) && (
-          <div className="flex overflow-hidden rounded-lg border border-white/15 text-xs font-semibold">
-            {(["sub", "dub"] as const).map((a) => {
-              const available = a === "sub" ? hasSub : hasDub;
-              return (
-                <button
-                  key={a}
-                  disabled={!available}
-                  onClick={() => {
-                    setAudio(a);
-                    // Re-select a provider that has this audio for this episode
-                    if (providers) {
-                      const next = firstAvailableProvider(providers, a, episode);
-                      setSelectedProvider(next);
-                    }
-                  }}
-                  className={[
-                    "px-3 py-1.5 uppercase tracking-wide transition-colors",
-                    audio === a
-                      ? "bg-primary text-black"
-                      : available
-                      ? "bg-white/6 text-white/70 hover:bg-white/12"
-                      : "bg-white/3 text-white/25 cursor-not-allowed",
-                  ].join(" ")}
-                >
-                  {a}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Provider dropdown */}
-        {availableProviders.length > 0 && (
-          <div
-            className="relative"
-            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setProviderOpen(false); }}
-          >
-            <button
-              onClick={() => setProviderOpen((o) => !o)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/6 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-white/30"
-            >
-              {selectedProvider ? providerLabel(selectedProvider) : "Source"}
-              <ChevronDown className="size-3 text-white/40" />
-            </button>
-            {providerOpen && (
-              <div className="absolute left-0 top-9 z-30 min-w-[140px] overflow-hidden rounded-lg border border-white/12 bg-[#1c1c1c] py-1 shadow-2xl">
-                {availableProviders.map((name) => (
-                  <button
-                    key={name}
-                    onClick={() => { setSelectedProvider(name); setProviderOpen(false); }}
-                    className={[
-                      "flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/6",
-                      name === selectedProvider ? "text-primary" : "text-white/75",
-                    ].join(" ")}
-                  >
-                    {providerLabel(name)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {epLoading && (
-          <span className="flex items-center gap-1.5 text-xs text-white/40">
-            <Loader2 className="size-3 animate-spin" />
-            Finding sources…
-          </span>
-        )}
-      </div>
-
-      {/* Video */}
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-xl">
+    <div className="overflow-hidden rounded-xl bg-black shadow-2xl">
+      {/* ── Video ──────────────────────────────────────────────────────────── */}
+      <div className="relative aspect-video w-full">
         {poster && !error && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -340,7 +240,7 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
             alt=""
             className={[
               "absolute inset-0 size-full object-cover transition-opacity duration-500",
-              loading ? "opacity-25" : "opacity-0 pointer-events-none",
+              loading ? "opacity-30" : "opacity-0 pointer-events-none",
             ].join(" ")}
           />
         )}
@@ -352,26 +252,41 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
           className={["size-full object-contain", loading || error ? "invisible" : "visible"].join(" ")}
         />
 
-        {(loading || (!selectedProvider && !epLoading && !epError)) && !error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 backdrop-blur-sm">
-            <Loader2 className="size-8 animate-spin text-white" />
-            <p className="text-sm font-medium text-white/80">
-              {loading ? `Loading episode ${episode}…` : "Finding available sources…"}
-            </p>
+        {/* Paused / loading play button */}
+        {(paused || loading) && !error && (
+          <div
+            className="absolute inset-0 flex cursor-pointer items-center justify-center"
+            onClick={() => {
+              const v = videoRef.current;
+              if (!v || loading) return;
+              v.paused ? v.play() : v.pause();
+            }}
+          >
+            {loading ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="size-10 animate-spin text-white drop-shadow-lg" />
+                <p className="text-sm font-medium text-white/80 drop-shadow">
+                  Loading episode {episode}…
+                </p>
+              </div>
+            ) : (
+              <div className="grid size-16 place-items-center rounded-full bg-black/60 ring-2 ring-white/30 backdrop-blur-sm transition-transform hover:scale-110">
+                <Play className="size-7 fill-white text-white" />
+              </div>
+            )}
           </div>
         )}
 
-        {(error || epError) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center backdrop-blur-sm">
+        {/* Error state */}
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center">
             <AlertTriangle className="size-8 text-amber-400" />
-            <p className="max-w-xs text-sm font-medium text-white">{error ?? epError}</p>
-            {availableProviders.length > 1 && error && (
-              <p className="text-xs text-white/50">
-                Try switching to a different source above.
-              </p>
+            <p className="max-w-xs text-sm font-medium text-white">{error}</p>
+            {availableProviders.length > 1 && (
+              <p className="text-xs text-white/50">Try switching to a different source below.</p>
             )}
             <button
-              onClick={() => { setError(null); setEpError(null); setRetryKey((k) => k + 1); }}
+              onClick={() => { setError(null); setRetryKey((k) => k + 1); }}
               className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
             >
               <RefreshCw className="size-4" />
@@ -379,6 +294,118 @@ export function DownPlayer({ poster, animeId, episode = 1 }: DownPlayerProps) {
             </button>
           </div>
         )}
+      </div>
+
+      {/* ── Custom control bar ──────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/8 bg-[#141414] px-4 py-2.5">
+        {/* Left: toggles */}
+        <div className="flex flex-wrap items-center gap-4">
+          <ControlToggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
+          <ControlToggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
+          <ControlToggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
+
+          <button className="text-xs font-medium text-white/45 transition-colors hover:text-white/70">
+            ⌘ Shortcuts
+          </button>
+
+          <button
+            onClick={() => onLightsOffChange(!lightsOff)}
+            className={[
+              "text-xs font-medium transition-colors",
+              lightsOff ? "text-primary" : "text-white/45 hover:text-white/70",
+            ].join(" ")}
+          >
+            ☽ Lights Off
+          </button>
+
+          {/* Source picker */}
+          {(hasSub || hasDub || availableProviders.length > 0) && (
+            <div
+              className="relative"
+              onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setProviderOpen(false); }}
+            >
+              <button
+                onClick={() => setProviderOpen((o) => !o)}
+                className="flex items-center gap-1 text-xs font-medium text-white/45 transition-colors hover:text-white/70"
+              >
+                {selectedProvider ? providerLabel(selectedProvider) : "Source"}
+                <ChevronDown className="size-3" />
+              </button>
+
+              {providerOpen && (
+                <div className="absolute bottom-7 left-0 z-30 min-w-[160px] overflow-hidden rounded-lg border border-white/12 bg-[#1c1c1c] shadow-2xl">
+                  {/* Sub/Dub */}
+                  {(hasSub || hasDub) && (
+                    <div className="flex border-b border-white/10">
+                      {(["sub", "dub"] as const).map((a) => {
+                        const av = a === "sub" ? hasSub : hasDub;
+                        return (
+                          <button
+                            key={a}
+                            disabled={!av}
+                            onClick={() => { handleAudioChange(a); }}
+                            className={[
+                              "flex-1 py-1.5 text-xs font-semibold uppercase transition-colors",
+                              audio === a
+                                ? "bg-primary/15 text-primary"
+                                : av
+                                ? "text-white/60 hover:text-white"
+                                : "cursor-not-allowed text-white/20",
+                            ].join(" ")}
+                          >
+                            {a}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Provider list */}
+                  <div className="py-1">
+                    {availableProviders.map((name) => (
+                      <button
+                        key={name}
+                        onClick={() => { onProviderChange(name); setProviderOpen(false); }}
+                        className={[
+                          "flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5",
+                          name === selectedProvider ? "text-primary" : "text-white/75",
+                        ].join(" ")}
+                      >
+                        {providerLabel(name)}
+                      </button>
+                    ))}
+                    {availableProviders.length === 0 && (
+                      <p className="px-3.5 py-2 text-xs text-white/35">No sources yet…</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Prev / Next episode */}
+        <div className="flex items-center gap-3 text-xs font-medium">
+          <button
+            onClick={onPrevEpisode}
+            disabled={episode <= 1}
+            className="flex items-center gap-1 text-white/55 transition-colors hover:text-white disabled:opacity-25"
+          >
+            <SkipBack className="size-3.5" />
+            Prev
+          </button>
+
+          <span className="text-white/30">|</span>
+
+          <button
+            onClick={onNextEpisode}
+            disabled={totalEpisodes > 0 && episode >= totalEpisodes}
+            className="flex items-center gap-1 text-white/55 transition-colors hover:text-white disabled:opacity-25"
+          >
+            Episode {episode + 1}
+            <SkipForward className="size-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
