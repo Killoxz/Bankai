@@ -5,6 +5,7 @@ import Hls from "hls.js";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   Loader2, AlertTriangle, RefreshCw, SkipBack, SkipForward,
+  Captions, CaptionsOff, Gauge,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episode-utils";
@@ -53,7 +54,7 @@ function Toggle({ label, active, accent, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80"
+      className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80 [touch-action:manipulation]"
     >
       <span className={[
         "relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors duration-200",
@@ -67,6 +68,24 @@ function Toggle({ label, active, accent, onClick }: {
       {label}
     </button>
   );
+}
+
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const CAPTION_COLORS = ["#ffffff", "#ffff00", "#00eeff", "#ff6b6b", "#a8ff78"];
+const CAPTION_FONTS  = [
+  { l: "Default", v: "inherit" },
+  { l: "Arial",   v: "Arial, sans-serif" },
+  { l: "Serif",   v: "Georgia, serif" },
+  { l: "Mono",    v: "monospace" },
+];
+const CAPTION_BGS = [
+  { l: "None", v: "transparent" },
+  { l: "Semi", v: "rgba(0,0,0,0.65)" },
+  { l: "Dark", v: "rgba(0,0,0,0.9)" },
+];
+
+function lsGet(key: string, fallback: string) {
+  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 }
 
 export function DownPlayer({
@@ -94,6 +113,7 @@ export function DownPlayer({
   const providersDataRef    = useRef(providersData);
   const selectedProviderRef = useRef(selectedProvider);
   const audioRef            = useRef(audio);
+  const speedRef            = useRef(1);
 
   useEffect(() => { autoplayRef.current         = autoplay;         }, [autoplay]);
   useEffect(() => { autoSkipRef.current         = autoSkip;         }, [autoSkip]);
@@ -124,15 +144,61 @@ export function DownPlayer({
   const [showCtrl,    setShowCtrl]    = useState(true);
   const [sourceOpen,  setSourceOpen]  = useState(false);
 
+  // ── Caption & speed state (persisted to localStorage) ────────────────────
+  const [captionsOn,   setCaptionsOn]   = useState(() => lsGet("bankai-captions", "true") !== "false");
+  const [captionSize,  setCaptionSize]  = useState(() => lsGet("bankai-caption-size", "100"));
+  const [captionColor, setCaptionColor] = useState(() => lsGet("bankai-caption-color", "#ffffff"));
+  const [captionBg,    setCaptionBg]    = useState(() => lsGet("bankai-caption-bg", "rgba(0,0,0,0.75)"));
+  const [captionFont,  setCaptionFont]  = useState(() => lsGet("bankai-caption-font", "inherit"));
+  const [speed,        setSpeed]        = useState(() => parseFloat(lsGet("bankai-speed", "1")));
+  const [captionPanelOpen, setCaptionPanelOpen] = useState(false);
+  const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
+
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+
   const availableProviders = providersData
     ? Object.entries(providersData)
         .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
         .map(([n]) => n)
     : [];
 
+  // ── Caption ::cue style injection ─────────────────────────────────────────
+  useEffect(() => {
+    const styleId = "bankai-cue-styles";
+    let el = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement("style");
+      el.id = styleId;
+      document.head.appendChild(el);
+    }
+    const pct = parseFloat(captionSize) / 100;
+    el.textContent = `video::cue { font-size: ${pct}em; color: ${captionColor}; background-color: ${captionBg}; font-family: ${captionFont}; }`;
+    try {
+      localStorage.setItem("bankai-caption-size",  captionSize);
+      localStorage.setItem("bankai-caption-color", captionColor);
+      localStorage.setItem("bankai-caption-bg",    captionBg);
+      localStorage.setItem("bankai-caption-font",  captionFont);
+    } catch {}
+  }, [captionSize, captionColor, captionBg, captionFont]);
+
+  // ── Caption on/off — toggle TextTrack mode ────────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    for (let i = 0; i < video.textTracks.length; i++) {
+      video.textTracks[i].mode = captionsOn ? "showing" : "hidden";
+    }
+    try { localStorage.setItem("bankai-captions", captionsOn ? "true" : "false"); } catch {}
+  }, [captionsOn, subtitles]); // subtitles dep re-runs after tracks load
+
+  // ── Playback speed ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) video.playbackRate = speed;
+    try { localStorage.setItem("bankai-speed", speed.toString()); } catch {}
+  }, [speed]);
+
   // ── Player initialisation ─────────────────────────────────────────────────
-  // providersData is intentionally NOT in deps — it's read via ref so that
-  // loading providers doesn't tear down and restart the player.
   const initPlayer = useCallback(async () => {
     if (!selectedProvider) return;
 
@@ -158,7 +224,6 @@ export function DownPlayer({
         ? `/api/stream?episodeId=${encodeURIComponent(epId)}`
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
-      // Fetch stream + saved progress in parallel
       const [res, resumeAt] = await Promise.all([
         fetch(apiUrl),
         currentUserRef.current
@@ -200,6 +265,7 @@ export function DownPlayer({
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
+          video.playbackRate = speedRef.current;
           if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
         });
@@ -214,6 +280,7 @@ export function DownPlayer({
         video.src = streamUrl;
         video.onloadedmetadata = () => {
           setLoading(false);
+          video.playbackRate = speedRef.current;
           if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
         };
@@ -225,7 +292,7 @@ export function DownPlayer({
       setLoading(false);
       onErrorRef.current?.(selectedProvider);
     }
-  }, [animeId, episode, selectedProvider, audio]); // ← providersData intentionally absent
+  }, [animeId, episode, selectedProvider, audio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     initPlayer();
@@ -265,7 +332,7 @@ export function DownPlayer({
     };
   }, []);
 
-  // Skip zone + auto-skip on timeupdate
+  // ── Skip zone detection + auto-skip (intro AND outro) ────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -274,15 +341,20 @@ export function DownPlayer({
       if      (intro && t >= intro.start && t < intro.end) setSkipZone("intro");
       else if (outro && t >= outro.start && t < outro.end) setSkipZone("outro");
       else setSkipZone(null);
-      if (autoSkipRef.current && intro && t >= intro.start && t < intro.end) {
-        video.currentTime = intro.end;
+
+      if (autoSkipRef.current) {
+        if (intro && t >= intro.start && t < intro.end) {
+          video.currentTime = intro.end;
+        } else if (outro && t >= outro.start && t < outro.end) {
+          video.currentTime = outro.end;
+        }
       }
     };
     video.addEventListener("timeupdate", handler);
     return () => video.removeEventListener("timeupdate", handler);
   }, [intro, outro]);
 
-  // Fullscreen change — covers both standard and webkit (iOS Safari)
+  // ── Fullscreen change ─────────────────────────────────────────────────────
   useEffect(() => {
     const onChange = () => setFullscreen(
       !!document.fullscreenElement || !!(document as unknown as Record<string,unknown>).webkitFullscreenElement
@@ -295,7 +367,7 @@ export function DownPlayer({
     };
   }, []);
 
-  // Keyboard shortcuts (videoRef and containerRef are stable — no deps needed)
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -311,10 +383,13 @@ export function DownPlayer({
       if (e.code === "ArrowUp")    { e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); }
       if (e.code === "ArrowDown")  { e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); }
       if (e.code === "KeyM")       { video.muted = !video.muted; }
+      if (e.code === "KeyC")       { setCaptionsOn((v) => !v); }
       if (e.code === "KeyF") {
         e.preventDefault();
         toggleFullscreen();
       }
+      if (e.code === "Comma")  { setSpeed((s) => { const i = SPEEDS.indexOf(s); return SPEEDS[Math.max(0, i - 1)]; }); }
+      if (e.code === "Period") { setSpeed((s) => { const i = SPEEDS.indexOf(s); return SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]; }); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -350,9 +425,9 @@ export function DownPlayer({
       }).catch(() => {});
     }
 
-    const onTime   = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
-    const onPause  = () => saveProgress();
-    const onEnded  = () => saveProgress(true);
+    const onTime  = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
+    const onPause = () => saveProgress();
+    const onEnded = () => saveProgress(true);
 
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("pause",      onPause);
@@ -395,7 +470,6 @@ export function DownPlayer({
           ((video as unknown as Record<string, () => void>).webkitEnterFullscreen)();
       });
     } else {
-      // iOS Safari — only video element supports fullscreen
       (video as unknown as Record<string, () => void>).webkitEnterFullscreen?.();
     }
   }
@@ -406,6 +480,16 @@ export function DownPlayer({
     if (!bar || !v || !v.duration) return;
     const rect = bar.getBoundingClientRect();
     v.currentTime = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * v.duration;
+  }
+
+  function seekTouch(e: React.TouchEvent) {
+    const bar = progressRef.current;
+    const v   = videoRef.current;
+    if (!bar || !v || !v.duration) return;
+    const touch = e.touches[0] ?? e.changedTouches[0];
+    if (!touch) return;
+    const rect = bar.getBoundingClientRect();
+    v.currentTime = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width)) * v.duration;
   }
 
   function handleAudioChange(a: "sub" | "dub") {
@@ -424,6 +508,7 @@ export function DownPlayer({
         className="relative aspect-video w-full cursor-pointer select-none bg-black"
         onMouseMove={bumpControls}
         onMouseLeave={() => { if (!videoRef.current?.paused) setShowCtrl(false); }}
+        onTouchStart={bumpControls}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button,input")) return;
           togglePlay();
@@ -479,7 +564,7 @@ export function DownPlayer({
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setError(null); setRetryKey((k) => k + 1); }}
-              className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors [touch-action:manipulation]"
             >
               <RefreshCw className="size-4" /> Retry
             </button>
@@ -495,21 +580,21 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Skip intro/outro — visible whenever timestamp data exists, not just when inside the zone */}
+        {/* Skip intro/outro — only visible while inside the actual timestamp zone */}
         {!loading && !error && (
           <div className="absolute bottom-20 right-4 z-10 flex flex-col items-end gap-2">
-            {intro && currentTime < intro.end && (
+            {intro && currentTime >= intro.start && currentTime < intro.end && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = intro.end; }}
-                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20 [touch-action:manipulation]"
               >
                 Skip Intro →
               </button>
             )}
-            {outro && currentTime >= Math.max(0, outro.start - 30) && currentTime < outro.end && (
+            {outro && currentTime >= outro.start && currentTime < outro.end && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = outro.end; }}
-                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+                className="rounded-lg border border-white/25 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20 [touch-action:manipulation]"
               >
                 Skip Outro →
               </button>
@@ -526,35 +611,36 @@ export function DownPlayer({
             ].join(" ")}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Progress bar */}
+            {/* Progress bar — touch-scrubbing enabled */}
             <div
               ref={progressRef}
               className="group/bar relative mb-3 h-1 cursor-pointer rounded-full bg-white/20 transition-all duration-150 hover:h-2"
+              style={{ touchAction: "none" }}
               onMouseDown={(e) => { scrubbingRef.current = true; seek(e.clientX); }}
               onMouseMove={(e) => { if (scrubbingRef.current) seek(e.clientX); }}
               onMouseUp={   () => { scrubbingRef.current = false; }}
               onMouseLeave={ () => { scrubbingRef.current = false; }}
+              onTouchStart={(e) => { e.stopPropagation(); scrubbingRef.current = true; seekTouch(e); }}
+              onTouchMove={(e)  => { if (scrubbingRef.current) { e.preventDefault(); seekTouch(e); } }}
+              onTouchEnd={  () => { scrubbingRef.current = false; }}
             >
-              {/* Buffered track */}
               <div className="absolute inset-y-0 left-0 rounded-full bg-white/20 transition-all"
                 style={{ width: `${bufferedPct}%` }} />
-              {/* Played track */}
               <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
                 style={{ width: `${progress}%` }} />
-              {/* Thumb */}
               <div
                 className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
                 style={{ left: `${progress}%` }}
               />
             </div>
 
-            {/* Bottom row */}
+            {/* Controls row */}
             <div className="flex items-center gap-2">
               {/* Play/Pause */}
               <button
                 onClick={togglePlay}
                 disabled={loading}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:opacity-40"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:opacity-40 [touch-action:manipulation]"
               >
                 {playing
                   ? <Pause className="size-4" fill="white" />
@@ -563,11 +649,11 @@ export function DownPlayer({
 
               {/* Rewind / Forward */}
               <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
-                className="text-white/70 hover:text-white transition-colors" title="-10s">
+                className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]" title="-10s">
                 <SkipBack className="size-4" />
               </button>
               <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
-                className="text-white/70 hover:text-white transition-colors" title="+10s">
+                className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]" title="+10s">
                 <SkipForward className="size-4" />
               </button>
 
@@ -578,11 +664,120 @@ export function DownPlayer({
 
               <div className="flex-1" />
 
+              {/* Speed picker */}
+              <div className="relative"
+                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSpeedPanelOpen(false); }}>
+                <button
+                  onClick={() => { setSpeedPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
+                  title="Playback speed (< / >)"
+                >
+                  <Gauge className="size-3.5" />
+                  {speed}x
+                </button>
+                {speedPanelOpen && (
+                  <div className="absolute bottom-8 right-0 z-30 overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
+                    {SPEEDS.map((s) => (
+                      <button key={s}
+                        onClick={() => { setSpeed(s); setSpeedPanelOpen(false); }}
+                        className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                          s === speed ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                        {s}x
+                        {s === 1 && <span className="text-white/30">Normal</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Caption toggle + style panel */}
+              <div className="relative"
+                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCaptionPanelOpen(false); }}>
+                <button
+                  onClick={() => { setCaptionPanelOpen((o) => !o); setSpeedPanelOpen(false); }}
+                  className={[
+                    "transition-colors [touch-action:manipulation]",
+                    captionPanelOpen ? "text-primary" : captionsOn ? "text-white/80 hover:text-white" : "text-white/30 hover:text-white/60",
+                  ].join(" ")}
+                  title="Captions (C)"
+                >
+                  {captionsOn ? <Captions className="size-4" /> : <CaptionsOff className="size-4" />}
+                </button>
+
+                {/* Caption style panel */}
+                {captionPanelOpen && (
+                  <div className="absolute bottom-10 right-0 z-30 w-64 rounded-xl border border-white/10 bg-[#1c1c1c] p-3 shadow-2xl">
+                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Captions</p>
+
+                    {/* On/Off toggle */}
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs text-white/70">Show Captions</span>
+                      <button
+                        onClick={() => setCaptionsOn((v) => !v)}
+                        className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
+                          captionsOn ? "bg-primary" : "bg-white/15"].join(" ")}
+                      >
+                        <span className={["absolute size-3.5 rounded-full bg-white shadow transition-transform duration-200",
+                          captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
+                      </button>
+                    </div>
+
+                    {/* Size */}
+                    <p className="mb-1 text-[10px] font-medium text-white/35">SIZE</p>
+                    <div className="mb-3 flex gap-1.5">
+                      {[{ l: "S", v: "75" }, { l: "M", v: "100" }, { l: "L", v: "125" }, { l: "XL", v: "150" }].map(({ l, v }) => (
+                        <button key={v} onClick={() => setCaptionSize(v)}
+                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                            captionSize === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Text color */}
+                    <p className="mb-1 text-[10px] font-medium text-white/35">TEXT COLOR</p>
+                    <div className="mb-3 flex gap-2">
+                      {CAPTION_COLORS.map((c) => (
+                        <button key={c} onClick={() => setCaptionColor(c)} title={c}
+                          className={["size-5 rounded-full border-2 transition-transform hover:scale-110 [touch-action:manipulation]",
+                            captionColor === c ? "border-white scale-110" : "border-transparent"].join(" ")}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+
+                    {/* Background */}
+                    <p className="mb-1 text-[10px] font-medium text-white/35">BACKGROUND</p>
+                    <div className="mb-3 flex gap-1.5">
+                      {CAPTION_BGS.map(({ l, v }) => (
+                        <button key={l} onClick={() => setCaptionBg(v)}
+                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                            captionBg === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Font */}
+                    <p className="mb-1 text-[10px] font-medium text-white/35">FONT</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {CAPTION_FONTS.map(({ l, v }) => (
+                        <button key={l} onClick={() => setCaptionFont(v)}
+                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                            captionFont === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}
+                          style={{ fontFamily: v }}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Volume */}
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                  className="text-white/70 hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]"
                 >
                   {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
                 </button>
@@ -602,7 +797,7 @@ export function DownPlayer({
               </div>
 
               {/* Fullscreen */}
-              <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors">
+              <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                 {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
               </button>
             </div>
@@ -618,7 +813,7 @@ export function DownPlayer({
           <Toggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
           <button
             onClick={() => onLightsOffChange(!lightsOff)}
-            className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80"
+            className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80 [touch-action:manipulation]"
           >
             <span className={["relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors duration-200",
               lightsOff ? "bg-primary" : "bg-white/15"].join(" ")}>
@@ -634,7 +829,7 @@ export function DownPlayer({
               onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSourceOpen(false); }}>
               <button
                 onClick={() => setSourceOpen((o) => !o)}
-                className="text-xs font-medium text-white/40 transition-colors hover:text-white/70"
+                className="text-xs font-medium text-white/40 transition-colors hover:text-white/70 [touch-action:manipulation]"
               >
                 {selectedProvider ? providerLabel(selectedProvider) : "Source"} ▾
               </button>
@@ -643,7 +838,7 @@ export function DownPlayer({
                   <div className="flex border-b border-white/10">
                     {(["sub", "dub"] as const).map((a) => (
                       <button key={a} onClick={() => handleAudioChange(a)}
-                        className={["flex-1 py-1.5 text-xs font-semibold uppercase transition-colors",
+                        className={["flex-1 py-1.5 text-xs font-semibold uppercase transition-colors [touch-action:manipulation]",
                           audio === a ? "bg-primary/15 text-primary" : "text-white/55 hover:text-white"].join(" ")}>
                         {a}
                       </button>
@@ -653,7 +848,7 @@ export function DownPlayer({
                     {availableProviders.map((name) => (
                       <button key={name}
                         onClick={() => { onProviderChange(name); setSourceOpen(false); }}
-                        className={["flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5",
+                        className={["flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
                           name === selectedProvider ? "text-primary" : "text-white/75"].join(" ")}>
                         {providerLabel(name)}
                       </button>
@@ -668,13 +863,13 @@ export function DownPlayer({
         {/* Prev / Next episode */}
         <div className="flex items-center gap-3 text-xs font-medium">
           <button onClick={onPrevEpisode} disabled={episode <= 1}
-            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25">
+            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25 [touch-action:manipulation]">
             <SkipBack className="size-3.5" /> Prev
           </button>
           <span className="text-white/25">|</span>
           <button onClick={onNextEpisode}
             disabled={totalEpisodes > 0 && episode >= totalEpisodes}
-            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25">
+            className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25 [touch-action:manipulation]">
             Ep {episode + 1} <SkipForward className="size-3.5" />
           </button>
         </div>

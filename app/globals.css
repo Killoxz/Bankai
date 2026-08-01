@@ -54,3 +54,8 @@
     display: none;
   }
 }
+
+/* Eliminate iOS 300ms tap delay site-wide */
+a, button, [role="button"], input[type="range"] {
+  -webkit-tap-highlight-color: transparent;
+}
