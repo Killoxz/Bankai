@@ -12,6 +12,7 @@ import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episo
 
 interface Timestamp     { start: number; end: number }
 interface SubtitleTrack { file: string; label?: string; kind?: string }
+interface HLSLevel      { index: number; height: number; bitrate: number }
 
 interface DownPlayerProps {
   poster?: string;
@@ -157,10 +158,13 @@ export function DownPlayer({
   const [captionColor,  setCaptionColor]  = useState(() => lsGet("bankai-caption-color", "#ffffff"));
   const [captionBg,     setCaptionBg]     = useState(() => lsGet("bankai-caption-bg", "rgba(0,0,0,0.75)"));
   const [captionFont,   setCaptionFont]   = useState(() => lsGet("bankai-caption-font", "inherit"));
-  const [selectedTrack, setSelectedTrack] = useState(0);
-  const [speed,         setSpeed]         = useState(() => parseFloat(lsGet("bankai-speed", "1")));
+  const [selectedTrack,  setSelectedTrack]  = useState(0);
+  const [speed,          setSpeed]          = useState(() => parseFloat(lsGet("bankai-speed", "1")));
+  const [hlsLevels,      setHlsLevels]      = useState<HLSLevel[]>([]);
+  const [selectedLevel,  setSelectedLevel]  = useState(-1); // -1 = Auto
   const [captionPanelOpen, setCaptionPanelOpen] = useState(false);
   const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
+  const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
 
   useEffect(() => { speedRef.current = speed; }, [speed]);
 
@@ -234,6 +238,8 @@ export function DownPlayer({
     setDuration(0);
     setPlaying(false);
     setSelectedTrack(0);
+    setHlsLevels([]);
+    setSelectedLevel(-1);
 
     try {
       const epId = providersDataRef.current?.[selectedProvider]?.episodes?.[audio]
@@ -296,6 +302,18 @@ export function DownPlayer({
           video.playbackRate = speedRef.current;
           if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
+
+          // Build a deduplicated, height-sorted level list for the quality picker.
+          const byHeight = new Map<number, HLSLevel>();
+          hls.levels.forEach((l, i) => {
+            const h = l.height || 0;
+            const existing = byHeight.get(h);
+            if (!existing || l.bitrate > existing.bitrate) {
+              byHeight.set(h, { index: i, height: h, bitrate: l.bitrate });
+            }
+          });
+          const sorted = Array.from(byHeight.values()).sort((a, b) => b.height - a.height);
+          setHlsLevels(sorted);
         });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) {
@@ -533,6 +551,24 @@ export function DownPlayer({
     if (providersData) onProviderChange(firstAvailableProvider(providersData, a, episode));
   }
 
+  function handleQualitySelect(levelIndex: number) {
+    setSelectedLevel(levelIndex);
+    setQualityPanelOpen(false);
+    const hls = hlsRef.current;
+    if (!hls) return;
+    if (levelIndex === -1) {
+      hls.currentLevel = -1; // auto
+    } else {
+      hls.currentLevel = levelIndex;
+    }
+  }
+
+  function qualityLabel(): string {
+    if (selectedLevel === -1) return "Auto";
+    const l = hlsLevels.find((l) => l.index === selectedLevel);
+    return l?.height ? `${l.height}p` : "Auto";
+  }
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -700,11 +736,51 @@ export function DownPlayer({
 
               <div className="flex-1" />
 
+              {/* Quality picker — only shown when HLS levels are available */}
+              {hlsLevels.length > 0 && (
+                <div className="relative"
+                  onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setQualityPanelOpen(false); }}>
+                  <button
+                    onClick={() => { setQualityPanelOpen((o) => !o); setSpeedPanelOpen(false); setCaptionPanelOpen(false); }}
+                    className="rounded px-1.5 py-0.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
+                    title="Video quality"
+                  >
+                    {qualityLabel()}
+                  </button>
+                  {qualityPanelOpen && (
+                    <div className="absolute bottom-8 right-0 z-30 min-w-[100px] overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
+                      <p className="px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/30">Quality</p>
+                      {/* Auto option */}
+                      <button
+                        onClick={() => handleQualitySelect(-1)}
+                        className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                          selectedLevel === -1 ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                        Auto
+                        <span className="text-white/30">Recommended</span>
+                      </button>
+                      {/* Per-height level buttons */}
+                      {hlsLevels.map((l) => (
+                        <button key={l.index}
+                          onClick={() => handleQualitySelect(l.index)}
+                          className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                            selectedLevel === l.index ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                          {l.height ? `${l.height}p` : `Q${l.index + 1}`}
+                          <span className="text-white/25">{l.bitrate >= 1_000_000
+                            ? `${(l.bitrate / 1_000_000).toFixed(1)}Mb`
+                            : `${Math.round(l.bitrate / 1000)}Kb`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Speed picker */}
               <div className="relative"
                 onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSpeedPanelOpen(false); }}>
                 <button
-                  onClick={() => { setSpeedPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
+                  onClick={() => { setSpeedPanelOpen((o) => !o); setCaptionPanelOpen(false); setQualityPanelOpen(false); }}
                   className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
                   title="Playback speed (< / >)"
                 >
@@ -730,7 +806,7 @@ export function DownPlayer({
               <div className="relative"
                 onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCaptionPanelOpen(false); }}>
                 <button
-                  onClick={() => { setCaptionPanelOpen((o) => !o); setSpeedPanelOpen(false); }}
+                  onClick={() => { setCaptionPanelOpen((o) => !o); setSpeedPanelOpen(false); setQualityPanelOpen(false); }}
                   className={[
                     "transition-colors [touch-action:manipulation]",
                     captionPanelOpen ? "text-primary" : captionsOn ? "text-white/80 hover:text-white" : "text-white/30 hover:text-white/60",
