@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { DownPlayer } from "./down-player";
@@ -18,25 +18,36 @@ import {
   type EpisodesMap,
   type ProviderEpisode,
 } from "./episode-utils";
+import { useLanguageStore } from "@/store/language-store";
 
 interface WatchViewProps {
   detail: AnimeDetail;
   animeId: number;
   initialEpisode?: number;
+  initialAudio?: "sub" | "dub";
   /** Pre-fetched episodes payload from the server component — eliminates the
    *  client-side fetch waterfall so providers appear instantly on page load. */
   initialEpisodesRaw?: Record<string, unknown> | null;
 }
 
-function initFromRaw(raw: Record<string, unknown> | null | undefined, episode: number) {
-  if (!raw) return { providers: null, provider: null, audio: "sub" as const, epList: [] };
+function initFromRaw(
+  raw: Record<string, unknown> | null | undefined,
+  episode: number,
+  preferredAudio: "sub" | "dub" = "sub",
+) {
+  if (!raw) return { providers: null, provider: null, audio: preferredAudio, epList: [] };
   const parsed = parseProviders(raw);
-  const first  =
-    firstAvailableProvider(parsed, "sub", episode) ??
-    firstAvailableProvider(parsed, "dub", episode);
-  const audio  = first && !hasAudio(parsed, "sub", episode) ? "dub" as const : "sub" as const;
-  const sub    = mergedEpisodeList(parsed, "sub");
-  const dub    = mergedEpisodeList(parsed, "dub");
+  // Honor preferred audio when available; otherwise fall back to whichever side has this episode.
+  const audio: "sub" | "dub" = hasAudio(parsed, preferredAudio, episode)
+    ? preferredAudio
+    : hasAudio(parsed, preferredAudio === "sub" ? "dub" : "sub", episode)
+      ? (preferredAudio === "sub" ? "dub" : "sub")
+      : "sub";
+  const first =
+    firstAvailableProvider(parsed, audio, episode) ??
+    firstAvailableProvider(parsed, audio === "sub" ? "dub" : "sub", episode);
+  const sub = mergedEpisodeList(parsed, "sub");
+  const dub = mergedEpisodeList(parsed, "dub");
   return {
     providers: parsed,
     provider:  first ?? null,
@@ -49,20 +60,27 @@ export function WatchView({
   detail,
   animeId,
   initialEpisode = 1,
+  initialAudio = "sub",
   initialEpisodesRaw,
 }: WatchViewProps) {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
+  const router        = useRouter();
+  const searchParams  = useSearchParams();
+  const defaultAudio  = useLanguageStore((s) => s.defaultAudio);
 
   // Initialise all episode state synchronously from the SSR payload so
   // the player and provider list are ready on first render with zero delay.
-  const init = initFromRaw(initialEpisodesRaw, initialEpisode);
+  // initialAudio comes from the server (URL ?audio= param), so it's reliable for SSR.
+  const init = initFromRaw(initialEpisodesRaw, initialEpisode, initialAudio);
 
   const [episode, setEpisode]               = useState(initialEpisode);
   const [providersData, setProvidersData]   = useState<EpisodesMap | null>(init.providers);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(init.provider);
   const [audio, setAudio]                   = useState<"sub" | "dub">(init.audio);
   const [epListData, setEpListData]         = useState<ProviderEpisode[]>(init.epList);
+
+  // Track whether we've already applied the stored default audio preference.
+  // We only apply it once, and only when the URL has no ?audio= param.
+  const defaultAudioApplied = useRef(false);
 
   const [autoNext,  setAutoNext]  = useState(true);
   const [autoplay,  setAutoplay]  = useState(true);
@@ -93,12 +111,17 @@ export function WatchView({
       .then((raw) => {
         if (cancelled) return;
         const parsed = parseProviders(raw as Record<string, unknown>);
-        const first  =
-          firstAvailableProvider(parsed, "sub", episode) ??
-          firstAvailableProvider(parsed, "dub", episode);
+        const targetAudio: "sub" | "dub" = hasAudio(parsed, initialAudio, episode)
+          ? initialAudio
+          : hasAudio(parsed, initialAudio === "sub" ? "dub" : "sub", episode)
+            ? (initialAudio === "sub" ? "dub" : "sub")
+            : "sub";
+        const first =
+          firstAvailableProvider(parsed, targetAudio, episode) ??
+          firstAvailableProvider(parsed, targetAudio === "sub" ? "dub" : "sub", episode);
         setProvidersData(parsed);
         setSelectedProvider(first ?? null);
-        if (first && !hasAudio(parsed, "sub", episode)) setAudio("dub");
+        setAudio(targetAudio);
         const sub = mergedEpisodeList(parsed, "sub");
         const dub = mergedEpisodeList(parsed, "dub");
         setEpListData(sub.length >= dub.length ? sub : dub);
@@ -108,6 +131,24 @@ export function WatchView({
 
     return () => { cancelled = true; };
   }, [animeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After Zustand hydrates, apply the stored default audio preference — but only
+  // when the URL has no ?audio= param (URL param already handled by initialAudio prop).
+  useEffect(() => {
+    if (defaultAudioApplied.current) return;
+    if (initialAudio !== "sub") { defaultAudioApplied.current = true; return; } // URL had ?audio=dub
+    if (defaultAudio === "sub") { defaultAudioApplied.current = true; return; } // preference is sub
+    if (!providersData) return; // wait for data
+    defaultAudioApplied.current = true;
+    if (hasAudio(providersData, "dub", episode)) {
+      const dubProvider = firstAvailableProvider(providersData, "dub", episode);
+      setAudio("dub");
+      if (dubProvider) setSelectedProvider(dubProvider);
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("audio", "dub");
+      router.replace(`/watch/${animeId}?${sp.toString()}`, { scroll: false });
+    }
+  }, [defaultAudio, providersData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-select provider when episode or audio changes
   useEffect(() => {
@@ -121,6 +162,13 @@ export function WatchView({
       setSelectedProvider(next);
     }
   }, [episode, audio, providersData, selectedProvider]);
+
+  function handleAudioChange(a: "sub" | "dub") {
+    setAudio(a);
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set("audio", a);
+    router.replace(`/watch/${animeId}?${sp.toString()}`, { scroll: false });
+  }
 
   function handleSelectEpisode(ep: number) {
     setEpisode(ep);
@@ -163,7 +211,7 @@ export function WatchView({
             selectedProvider={selectedProvider}
             audio={audio}
             onProviderChange={setSelectedProvider}
-            onAudioChange={setAudio}
+            onAudioChange={handleAudioChange}
             autoplay={autoplay}
             autoNext={autoNext}
             autoSkip={autoSkip}
@@ -185,7 +233,7 @@ export function WatchView({
             audio={audio}
             hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
             hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
-            onAudioChange={setAudio}
+            onAudioChange={handleAudioChange}
             providersData={providersData}
             selectedProvider={selectedProvider}
             onProviderChange={setSelectedProvider}

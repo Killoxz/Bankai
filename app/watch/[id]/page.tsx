@@ -25,7 +25,7 @@ export default async function WatchPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ep?: string }>;
+  searchParams: Promise<{ ep?: string; audio?: string }>;
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const anilistId = Number(id);
@@ -42,6 +42,7 @@ export default async function WatchPage({
   if (!detail) notFound();
 
   const initialEpisode = Math.max(1, Number(sp.ep ?? 1) || 1);
+  const initialAudio: "sub" | "dub" = sp.audio === "dub" ? "dub" : "sub";
   const title    = preferredTitle(detail);
   const subtitle = [
     detail.episodes ? `${detail.episodes} Episodes` : null,
@@ -61,6 +62,7 @@ export default async function WatchPage({
             animeId={anilistId}
             initialEpisode={initialEpisode}
             initialEpisodesRaw={episodesRaw}
+            initialAudio={initialAudio}
           />
         </Suspense>
       </div>

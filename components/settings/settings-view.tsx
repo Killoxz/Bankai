@@ -93,6 +93,8 @@ export function SettingsView() {
   const setRemember = useAuthStore((s) => s.setRemember);
   const titleLanguage = useLanguageStore((s) => s.titleLanguage);
   const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
+  const defaultAudio = useLanguageStore((s) => s.defaultAudio);
+  const setDefaultAudio = useLanguageStore((s) => s.setDefaultAudio);
 
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState<Section>("account");
@@ -246,6 +248,37 @@ export function SettingsView() {
                       )}
                     </button>
                   ))}
+                </div>
+
+                <div className="mt-8">
+                  <h3 className="mb-1 text-sm font-semibold text-white">Default Audio</h3>
+                  <p className="mb-3 text-xs text-white/40">
+                    Applied when you open a watch page. Falls back to sub if the anime has no dub.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["sub", "dub"] as const).map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => setDefaultAudio(a)}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
+                          defaultAudio === a
+                            ? "border-primary/50 bg-primary/10"
+                            : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                        )}
+                      >
+                        <div>
+                          <p className={cn("text-sm font-semibold", defaultAudio === a ? "text-primary" : "text-white")}>
+                            {a === "sub" ? "Sub" : "Dub"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-white/45">
+                            {a === "sub" ? "Original with subtitles" : "English audio track"}
+                          </p>
+                        </div>
+                        {defaultAudio === a && <Check className="size-4 shrink-0 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -195,7 +195,8 @@ export function DownPlayer({
 
   // ── Caption on/off — only show the selectedTrack index, hide all others ─────
   // "hidden" keeps the track data loaded (instant toggle); "showing" renders cues.
-  // We also listen to addtrack because the browser may override modes when tracks load.
+  // We listen to addtrack because the browser may override modes when tracks load,
+  // and we add a 100ms timeout as a fallback for streams where tracks register late.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -207,10 +208,14 @@ export function DownPlayer({
     };
 
     applyModes();
+    const timer = setTimeout(applyModes, 100);
     video.textTracks.addEventListener("addtrack", applyModes);
     try { localStorage.setItem("bankai-captions", captionsOn ? "true" : "false"); } catch {}
 
-    return () => { video.textTracks.removeEventListener("addtrack", applyModes); };
+    return () => {
+      clearTimeout(timer);
+      video.textTracks.removeEventListener("addtrack", applyModes);
+    };
   }, [captionsOn, subtitles, selectedTrack]); // subtitles dep re-runs after <track> elements render
 
   // ── Playback speed ────────────────────────────────────────────────────────
@@ -611,7 +616,6 @@ export function DownPlayer({
               kind={(s.kind as React.ComponentProps<"track">["kind"]) ?? "subtitles"}
               src={s.file}
               label={s.label ?? "Subtitles"}
-              default={i === 0}
             />
           ))}
         </video>
@@ -833,6 +837,13 @@ export function DownPlayer({
                           captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
                       </button>
                     </div>
+
+                    {/* No subtitles notice */}
+                    {subtitles.length === 0 && (
+                      <p className="mb-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/40">
+                        No subtitles available for this stream.
+                      </p>
+                    )}
 
                     {/* Subtitle track selector — only shown when >1 track available */}
                     {subtitles.length > 1 && (
