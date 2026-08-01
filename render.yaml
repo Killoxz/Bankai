@@ -19,7 +19,7 @@ services:
       - key: AUTH_TRUST_HOST
         value: "true"
       - key: STREAMING_API_URL
-        value: https://bankai-api-f96s.onrender.com
+        value: https://bankai-s-api.onrender.com
 
       # ── Secrets — add these in the Render dashboard manually ─────────────────
       # (Environment → Add Environment Variable)

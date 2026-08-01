@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { STREAMING_BASE } from "@/lib/streaming";
 
 interface StreamEntry {
-  url: string;
-  type?: string;
-  quality?: string;
+  url:      string;
+  type?:    string;
+  server?:  string;
+  referer?: string;
+  headers?: Record<string, string>;
+  priority?: number;
+  isActive?: boolean;
 }
 
 interface WatchResponse {
@@ -12,34 +16,71 @@ interface WatchResponse {
   subtitles?: { file: string; label?: string; kind?: string }[];
   intro?:     { start: number; end: number };
   outro?:     { start: number; end: number };
-  // legacy fields
+  downloads?: { url: string; label?: string }[];
+  // legacy flat fields
   stream_url?: string;
   hls?:        string;
   url?:        string;
   streamUrl?:  string;
 }
 
-function extractStreamUrl(data: WatchResponse): string | null {
-  // New API: streams[]
-  if (Array.isArray(data.streams) && data.streams.length > 0) {
-    const s = data.streams[0];
-    if (typeof s.url === "string" && s.url) return s.url;
+/**
+ * Pick the best playable stream from the streams array.
+ * Prefer: isActive=true → type=hls → highest priority.
+ * Falls back to legacy flat fields if streams[] is absent.
+ */
+function pickStream(data: WatchResponse): { url: string; referer: string } | null {
+  const streams = data.streams ?? [];
+
+  // Sort: active first, then by priority descending
+  const sorted = [...streams].sort((a, b) => {
+    if ((b.isActive ? 1 : 0) !== (a.isActive ? 1 : 0))
+      return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
+    return (b.priority ?? 0) - (a.priority ?? 0);
+  });
+
+  // Prefer HLS; fall back to first active stream of any type
+  const best =
+    sorted.find((s) => s.isActive && s.type === "hls") ??
+    sorted.find((s) => s.isActive) ??
+    sorted.find((s) => s.type === "hls") ??
+    sorted[0];
+
+  if (best?.url) {
+    // Use the stream's explicit referer if provided, otherwise derive from its origin
+    const referer =
+      best.referer ??
+      best.headers?.["Referer"] ??
+      best.headers?.["referer"] ??
+      (() => { try { return new URL(best.url).origin; } catch { return STREAMING_BASE; } })();
+    return { url: best.url, referer };
   }
-  // Legacy fields
-  if (typeof data.stream_url === "string" && data.stream_url) return data.stream_url;
-  if (typeof data.hls        === "string" && data.hls)        return data.hls;
-  if (typeof data.url        === "string" && data.url)        return data.url;
-  if (typeof data.streamUrl  === "string" && data.streamUrl)  return data.streamUrl;
+
+  // Legacy flat fields fallback
+  const legacyUrl =
+    (typeof data.stream_url === "string" && data.stream_url) ||
+    (typeof data.hls        === "string" && data.hls)        ||
+    (typeof data.url        === "string" && data.url)        ||
+    (typeof data.streamUrl  === "string" && data.streamUrl)  ||
+    null;
+
+  if (legacyUrl) {
+    let referer = STREAMING_BASE;
+    try { referer = new URL(legacyUrl).origin; } catch {}
+    return { url: legacyUrl, referer };
+  }
+
   return null;
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  // New API: pass the episode's id field directly ("watch/kiwi/178005/sub/animepahe-1")
+  // Preferred: episode id taken directly from episodes response
+  // e.g. "watch/reanime/16498/sub/reanime-1"
   const episodeId = searchParams.get("episodeId");
 
-  // Legacy fallback params
+  // Legacy fallback
   const animeId  = searchParams.get("id");
   const episode  = searchParams.get("ep") ?? "1";
   const provider = searchParams.get("provider");
@@ -47,10 +88,8 @@ export async function GET(request: Request) {
 
   let targetUrl: string;
   if (episodeId) {
-    // The episode id IS the watch path
     targetUrl = `${STREAMING_BASE}/${episodeId}`;
   } else if (provider && animeId) {
-    // Legacy URL format
     targetUrl = `${STREAMING_BASE}/watch/${provider}/${animeId}/${audio}/${provider}-${episode}`;
   } else {
     return NextResponse.json(
@@ -73,19 +112,16 @@ export async function GET(request: Request) {
     }
 
     const data = await upstream.json() as WatchResponse;
-    const rawUrl = extractStreamUrl(data);
+    const picked = pickStream(data);
 
-    // Wrap through HLS proxy so HLS.js never hits CORS from a CDN.
-    let proxiedUrl: string | null = null;
-    if (rawUrl) {
-      let ref = STREAMING_BASE;
-      try { ref = new URL(rawUrl).origin; } catch {}
-      proxiedUrl = `/api/hls?url=${encodeURIComponent(rawUrl)}&ref=${encodeURIComponent(ref)}`;
-    }
+    // Wrap the HLS URL through our proxy so HLS.js never hits CORS from the CDN.
+    // Pass the stream's own referer so hotlink protection is satisfied.
+    const proxiedUrl = picked
+      ? `/api/hls?url=${encodeURIComponent(picked.url)}&ref=${encodeURIComponent(picked.referer)}`
+      : null;
 
     return NextResponse.json({
-      stream_url: proxiedUrl ?? null,
-      streams:    data.streams   ?? [],
+      stream_url: proxiedUrl,
       subtitles:  data.subtitles ?? [],
       intro:      data.intro     ?? null,
       outro:      data.outro     ?? null,
