@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const STREAMING_BASE =
-  (process.env.STREAMING_API_URL?.trim() ?? "https://bankai-s-api-production.up.railway.app")
+  (process.env.STREAMING_API_URL?.trim() ?? "https://bankai-s-api.onrender.com")
     .replace(/\/$/, "")
     .replace(/^(?!https?:\/\/)/, "https://");
 
