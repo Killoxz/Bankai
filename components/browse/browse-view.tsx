@@ -44,7 +44,7 @@ const YEARS: { label: string; value: string }[] = [
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">{label}</p>
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       {children}
     </div>
   );
@@ -68,22 +68,22 @@ function Dropdown<T extends string>({
 
   return (
     <div
-      className="relative flex items-center gap-1 rounded-full border border-white/15 bg-white/5 pl-4 pr-2 py-2 transition-colors hover:border-white/30"
+      className="relative flex items-center gap-1 rounded-full border border-border bg-muted/50 pl-4 pr-2 py-2 transition-colors hover:border-primary/30"
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
       }}
     >
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-white/80">
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-foreground">
         {current}
-        <ChevronDown className="size-3.5 text-white/50" />
+        <ChevronDown className="size-3.5 text-muted-foreground" />
       </button>
       {onClear && value && (
-        <button onClick={onClear} aria-label={`Clear ${label}`} className="text-white/40 transition-colors hover:text-white">
+        <button onClick={onClear} aria-label={`Clear ${label}`} className="text-muted-foreground transition-colors hover:text-foreground">
           <X className="size-3.5" />
         </button>
       )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 max-h-72 min-w-40 overflow-y-auto rounded-lg border border-white/10 bg-[#1c1c1c] py-1 shadow-2xl">
+        <div className="absolute left-0 top-11 z-20 max-h-72 min-w-40 overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-2xl">
           {options.map((o) => (
             <button
               key={o.value}
@@ -92,8 +92,8 @@ function Dropdown<T extends string>({
                 setOpen(false);
               }}
               className={[
-                "block w-full whitespace-nowrap px-3.5 py-2 text-left text-sm transition-colors hover:bg-white/5",
-                o.value === value ? "text-primary" : "text-white/80",
+                "block w-full whitespace-nowrap px-3.5 py-2 text-left text-sm transition-colors hover:bg-muted",
+                o.value === value ? "text-primary" : "text-foreground",
               ].join(" ")}
             >
               {o.label}
@@ -131,7 +131,7 @@ function MultiSelect({
 
   return (
     <div
-      className="relative flex items-center gap-1 rounded-full border border-white/15 bg-white/5 pl-4 pr-2 py-2 transition-colors hover:border-white/30"
+      className="relative flex items-center gap-1 rounded-full border border-border bg-muted/50 pl-4 pr-2 py-2 transition-colors hover:border-primary/30"
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setOpen(false);
@@ -139,33 +139,33 @@ function MultiSelect({
         }
       }}
     >
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-white/80">
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-sm text-foreground">
         {current}
-        <ChevronDown className="size-3.5 text-white/50" />
+        <ChevronDown className="size-3.5 text-muted-foreground" />
       </button>
       {values.length > 0 && (
-        <button onClick={() => onChange([])} aria-label={`Clear ${label}`} className="text-white/40 transition-colors hover:text-white">
+        <button onClick={() => onChange([])} aria-label={`Clear ${label}`} className="text-muted-foreground transition-colors hover:text-foreground">
           <X className="size-3.5" />
         </button>
       )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 w-56 overflow-hidden rounded-lg border border-white/10 bg-[#1c1c1c] shadow-2xl">
+        <div className="absolute left-0 top-11 z-20 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
           {options.length > 12 && (
-            <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
-              <Search className="size-3.5 shrink-0 text-white/40" />
+            <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
+              <Search className="size-3.5 shrink-0 text-muted-foreground" />
               <input
                 autoFocus
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={`Filter ${label.toLowerCase()}...`}
-                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
           )}
           <div className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <p className="px-3.5 py-2 text-sm text-white/40">No matches.</p>
+              <p className="px-3.5 py-2 text-sm text-muted-foreground">No matches.</p>
             ) : (
               filtered.map((o) => {
                 const checked = values.includes(o);
@@ -173,12 +173,12 @@ function MultiSelect({
                   <button
                     key={o}
                     onClick={() => toggle(o)}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
                   >
                     <span
                       className={[
                         "grid size-4 shrink-0 place-items-center rounded border",
-                        checked ? "border-primary bg-primary" : "border-white/30",
+                        checked ? "border-primary bg-primary" : "border-border",
                       ].join(" ")}
                     >
                       {checked && <Check className="size-3 text-black" />}
@@ -331,7 +331,7 @@ export function BrowseView({
         {hasActiveFilters && (
           <button
             onClick={resetFilters}
-            className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/15"
+            className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <RotateCcw className="size-3.5" />
             Reset
@@ -345,7 +345,7 @@ export function BrowseView({
             <Loader2 className="size-8 animate-spin text-primary" />
           </div>
         ) : items.length === 0 ? (
-          <p className="py-24 text-center text-sm text-white/40">No anime match these filters.</p>
+          <p className="py-24 text-center text-sm text-muted-foreground">No anime match these filters.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -360,12 +360,12 @@ export function BrowseView({
               ) : hasNextPage ? (
                 <button
                   onClick={loadMore}
-                  className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+                  className="rounded-full bg-muted px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent"
                 >
                   Load More
                 </button>
               ) : (
-                <p className="text-sm text-white/30">You&apos;ve reached the end.</p>
+                <p className="text-sm text-muted-foreground">You&apos;ve reached the end.</p>
               )}
             </div>
           </>
