@@ -66,8 +66,7 @@ export function Navbar() {
         const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-production-55b5.up.railway.app";
         const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=6`);
         const json = await res.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setResults((json.results ?? []).map((a: any) => ({
+        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: string; title?: Record<string, string>; image?: string; releaseDate?: number; type?: string }) => ({
           id: parseInt(a.id, 10),
           title: { romaji: a.title?.romaji ?? "", english: a.title?.english ?? null },
           coverImage: { medium: a.image },

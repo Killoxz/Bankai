@@ -1,4 +1,5 @@
-﻿import { getHomeData, type AnimeMedia } from "@/lib/anilist";
+﻿import Link from "next/link";
+import { getHomeData, type AnimeMedia } from "@/lib/anilist";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { HeroCarousel } from "@/components/home/hero-carousel";
@@ -31,12 +32,12 @@ export default async function HomePage() {
             <p className="text-sm text-muted-foreground max-w-sm text-center">
               The anime data provider is experiencing issues. Please check back shortly.
             </p>
-            <a
+            <Link
               href="/"
               className="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               Try Again
-            </a>
+            </Link>
           </div>
         ) : (
           <>
