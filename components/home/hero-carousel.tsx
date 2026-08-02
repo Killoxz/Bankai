@@ -45,7 +45,7 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
               aria-label={`Slide ${i + 1}`}
               className={[
                 "h-1.5 rounded-full transition-all duration-300",
-                i === index ? "w-6 bg-primary" : "w-1.5 bg-white/30 hover:bg-white/60",
+                i === index ? "w-6 bg-primary" : "w-1.5 bg-foreground/25 hover:bg-foreground/50",
               ].join(" ")}
             />
           ))}
@@ -103,7 +103,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
               {anime.genres.slice(0, 3).map((g) => (
                 <span
                   key={g}
-                  className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-sm"
+                  className="rounded-full border border-border bg-background/70 px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 backdrop-blur-sm"
                 >
                   {g}
                 </span>
@@ -112,7 +112,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
           )}
 
           <motion.h1
-            className="text-4xl font-bold leading-tight text-white sm:text-5xl"
+            className="text-4xl font-bold leading-tight text-foreground sm:text-5xl"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
@@ -121,7 +121,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
           </motion.h1>
 
           <motion.p
-            className="mt-4 text-sm leading-relaxed text-white/60 line-clamp-3"
+            className="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-3"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.22 }}
@@ -131,7 +131,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
 
           {/* Metadata row */}
           <motion.div
-            className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/45"
+            className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.28 }}
@@ -166,7 +166,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
             </Link>
             <Link
               href={`/anime/${anime.id}`}
-              className="flex items-center gap-2 rounded-full border border-white/25 bg-white/8 px-6 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:border-white/50 hover:bg-white/15"
+              className="flex items-center gap-2 rounded-full border border-border bg-background/60 px-6 py-2.5 text-sm font-medium text-foreground backdrop-blur-sm transition-colors hover:bg-muted"
             >
               <Info className="size-4" />
               More Info
