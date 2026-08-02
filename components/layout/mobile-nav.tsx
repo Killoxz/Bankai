@@ -105,18 +105,17 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const res = await fetch("https://graphql.anilist.co", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: `query ($q: String) { Page(perPage: 12) { media(search: $q, type: ANIME) {
-              id title { romaji english } coverImage { medium } seasonYear format
-            } } }`,
-            variables: { q },
-          }),
-        });
+        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-production-55b5.up.railway.app";
+        const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=12`);
         const json = await res.json();
-        setResults(json.data?.Page?.media ?? []);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setResults((json.results ?? []).map((a: any) => ({
+          id: parseInt(a.id, 10),
+          title: { romaji: a.title?.romaji ?? "", english: a.title?.english ?? null },
+          coverImage: { medium: a.image },
+          seasonYear: a.releaseDate ?? null,
+          format: a.type ?? null,
+        })));
       } catch { setResults([]); }
     }, 350);
     return () => clearTimeout(t);

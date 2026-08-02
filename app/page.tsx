@@ -15,8 +15,8 @@ export default async function HomePage() {
 
   try {
     ({ heroItems, trending, topRated, newSeason } = await getHomeData());
-  } catch {
-    /* AniList unreachable — the empty state below renders instead */
+  } catch (err) {
+    console.error("[HomePage] AniList fetch failed:", err);
   }
 
   return (
@@ -26,9 +26,18 @@ export default async function HomePage() {
 
       <div className="relative z-10 -mt-4 space-y-10 px-6 pb-16 sm:px-10">
         {trending.length === 0 ? (
-          <p className="py-16 text-center text-sm text-white/40">
-            Couldn&apos;t load anime right now — refresh to try again.
-          </p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <p className="text-2xl font-semibold text-foreground">Service Temporarily Unavailable</p>
+            <p className="text-sm text-muted-foreground max-w-sm text-center">
+              The anime data provider is experiencing issues. Please check back shortly.
+            </p>
+            <a
+              href="/"
+              className="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Try Again
+            </a>
+          </div>
         ) : (
           <>
             <AnimeRow title="Trending Now" items={trending} />

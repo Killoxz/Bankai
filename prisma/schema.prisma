@@ -188,6 +188,12 @@ model WatchHistory {
   @@index([userId, watchedAt])
 }
 
+model ApiCache {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 enum ListStatus {
   WATCHING
   COMPLETED
