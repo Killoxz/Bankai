@@ -76,17 +76,17 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
         className="object-cover object-top"
       />
 
-      {/* Gradients */}
+      {/* Gradients — use CSS variable so they match the page background in both light and dark mode */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to right, #141414 0%, rgba(20,20,20,.88) 28%, rgba(20,20,20,.45) 58%, transparent 85%)",
+            "linear-gradient(to right, hsl(var(--background)) 0%, hsl(var(--background) / 0.88) 28%, hsl(var(--background) / 0.45) 58%, transparent 85%)",
         }}
       />
       <div
         className="absolute inset-x-0 bottom-0 h-48"
-        style={{ background: "linear-gradient(to top, #141414 0%, transparent 100%)" }}
+        style={{ background: "linear-gradient(to top, hsl(var(--background)) 0%, transparent 100%)" }}
       />
 
       {/* Content */}
