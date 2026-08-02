@@ -97,7 +97,7 @@ function AnimeCard({
             </div>
           </div>
 
-          <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/25" />
+          <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent transition-all duration-200 group-hover:ring-black/20 dark:group-hover:ring-white/25" />
 
           {showProgress && (
             <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20">

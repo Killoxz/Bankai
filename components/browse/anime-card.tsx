@@ -27,7 +27,7 @@ export function AnimeCard({
         <motion.div
           whileHover={{ scale: 1.03 }}
           transition={{ duration: 0.2 }}
-          className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5"
+          className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5"
         >
           {anime.coverImage.large && (
             <Image
@@ -64,7 +64,7 @@ export function AnimeCard({
             </div>
           </div>
 
-          <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-white/0 transition-all duration-200 group-hover:ring-white/25" />
+          <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent transition-all duration-200 group-hover:ring-black/20 dark:group-hover:ring-white/25" />
         </motion.div>
 
         <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90 group-hover:text-gray-900 dark:group-hover:text-white">
