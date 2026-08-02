@@ -83,7 +83,7 @@ export function Navbar() {
   const showResults = searchFocused && search.trim().length >= 2 && results.length > 0;
 
   return (
-    <header className="sticky top-0 z-50 w-full">
+    <header className="relative z-50 w-full">
       {/* Status banner */}
       <div className="flex items-center justify-center gap-1.5 border-b border-gray-200 dark:border-white/[0.06] bg-gray-100/80 dark:bg-black/20 px-4 py-1.5 text-center text-xs font-medium text-gray-600 dark:text-white/60 backdrop-blur-md">
         <AlertCircle className="size-3.5 shrink-0 text-green-500 dark:text-green-400/70" />
