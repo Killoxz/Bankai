@@ -146,6 +146,7 @@ export function DownPlayer({
   useEffect(() => { animeCoverRef.current       = animeCover;       }, [animeCover]);
 
   // ── Stream state ──────────────────────────────────────────────────────────
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -243,9 +244,7 @@ export function DownPlayer({
     if (!selectedProvider) return;
 
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    const video = videoRef.current;
-    if (!video) return;
-
+    setEmbedUrl(null);
     setLoading(true);
     setError(null);
     setIntro(null);
@@ -305,6 +304,33 @@ export function DownPlayer({
 
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
+
+      // Megaplay embed — hand off to an iframe player, no HLS needed.
+      if (/^https?:\/\/megaplay\.buzz/i.test(streamUrl)) {
+        setEmbedUrl(streamUrl);
+        setLoading(false);
+        if (currentUserRef.current) {
+          fetch("/api/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username:      currentUserRef.current,
+              animeId:       `anilist:${animeId}`,
+              episodeNumber: episode,
+              progress:      0,
+              duration:      0,
+              completed:     false,
+              animeTitle:    animeTitleRef.current,
+              animeCover:    animeCoverRef.current,
+            }),
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // ── HLS path ─────────────────────────────────────────────────────────────
+      const video = videoRef.current;
+      if (!video) return;
 
       // Use provider timestamps immediately — they're already available.
       // AniSkip fires async below and will override these if it has better data.
@@ -634,17 +660,18 @@ export function DownPlayer({
       <div
         ref={containerRef}
         className="relative aspect-video w-full cursor-pointer select-none bg-black"
-        onMouseMove={bumpControls}
-        onMouseLeave={() => { if (!videoRef.current?.paused) setShowCtrl(false); }}
-        onTouchStart={bumpControls}
+        onMouseMove={embedUrl ? undefined : bumpControls}
+        onMouseLeave={embedUrl ? undefined : () => { if (!videoRef.current?.paused) setShowCtrl(false); }}
+        onTouchStart={embedUrl ? undefined : bumpControls}
         onClick={(e) => {
+          if (embedUrl) return;
           if ((e.target as HTMLElement).closest("button,input")) return;
           togglePlay();
           bumpControls();
         }}
       >
-        {/* Poster */}
-        {poster && (
+        {/* Poster (HLS only) */}
+        {poster && !embedUrl && (
           <img
             src={poster} alt=""
             className={[
@@ -654,25 +681,38 @@ export function DownPlayer({
           />
         )}
 
-        {/* Video */}
-        <video
-          ref={videoRef}
-          playsInline
-          className="size-full object-contain"
-          style={{ display: error ? "none" : "block" }}
-        >
-          {subtitles.map((s, i) => (
-            <track
-              key={i}
-              kind={(s.kind as React.ComponentProps<"track">["kind"]) ?? "subtitles"}
-              src={s.file}
-              label={s.label ?? "Subtitles"}
-            />
-          ))}
-        </video>
+        {/* Video (HLS mode) */}
+        {!embedUrl && (
+          <video
+            ref={videoRef}
+            playsInline
+            className="size-full object-contain"
+            style={{ display: error ? "none" : "block" }}
+          >
+            {subtitles.map((s, i) => (
+              <track
+                key={i}
+                kind={(s.kind as React.ComponentProps<"track">["kind"]) ?? "subtitles"}
+                src={s.file}
+                label={s.label ?? "Subtitles"}
+              />
+            ))}
+          </video>
+        )}
 
-        {/* Loading */}
-        {loading && (
+        {/* Iframe embed player (Anikoto / MegaPlay) */}
+        {embedUrl && (
+          <iframe
+            key={embedUrl}
+            src={embedUrl}
+            className="absolute inset-0 size-full border-0"
+            allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        )}
+
+        {/* Loading (HLS only) */}
+        {loading && !embedUrl && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
             <Loader2 className="size-12 animate-spin text-white/80" />
             <p className="text-sm font-medium text-white/50">Loading episode {episode}…</p>
@@ -698,8 +738,8 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Centre pause indicator */}
-        {!loading && !error && !playing && duration > 0 && (
+        {/* Centre pause indicator (HLS only) */}
+        {!embedUrl && !loading && !error && !playing && duration > 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
               <Play className="size-7 translate-x-0.5 text-white" fill="white" />
@@ -707,8 +747,8 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Skip intro/outro — pops up only while inside the timestamp zone */}
-        {!loading && !error && (
+        {/* Skip intro/outro (HLS only) */}
+        {!embedUrl && !loading && !error && (
           <div className="absolute bottom-20 right-4 z-10 flex flex-col items-end gap-2">
             {intro && currentTime >= intro.start && currentTime < intro.end && (
               <button
@@ -731,8 +771,8 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* ── Custom control overlay ───────────────────────────────────────── */}
-        {!error && (
+        {/* ── Custom control overlay (HLS only) ───────────────────────────── */}
+        {!embedUrl && !error && (
           <div
             className={[
               "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-16 transition-opacity duration-300",

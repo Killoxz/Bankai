@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { STREAMING_BASE } from "@/lib/streaming";
+import { fetchAnikotoEpisodesAsMap } from "@/lib/anikoto";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const anilistId = parseInt(id, 10);
+
+  if (!Number.isInteger(anilistId) || anilistId <= 0) {
+    return NextResponse.json({ error: "Invalid anime ID." }, { status: 400 });
+  }
 
   try {
-    const res = await fetch(`${STREAMING_BASE}/episodes/${id}`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 3600 },
-    });
-
-    if (!res.ok) {
+    const data = await fetchAnikotoEpisodesAsMap(anilistId);
+    if (!data) {
       return NextResponse.json(
-        { error: `Upstream returned ${res.status}.` },
-        { status: res.status }
+        { error: "Anime not found in streaming service." },
+        { status: 404 },
       );
     }
-
-    return NextResponse.json(await res.json());
+    return NextResponse.json(data);
   } catch (err) {
-    console.error("[episodes proxy] error:", err);
+    console.error("[episodes] error:", err);
     return NextResponse.json(
       { error: "Failed to reach the streaming backend." },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

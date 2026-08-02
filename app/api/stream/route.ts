@@ -84,7 +84,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   // Preferred: episode id taken directly from episodes response
-  // e.g. "watch/reanime/16498/sub/reanime-1"
   const episodeId = searchParams.get("episodeId");
 
   // Legacy fallback
@@ -92,6 +91,16 @@ export async function GET(request: Request) {
   const episode  = searchParams.get("ep") ?? "1";
   const provider = searchParams.get("provider");
   const audio    = searchParams.get("audio") ?? "sub";
+
+  // Anikoto episodes use megaplay.buzz embed URLs as episode IDs — pass through directly.
+  if (episodeId && /^https?:\/\/megaplay\.buzz/i.test(episodeId)) {
+    return NextResponse.json({
+      stream_url: episodeId,
+      subtitles:  [],
+      intro:      null,
+      outro:      null,
+    });
+  }
 
   let targetUrl: string;
   if (episodeId) {
