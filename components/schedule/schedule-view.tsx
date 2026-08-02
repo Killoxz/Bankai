@@ -62,7 +62,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           {score && (
-            <span className="flex items-center gap-1 text-[11px] text-white/60">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <Star className="size-3 fill-primary text-primary" />
               {(score / 10).toFixed(1)}
             </span>
@@ -70,7 +70,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
           {entry.media.genres.slice(0, 2).map((g) => (
             <span
               key={g}
-              className="rounded-full bg-gray-100 dark:bg-white/8 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:text-white/55"
+              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
             >
               {g}
             </span>
@@ -83,7 +83,7 @@ function ScheduleCard({ entry }: { entry: AiringEntry }) {
         <span className="text-xs font-medium text-primary">{formatTime(entry.airingAt)}</span>
         <Link
           href={`/watch/${entry.media.id}?ep=${entry.episode}`}
-          className="flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-white/10 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-white transition-colors hover:bg-primary hover:text-black"
+          className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-black"
         >
           <Play className="size-3 fill-current" />
           Watch
@@ -140,7 +140,7 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
                 "relative flex flex-col items-center gap-0.5 rounded-xl px-4 py-2.5 text-center transition-all min-w-[72px]",
                 isActive
                   ? "bg-primary text-black"
-                  : "bg-gray-100 dark:bg-white/6 text-gray-500 dark:text-white/60 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white",
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
                 !hasEntries && !isActive && "opacity-40",
               ]
                 .filter(Boolean)
@@ -161,7 +161,7 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
                 <span
                   className={[
                     "text-[10px]",
-                    isActive ? "text-black/60" : "text-white/35",
+                    isActive ? "text-black/60" : "text-muted-foreground",
                   ].join(" ")}
                 >
                   {dayDate(idx) || DAY_FULL[idx].slice(0, 3)}
@@ -194,9 +194,9 @@ export function ScheduleView({ entries }: { entries: AiringEntry[] }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="rounded-xl border border-white/8 py-16 text-center"
+              className="rounded-xl border border-border py-16 text-center"
             >
-              <p className="text-sm text-white/40">No anime scheduled for {DAY_FULL[activeDay]}.</p>
+              <p className="text-sm text-muted-foreground">No anime scheduled for {DAY_FULL[activeDay]}.</p>
             </motion.div>
           ) : (
             <motion.div
