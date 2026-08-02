@@ -115,7 +115,7 @@ export function SettingsView() {
                   "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
                   activeSection === key
                     ? "bg-primary/15 text-primary"
-                    : "text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="size-4 shrink-0" />
