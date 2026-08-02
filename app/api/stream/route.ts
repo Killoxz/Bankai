@@ -2,22 +2,28 @@ import { NextResponse } from "next/server";
 import { STREAMING_BASE } from "@/lib/streaming";
 
 interface StreamEntry {
-  url:      string;
-  type?:    string;
-  quality?: string;   // Miruro API: "1080p", "720p", etc.
-  server?:  string;   // Anivexa API
-  referer?: string;
-  headers?: Record<string, string>;
-  priority?: number;  // Anivexa API
-  isActive?: boolean; // Anivexa API
+  url:       string;
+  type?:     string;
+  quality?:  string;
+  server?:   string;
+  referer?:  string;
+  headers?:  Record<string, string>;
+  priority?: number;
+  isActive?: boolean;
+  default?:  boolean;
 }
 
-interface WatchResponse {
+interface InnerResponse {
   streams?:   StreamEntry[];
   subtitles?: { file: string; label?: string; kind?: string }[];
   intro?:     { start: number; end: number };
   outro?:     { start: number; end: number };
-  downloads?: { url: string; label?: string }[];
+}
+
+interface WatchResponse extends InnerResponse {
+  // Anivexa-API wraps streams under ssub/sdub
+  ssub?: InnerResponse;
+  sdub?: InnerResponse;
   // legacy flat fields
   stream_url?: string;
   hls?:        string;
@@ -26,15 +32,13 @@ interface WatchResponse {
 }
 
 /**
- * Pick the best playable stream from the streams array.
- * Prefer: isActive=true → type=hls → highest priority.
- * Falls back to legacy flat fields if streams[] is absent.
+ * Pick the best playable stream.
+ * Prefers HLS over embed; uses priority/isActive flags when present.
+ * Returns the stream URL and type so callers can decide whether to proxy it.
  */
-function pickStream(data: WatchResponse): { url: string; referer: string } | null {
+function pickStream(data: InnerResponse): { url: string; referer: string; type: string } | null {
   const streams = data.streams ?? [];
 
-  // Miruro API: streams are pre-sorted by quality (1080p first), no isActive field.
-  // Anivexa API: streams have isActive + priority flags.
   const hasActiveFlag = streams.some((s) => s.isActive !== undefined);
 
   const sorted = hasActiveFlag
@@ -43,9 +47,9 @@ function pickStream(data: WatchResponse): { url: string; referer: string } | nul
           return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
         return (b.priority ?? 0) - (a.priority ?? 0);
       })
-    : streams; // Miruro API: already in preferred order
+    : streams;
 
-  // Prefer HLS type; fall back to whatever is first
+  // Prefer real HLS; fall back to whatever is first
   const best =
     (hasActiveFlag
       ? sorted.find((s) => s.isActive && s.type === "hls") ?? sorted.find((s) => s.isActive)
@@ -54,52 +58,39 @@ function pickStream(data: WatchResponse): { url: string; referer: string } | nul
     sorted[0];
 
   if (best?.url) {
-    // Use the stream's explicit referer if provided, otherwise derive from its origin
     const referer =
       best.referer ??
       best.headers?.["Referer"] ??
       best.headers?.["referer"] ??
       (() => { try { return new URL(best.url).origin; } catch { return STREAMING_BASE; } })();
-    return { url: best.url, referer };
-  }
-
-  // Legacy flat fields fallback
-  const legacyUrl =
-    (typeof data.stream_url === "string" && data.stream_url) ||
-    (typeof data.hls        === "string" && data.hls)        ||
-    (typeof data.url        === "string" && data.url)        ||
-    (typeof data.streamUrl  === "string" && data.streamUrl)  ||
-    null;
-
-  if (legacyUrl) {
-    let referer = STREAMING_BASE;
-    try { referer = new URL(legacyUrl).origin; } catch {}
-    return { url: legacyUrl, referer };
+    return { url: best.url, referer, type: best.type ?? "hls" };
   }
 
   return null;
 }
 
+function pickFromWatchResponse(data: WatchResponse, audio: string): {
+  picked: ReturnType<typeof pickStream>;
+  inner: InnerResponse;
+} {
+  // Anivexa-API wraps under ssub/sdub depending on audio track
+  const innerKey = audio === "dub" ? "sdub" : "ssub";
+  const inner: InnerResponse = (data as Record<string, InnerResponse>)[innerKey] ?? data;
+  return { picked: pickStream(inner), inner };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  // Preferred: episode id taken directly from episodes response
   const episodeId = searchParams.get("episodeId");
+  const animeId   = searchParams.get("id");
+  const episode   = searchParams.get("ep") ?? "1";
+  const provider  = searchParams.get("provider");
+  const audio     = searchParams.get("audio") ?? "sub";
 
-  // Legacy fallback
-  const animeId  = searchParams.get("id");
-  const episode  = searchParams.get("ep") ?? "1";
-  const provider = searchParams.get("provider");
-  const audio    = searchParams.get("audio") ?? "sub";
-
-  // Anikoto episodes use megaplay.buzz embed URLs as episode IDs — pass through directly.
+  // Direct Anikoto path: episode ID is a megaplay embed URL — pass through to iframe player.
   if (episodeId && /^https?:\/\/megaplay\.buzz/i.test(episodeId)) {
-    return NextResponse.json({
-      stream_url: episodeId,
-      subtitles:  [],
-      intro:      null,
-      outro:      null,
-    });
+    return NextResponse.json({ stream_url: episodeId, subtitles: [], intro: null, outro: null });
   }
 
   let targetUrl: string;
@@ -110,7 +101,7 @@ export async function GET(request: Request) {
   } else {
     return NextResponse.json(
       { error: "Missing episodeId (or id + provider) parameters." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -123,30 +114,37 @@ export async function GET(request: Request) {
     if (!upstream.ok) {
       return NextResponse.json(
         { error: `Upstream returned ${upstream.status}.` },
-        { status: upstream.status }
+        { status: upstream.status },
       );
     }
 
     const data = await upstream.json() as WatchResponse;
-    const picked = pickStream(data);
+    const { picked, inner } = pickFromWatchResponse(data, audio);
 
-    // Wrap the HLS URL through our proxy so HLS.js never hits CORS from the CDN.
-    // Pass the stream's own referer so hotlink protection is satisfied.
-    const proxiedUrl = picked
-      ? `/api/hls?url=${encodeURIComponent(picked.url)}&ref=${encodeURIComponent(picked.referer)}`
-      : null;
+    let streamUrl: string | null = null;
+    if (picked) {
+      // Embed URLs (type="embed", or megaplay/vidwish hosts) go straight to the iframe player.
+      // HLS URLs are proxied through /api/hls to avoid CORS issues.
+      const isEmbed =
+        picked.type === "embed" ||
+        /megaplay\.buzz|vidwish\.live/i.test(picked.url);
+
+      streamUrl = isEmbed
+        ? picked.url
+        : `/api/hls?url=${encodeURIComponent(picked.url)}&ref=${encodeURIComponent(picked.referer)}`;
+    }
 
     return NextResponse.json({
-      stream_url: proxiedUrl,
-      subtitles:  data.subtitles ?? [],
-      intro:      data.intro     ?? null,
-      outro:      data.outro     ?? null,
+      stream_url: streamUrl,
+      subtitles:  inner.subtitles ?? [],
+      intro:      inner.intro     ?? null,
+      outro:      inner.outro     ?? null,
     });
   } catch (err) {
     console.error("[stream proxy] error:", err);
     return NextResponse.json(
       { error: "Failed to reach the streaming backend." },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }
