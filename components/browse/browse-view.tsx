@@ -83,11 +83,14 @@ function Dropdown<T extends string>({
         </button>
       )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 max-h-72 min-w-40 overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-2xl">
+        <div
+          className="absolute left-0 top-11 z-20 max-h-72 min-w-40 overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-2xl"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {options.map((o) => (
             <button
               key={o.value}
-              onClick={() => {
+              onPointerDown={() => {
                 onChange(o.value);
                 setOpen(false);
               }}
@@ -149,7 +152,10 @@ function MultiSelect({
         </button>
       )}
       {open && (
-        <div className="absolute left-0 top-11 z-20 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+        <div
+          className="absolute left-0 top-11 z-20 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {options.length > 12 && (
             <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
               <Search className="size-3.5 shrink-0 text-muted-foreground" />
@@ -172,7 +178,7 @@ function MultiSelect({
                 return (
                   <button
                     key={o}
-                    onClick={() => toggle(o)}
+                    onPointerDown={() => toggle(o)}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
                   >
                     <span

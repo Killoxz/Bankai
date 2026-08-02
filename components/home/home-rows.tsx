@@ -188,6 +188,7 @@ export function HomeRows({
           <button
             key={g}
             onClick={() => setGenre(g === genre ? "All Genres" : g)}
+            style={{ touchAction: "manipulation" }}
             className={
               g === genre
                 ? "flex-shrink-0 whitespace-nowrap rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background"
