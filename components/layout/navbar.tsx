@@ -63,13 +63,13 @@ export function Navbar() {
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-production-55b5.up.railway.app";
-        const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=6`);
+        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://anivexa-api.vercel.app";
+        const res = await fetch(`${base}/search?q=${encodeURIComponent(q)}&limit=6`);
         const json = await res.json();
-        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: string; title?: Record<string, string>; image?: string; releaseDate?: number; type?: string }) => ({
-          id: parseInt(a.id, 10),
+        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number | string; title?: Record<string, string>; image?: string; releaseDate?: number; type?: string }) => ({
+          id: typeof a.id === "number" ? a.id : parseInt(a.id as string, 10),
           title: { romaji: a.title?.romaji ?? "", english: a.title?.english ?? null },
-          coverImage: { medium: a.image },
+          coverImage: { medium: a.image as string },
           seasonYear: a.releaseDate ?? null,
           format: a.type ?? null,
         })));
