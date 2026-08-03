@@ -267,6 +267,10 @@ export function WatchView({
             hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
             hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
             currentAudio={audio}
+            providersData={providersData}
+            selectedProvider={selectedProvider}
+            onProviderChange={setSelectedProvider}
+            onAudioChange={handleAudioChange}
           />
           <SeasonsPanel
             relations={detail.relations.edges}
