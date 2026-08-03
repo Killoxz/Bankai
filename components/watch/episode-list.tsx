@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
 import { useSettingsStore } from "@/store/settings-store";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface EpisodeListProps {
   totalEpisodes: number;
@@ -213,29 +214,23 @@ export function EpisodeList({
                   {/* Inline controls (only on active episode) */}
                   {isActive && onAudioChange && onProviderChange && (
                     <div className="flex items-center gap-1.5">
-                      {/* Audio dropdown */}
-                      <select
+                      <SelectMenu
                         value={currentAudio}
-                        onChange={(e) => onAudioChange(e.target.value as "sub" | "dub")}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80 outline-none cursor-pointer hover:bg-white/15"
-                      >
-                        {hasSub && <option value="sub">Sub</option>}
-                        {hasDub && <option value="dub">Dub</option>}
-                      </select>
-
-                      {/* Server dropdown */}
+                        options={[
+                          ...(hasSub ? [{ value: "sub", label: "Sub" }] : []),
+                          ...(hasDub ? [{ value: "dub", label: "Dub" }] : []),
+                        ]}
+                        onChange={(v) => onAudioChange(v as "sub" | "dub")}
+                        icon={<Mic2 className="size-3" />}
+                      />
                       {servers.length > 0 && (
-                        <select
+                        <SelectMenu
                           value={selectedProvider ?? ""}
-                          onChange={(e) => onProviderChange(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80 outline-none cursor-pointer hover:bg-white/15 max-w-[100px]"
-                        >
-                          {servers.map((s) => (
-                            <option key={s} value={s}>{providerLabel(s)}</option>
-                          ))}
-                        </select>
+                          options={servers.map((s) => ({ value: s, label: providerLabel(s) }))}
+                          onChange={onProviderChange}
+                          icon={<Zap className="size-3" />}
+                          maxHeight={180}
+                        />
                       )}
                     </div>
                   )}

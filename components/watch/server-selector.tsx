@@ -2,6 +2,7 @@
 
 import { Mic2, Zap, Flag, Download, Share2, Loader2 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface ServerSelectorProps {
   episode: number;
@@ -62,8 +63,16 @@ export function ServerSelector({
       ).length
     : 0;
 
-  const selectCls =
-    "appearance-none cursor-pointer rounded-lg bg-white/10 py-2 text-sm font-semibold text-white/85 outline-none hover:bg-white/15 transition-colors";
+  const audioOptions = [
+    ...(hasSub ? [{ value: "sub", label: "Sub" }] : []),
+    ...(hasDub ? [{ value: "dub", label: "Dub" }] : []),
+  ];
+
+  const serverOptions = servers.map((name) => ({
+    value: name,
+    label: providerLabel(name),
+    disabled: failedProviders.has(name),
+  }));
 
   return (
     <div className="rounded-xl border border-white/[0.05] bg-[#111] px-5 py-4">
@@ -100,49 +109,33 @@ export function ServerSelector({
       <div className="mt-3 flex flex-wrap items-center gap-2">
 
         {/* Audio dropdown */}
-        <div className="relative flex items-center">
-          <Mic2 className="pointer-events-none absolute left-2.5 size-3.5 text-white/50" />
-          <select
-            value={audio}
-            onChange={(e) => onAudioChange(e.target.value as "sub" | "dub")}
-            className={`${selectCls} pl-7 pr-3`}
-          >
-            {hasSub && <option value="sub">Sub</option>}
-            {hasDub && <option value="dub">Dub</option>}
-          </select>
-        </div>
+        <SelectMenu
+          value={audio}
+          options={audioOptions}
+          onChange={(v) => onAudioChange(v as "sub" | "dub")}
+          icon={<Mic2 className="size-3.5" />}
+        />
 
         {/* Server dropdown */}
-        <div className="relative flex items-center">
-          <Zap className="pointer-events-none absolute left-2.5 size-3.5 text-white/50" />
-          {isLoading ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/30">
-              <Loader2 className="size-3.5 animate-spin" />
-              <span>Loading…</span>
-            </div>
-          ) : servers.length === 0 ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/25">
-              <Zap className="size-3.5" />
-              <span>No servers</span>
-            </div>
-          ) : (
-            <select
-              value={selectedProvider ?? ""}
-              onChange={(e) => onProviderChange(e.target.value)}
-              className={`${selectCls} pl-7 pr-3 max-w-[160px]`}
-            >
-              {servers.map((name) => (
-                <option
-                  key={name}
-                  value={name}
-                  disabled={failedProviders.has(name)}
-                >
-                  {providerLabel(name)}{failedProviders.has(name) ? " (failed)" : ""}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/30">
+            <Loader2 className="size-3.5 animate-spin" />
+            <span>Loading…</span>
+          </div>
+        ) : servers.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/25">
+            <Zap className="size-3.5" />
+            <span>No servers</span>
+          </div>
+        ) : (
+          <SelectMenu
+            value={selectedProvider ?? ""}
+            options={serverOptions}
+            onChange={onProviderChange}
+            icon={<Zap className="size-3.5" />}
+            maxHeight={220}
+          />
+        )}
 
         {/* Report / Download / Share */}
         <div className="ml-auto flex items-center gap-1">
