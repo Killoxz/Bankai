@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic2, Zap, Flag, Download, Share2, Loader2 } from "lucide-react";
+import { Headphones, Mic2, Zap, Flag, Download, Share2, Loader2 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
 import { SelectMenu } from "@/components/ui/select-menu";
 
@@ -77,68 +77,73 @@ export function ServerSelector({
   return (
     <div className="rounded-xl border border-white/[0.05] bg-[#111] px-5 py-4">
 
-      {/* ── Top row: title + label hints ───────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="min-w-0 text-base font-bold text-white">
-          {episode}. {title}
+      {/* Row 1: AUDIO / SERVER labels — right-aligned */}
+      <div className="flex justify-end gap-5 text-[11px] font-medium text-white/30">
+        <span className="flex items-center gap-1">
+          <Headphones className="size-3" /> AUDIO
+        </span>
+        <span className="flex items-center gap-1">
+          <Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}
+        </span>
+      </div>
+
+      {/* Row 2: episode title left · dropdowns right */}
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-white">
+          <span className="mr-1 text-white/50">{episode}.</span>{title}
         </h2>
-        <div className="flex shrink-0 items-center gap-3 text-[11px] text-white/30">
-          <span className="flex items-center gap-1"><Mic2 className="size-3" /> AUDIO</span>
-          <span className="flex items-center gap-1">
-            <Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}
-          </span>
+
+        <div className="flex items-center gap-2">
+          {/* Audio dropdown */}
+          <SelectMenu
+            value={audio}
+            options={audioOptions}
+            onChange={(v) => onAudioChange(v as "sub" | "dub")}
+            icon={<Mic2 className="size-3.5" />}
+          />
+
+          {/* Server dropdown */}
+          {isLoading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white/30">
+              <Loader2 className="size-3.5 animate-spin" />
+              <span>Loading…</span>
+            </div>
+          ) : servers.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-sm text-white/25">
+              <Zap className="size-3.5" />
+              <span>No servers</span>
+            </div>
+          ) : (
+            <SelectMenu
+              value={selectedProvider ?? ""}
+              options={serverOptions}
+              onChange={onProviderChange}
+              icon={<Zap className="size-3.5" />}
+              maxHeight={220}
+            />
+          )}
         </div>
       </div>
 
-      {/* ── Meta row ────────────────────────────────────────────────────── */}
-      <div className="mt-2 flex flex-wrap items-center gap-2.5">
-        {airDate && <span className="text-xs text-white/40">{airDate}</span>}
-        {subCount > 0 && (
-          <span className="flex items-center gap-1 rounded border border-white/10 px-2 py-0.5 text-[11px] font-medium text-white/60">
-            <Mic2 className="size-3" /> {subCount}
-          </span>
-        )}
-        {dubCount > 0 && (
-          <span className="flex items-center gap-1 rounded border border-white/10 px-2 py-0.5 text-[11px] font-medium text-primary/70">
-            <Mic2 className="size-3" /> {dubCount}
-          </span>
-        )}
-      </div>
+      {/* Row 3: meta badges left · action buttons right */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {airDate && (
+            <span className="text-xs text-white/40">{airDate}</span>
+          )}
+          {subCount > 0 && (
+            <span className="flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/50">
+              CC {subCount}
+            </span>
+          )}
+          {dubCount > 0 && (
+            <span className="flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50">
+              <Mic2 className="size-3" /> {dubCount}
+            </span>
+          )}
+        </div>
 
-      {/* ── Controls row: dropdowns + actions ───────────────────────────── */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-
-        {/* Audio dropdown */}
-        <SelectMenu
-          value={audio}
-          options={audioOptions}
-          onChange={(v) => onAudioChange(v as "sub" | "dub")}
-          icon={<Mic2 className="size-3.5" />}
-        />
-
-        {/* Server dropdown */}
-        {isLoading ? (
-          <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/30">
-            <Loader2 className="size-3.5 animate-spin" />
-            <span>Loading…</span>
-          </div>
-        ) : servers.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/25">
-            <Zap className="size-3.5" />
-            <span>No servers</span>
-          </div>
-        ) : (
-          <SelectMenu
-            value={selectedProvider ?? ""}
-            options={serverOptions}
-            onChange={onProviderChange}
-            icon={<Zap className="size-3.5" />}
-            maxHeight={220}
-          />
-        )}
-
-        {/* Report / Download / Share */}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex items-center gap-1">
           {[
             { icon: Flag,     label: "Report"   },
             { icon: Download, label: "Download" },
@@ -147,7 +152,7 @@ export function ServerSelector({
             <button
               key={label}
               title={label}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white/40 transition-colors hover:bg-white/5 hover:text-white/70"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
             >
               <Icon className="size-3.5" />
               {label}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Search, List, Grid2X2, Image as ImageIcon, ChevronDown,
+  Search, LayoutList, LayoutGrid, GalleryHorizontal, ChevronDown,
   Mic2, Zap, Play,
 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
@@ -143,20 +143,26 @@ export function EpisodeList({
         </div>
 
         {/* View toggles */}
-        <div className="flex items-center gap-1">
-          {(["list", "grid", "image"] as const).map((mode) => {
-            const Icon = mode === "list" ? List : mode === "grid" ? Grid2X2 : ImageIcon;
-            return (
-              <button
-                key={mode}
-                onClick={() => changeView(mode)}
-                aria-label={mode}
-                className={["rounded p-1.5 transition-colors", viewMode === mode ? "text-white" : "text-white/30 hover:text-white/60"].join(" ")}
-              >
-                <Icon className="size-4" />
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+          {([
+            { mode: "list",  Icon: LayoutList },
+            { mode: "grid",  Icon: LayoutGrid },
+            { mode: "image", Icon: GalleryHorizontal },
+          ] as const).map(({ mode, Icon }) => (
+            <button
+              key={mode}
+              onClick={() => changeView(mode)}
+              aria-label={mode}
+              className={[
+                "rounded-md p-1.5 transition-colors",
+                viewMode === mode
+                  ? "bg-white/10 text-white"
+                  : "text-white/30 hover:text-white/60",
+              ].join(" ")}
+            >
+              <Icon className="size-4" />
+            </button>
+          ))}
         </div>
       </div>
 
@@ -190,7 +196,7 @@ export function EpisodeList({
                     </span>
                   </button>
                   <div className="flex shrink-0 items-center gap-3 text-[11px] text-white/30">
-                    <span className="flex items-center gap-1"><Mic2 className="size-3" /> AUDIO</span>
+                    <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
                     <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
                   </div>
                 </div>
@@ -200,12 +206,12 @@ export function EpisodeList({
                   <div className="flex flex-wrap items-center gap-1.5">
                     {airDate && <span className="text-[11px] text-white/35">{airDate}</span>}
                     {hasSub && (
-                      <span className="flex items-center gap-0.5 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50">
-                        <Mic2 className="size-2.5" /> CC
+                      <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white/50">
+                        CC
                       </span>
                     )}
                     {hasDub && (
-                      <span className="flex items-center gap-0.5 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">
+                      <span className="flex items-center gap-0.5 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50">
                         <Mic2 className="size-2.5" /> DUB
                       </span>
                     )}
@@ -319,9 +325,13 @@ export function EpisodeList({
                     </p>
                   </div>
                   <div className="mt-auto flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
-                      {hasSub && <Mic2 className="size-3 text-white/40" />}
-                      {hasDub && <Mic2 className="size-3 text-primary/60" />}
+                    <div className="flex items-center gap-1.5">
+                      {hasSub && (
+                        <span className="rounded border border-white/10 px-1 py-0.5 text-[9px] font-bold tracking-wide text-white/40">
+                          CC
+                        </span>
+                      )}
+                      {hasDub && <Mic2 className="size-3 text-white/50" />}
                     </div>
                     {airDate && <span className="text-[10px] text-white/30">{airDate}</span>}
                   </div>
