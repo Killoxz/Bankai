@@ -188,20 +188,20 @@ export function SettingsView() {
                           {Icon ? (
                             <Icon className="size-4" />
                           ) : (
-                            /* AniList icon — filter converts black logo → currentColor, white bg → transparent */
-                            <svg viewBox="0 0 208 158" className="size-4 shrink-0">
-                              <defs>
-                                <filter id="al-icon" colorInterpolationFilters="sRGB">
-                                  <feColorMatrix type="luminanceToAlpha" result="a"/>
-                                  <feComponentTransfer in="a" result="ia">
-                                    <feFuncA type="linear" slope="-1" intercept="1"/>
-                                  </feComponentTransfer>
-                                  <feFlood floodColor="currentColor" result="c"/>
-                                  <feComposite in="c" in2="ia" operator="in"/>
-                                </filter>
-                              </defs>
-                              <image href="/anilist-icon.png" x="0" y="0" width="208" height="158" filter="url(#al-icon)"/>
-                            </svg>
+                            <span
+                              className="inline-block size-4 shrink-0"
+                              style={{
+                                backgroundColor: "currentColor",
+                                WebkitMaskImage: "url(/anilist-icon-mask.png)",
+                                WebkitMaskSize: "contain",
+                                WebkitMaskRepeat: "no-repeat",
+                                WebkitMaskPosition: "center",
+                                maskImage: "url(/anilist-icon-mask.png)",
+                                maskSize: "contain",
+                                maskRepeat: "no-repeat",
+                                maskPosition: "center",
+                              }}
+                            />
                           )}
                           {label}
                           {active && <Check className="size-3 ml-0.5" />}
