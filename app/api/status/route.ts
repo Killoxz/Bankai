@@ -54,12 +54,10 @@ export async function GET() {
       ),
     ),
 
-    // MyAnimeList (via Jikan)
-    check("MyAnimeList", () =>
+    // My List — user watchlist stored in the DB
+    check("My List", () =>
       withTimeout(
-        fetch("https://api.jikan.moe/v4/anime?limit=1", { cache: "no-store" }).then((r) => {
-          if (!r.ok) throw new Error("not ok");
-        }),
+        prisma.listEntry.count().then(() => {}),
         5000,
       ),
     ),

@@ -54,10 +54,10 @@ const SERVICE_INFO: Record<string, { icon: string; description: string }> = {
     description:
       "Supplies anime titles, cover art, descriptions, genres, and ratings shown across Bankai. Outages affect search, browse, and detail pages.",
   },
-  MyAnimeList: {
-    icon: "⭐",
+  "My List": {
+    icon: "📋",
     description:
-      "Powers the MAL score shown on anime detail pages. If down, only the AniList score is shown.",
+      "Your personal watchlist on Bankai — tracks watching, completed, plan-to-watch, and dropped entries. Stored in the Bankai database.",
   },
   "Streaming Server": {
     icon: "📡",
@@ -83,7 +83,7 @@ const ORDERED_SERVICES = [
   "Streaming Server",
   "Player",
   "AniList",
-  "MyAnimeList",
+  "My List",
   "Community Comments",
 ];
 
@@ -334,8 +334,8 @@ export default function StatusPage() {
               {" "}— Anime details, artwork, and descriptions may not load or may be stale.
             </li>
             <li>
-              <span className="font-medium text-foreground">MyAnimeList down</span>
-              {" "}— MAL scores will not appear on detail pages. Everything else is unaffected.
+              <span className="font-medium text-foreground">My List down</span>
+              {" "}— Your watchlist, progress tracking, and list statuses will not load or save. Watching and browsing still work.
             </li>
             <li>
               <span className="font-medium text-foreground">Community Comments down</span>
