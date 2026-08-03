@@ -82,12 +82,12 @@ export function Navbar() {
   return (
     <header className="relative z-50 w-full">
       {/* Status banner */}
-      <div className="flex items-center justify-center gap-1.5 border-b border-gray-200 dark:border-white/[0.06] bg-gray-100/80 dark:bg-black/20 px-4 py-1.5 text-center text-xs font-medium text-gray-600 dark:text-white/60 backdrop-blur-md">
+      <div className="flex items-center justify-center gap-1.5 border-b border-border bg-gray-100/80 dark:bg-background/40 px-4 py-1.5 text-center text-xs font-medium text-gray-600 dark:text-white/60 backdrop-blur-md">
         <AlertCircle className="size-3.5 shrink-0 text-green-500 dark:text-green-400/70" />
         Now Streaming via AniList — Enjoy!
       </div>
 
-      <div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-[#141414]/60 px-8 backdrop-blur-md">
+      <div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-background/80 px-8 backdrop-blur-md">
         {/* Logo */}
         <Link href="/" aria-label="Bankai home" className="shrink-0">
           <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto invert dark:invert-0" priority />
@@ -126,7 +126,7 @@ export function Navbar() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.97 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1c1c1c] py-1.5 shadow-2xl"
+                className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1.5 shadow-2xl"
               >
                 {results.map((r) => (
                   <Link
@@ -179,7 +179,7 @@ export function Navbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-11 w-52 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1c1c1c] py-1 shadow-2xl"
+                  className="absolute right-0 top-11 w-52 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1 shadow-2xl"
                 >
                   <p className="px-4 py-2.5 text-xs text-gray-500 dark:text-white/50">
                     Signed in as <span className="font-semibold text-gray-900 dark:text-white">{currentUser}</span>
@@ -301,7 +301,7 @@ function LanguageDropdown() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.12 }}
-            className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1c1c1c] py-1 shadow-2xl"
+            className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1 shadow-2xl"
           >
             <p className="px-3.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-gray-400 dark:text-white/40">
               Title Language
