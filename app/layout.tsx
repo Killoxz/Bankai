@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SettingsSync } from "@/components/layout/settings-sync";
 import { Providers } from "@/components/layout/providers";
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
         <Providers>
+          <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
           <SettingsSync />
           {children}
           <MobileNav />
