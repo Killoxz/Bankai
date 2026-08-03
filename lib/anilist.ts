@@ -1,7 +1,7 @@
 import { useLanguageStore } from "@/store/language-store";
 import { readCache, writeCache } from "./api-cache";
 
-const MIRURO_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https://public-miruro-consumet-api.vercel.app")
+const MIRURO_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https://miruro-api-sooty-rho.vercel.app")
   .replace(/\/$/, "")
   .replace(/^(?!https?:\/\/)/, "https://");
 
