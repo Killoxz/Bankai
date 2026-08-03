@@ -29,7 +29,6 @@ export const PROVIDER_LABELS: Record<string, string> = {
   zoro: "Zoro",
   hop:  "Hop",
   // Legacy / fallback
-  allmanga:   "AllManga",
   reanime:    "Reanime",
   anikoto:    "AniKoto",
   animegg:    "AnimeGG",
@@ -123,7 +122,7 @@ export function mergedEpisodeList(providers: EpisodesMap, audio: "sub" | "dub"):
   const PRIORITY = [
     "kiwi", "hop", "arc", "zoro",
     // legacy providers kept as fallback
-    "kaa", "allmanga", "anineko", "animegg", "anikoto", "animedunya",
+    "kaa", "anineko", "animegg", "anikoto", "animedunya",
     "animenosub", "2dhive", "anidbapp", "reanime", "senshi", "anibd", "anizone",
   ];
 
