@@ -169,10 +169,10 @@ export function SettingsView() {
                 <SettingRow label="Theme" hint="Choose your preferred appearance">
                   <div className="flex flex-wrap gap-1.5">
                     {([
-                      { value: "dark",    label: "Dark",    Icon: Moon, iconColor: undefined },
-                      { value: "light",   label: "Light",   Icon: Sun,  iconColor: undefined },
-                      { value: "anilist", label: "AniList", Icon: null,  iconColor: "#02A9FF" },
-                    ] as const).map(({ value, label, Icon, iconColor }) => {
+                      { value: "dark",    label: "Dark",    Icon: Moon },
+                      { value: "light",   label: "Light",   Icon: Sun  },
+                      { value: "anilist", label: "AniList", Icon: null  },
+                    ] as const).map(({ value, label, Icon }) => {
                       const active = resolvedTheme === value;
                       return (
                         <button
@@ -188,8 +188,7 @@ export function SettingsView() {
                           {Icon ? (
                             <Icon className="size-4" />
                           ) : (
-                            /* AniList "AL" logo */
-                            <svg viewBox="0 0 58 46" fill={active ? "currentColor" : iconColor!} className="size-4 shrink-0">
+                            <svg viewBox="0 0 58 46" fill="currentColor" className="size-4 shrink-0">
                               <polygon points="1,46 12,46 22,2 17,2"/>
                               <polygon points="20,2 30,2 42,46 31,46"/>
                               <rect x="10" y="27" width="23" height="6"/>
