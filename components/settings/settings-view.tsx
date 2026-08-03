@@ -188,12 +188,18 @@ export function SettingsView() {
                           {Icon ? (
                             <Icon className="size-4" />
                           ) : (
-                            <svg viewBox="0 0 58 46" fill="currentColor" className="size-4 shrink-0">
-                              <polygon points="1,46 12,46 22,2 17,2"/>
-                              <polygon points="20,2 30,2 42,46 31,46"/>
-                              <rect x="10" y="27" width="23" height="6"/>
-                              <rect x="35" y="11" width="8" height="35"/>
-                              <rect x="35" y="38" width="23" height="8"/>
+                            /* AniList AL logo — left stroke has the signature top-left notch */
+                            <svg viewBox="0 0 100 78" fill="currentColor" className="size-4 shrink-0">
+                              {/* A: left stroke — vertical then diagonal notch at top */}
+                              <polygon points="3,78 3,10 14,0 25,0 14,78"/>
+                              {/* A: right stroke */}
+                              <polygon points="25,0 36,0 66,78 55,78"/>
+                              {/* A: crossbar */}
+                              <rect x="14" y="40" width="26" height="10"/>
+                              {/* L: vertical (starts ~25% from top) */}
+                              <rect x="68" y="18" width="10" height="60"/>
+                              {/* L: wide base */}
+                              <rect x="68" y="64" width="32" height="14"/>
                             </svg>
                           )}
                           {label}
