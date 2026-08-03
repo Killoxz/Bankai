@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 78">
-  <polygon points="3,78 3,10 14,0 25,0 14,78" fill="black"/>
-  <polygon points="25,0 36,0 66,78 55,78" fill="black"/>
-  <rect x="14" y="40" width="26" height="10" fill="black"/>
-  <rect x="68" y="18" width="10" height="60" fill="black"/>
-  <rect x="68" y="64" width="32" height="14" fill="black"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 77">
+  <polygon points="0,77 20,77 31,0 14,0 0,13" fill="black"/>
+  <polygon points="14,0 31,0 68,77 51,77" fill="black"/>
+  <rect x="11" y="41" width="33" height="10" fill="black"/>
+  <rect x="74" y="11" width="10" height="66" fill="black"/>
+  <rect x="74" y="65" width="26" height="12" fill="black"/>
 </svg>
