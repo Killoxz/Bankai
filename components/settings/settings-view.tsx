@@ -188,18 +188,19 @@ export function SettingsView() {
                           {Icon ? (
                             <Icon className="size-4" />
                           ) : (
-                            /* AniList AL logo — left stroke has the signature top-left notch */
-                            <svg viewBox="0 0 100 78" fill="currentColor" className="size-4 shrink-0">
-                              {/* A: left stroke — vertical then diagonal notch at top */}
-                              <polygon points="3,78 3,10 14,0 25,0 14,78"/>
-                              {/* A: right stroke */}
-                              <polygon points="25,0 36,0 66,78 55,78"/>
-                              {/* A: crossbar */}
-                              <rect x="14" y="40" width="26" height="10"/>
-                              {/* L: vertical (starts ~25% from top) */}
-                              <rect x="68" y="18" width="10" height="60"/>
-                              {/* L: wide base */}
-                              <rect x="68" y="64" width="32" height="14"/>
+                            /* AniList icon — filter converts black logo → currentColor, white bg → transparent */
+                            <svg viewBox="0 0 208 158" className="size-4 shrink-0">
+                              <defs>
+                                <filter id="al-icon" colorInterpolationFilters="sRGB">
+                                  <feColorMatrix type="luminanceToAlpha" result="a"/>
+                                  <feComponentTransfer in="a" result="ia">
+                                    <feFuncA type="linear" slope="-1" intercept="1"/>
+                                  </feComponentTransfer>
+                                  <feFlood floodColor="currentColor" result="c"/>
+                                  <feComposite in="c" in2="ia" operator="in"/>
+                                </filter>
+                              </defs>
+                              <image href="/anilist-icon.png" x="0" y="0" width="208" height="158" filter="url(#al-icon)"/>
                             </svg>
                           )}
                           {label}
