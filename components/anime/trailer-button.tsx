@@ -25,9 +25,10 @@ export function TrailerButton({ site, trailerId }: { site: string; trailerId: st
         Watch Trailer
       </button>
 
-      {open && (
-        <Modal title="Trailer" onClose={() => setOpen(false)} maxWidth={800}>
-          <div className="mt-5 aspect-video overflow-hidden rounded-lg bg-black">
+      {/* Always mounted so AnimatePresence catches the exit animation */}
+      <Modal open={open} title="Trailer" onClose={() => setOpen(false)} maxWidth={880}>
+        <div className="mt-5 aspect-video overflow-hidden rounded-lg bg-black">
+          {open && (
             <iframe
               src={src}
               title="Trailer"
@@ -35,9 +36,9 @@ export function TrailerButton({ site, trailerId }: { site: string; trailerId: st
               allowFullScreen
               className="size-full"
             />
-          </div>
-        </Modal>
-      )}
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

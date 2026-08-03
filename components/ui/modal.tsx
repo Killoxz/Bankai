@@ -2,13 +2,16 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Modal({
+  open = true,
   title,
   onClose,
   children,
   maxWidth = 500,
 }: {
+  open?: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
@@ -18,27 +21,45 @@ export function Modal({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    window.addEventListener("keydown", onKey);
+    if (open) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, open]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full rounded-xl border border-white/10 bg-[#181818] p-7 shadow-2xl"
-        style={{ maxWidth }}
-      >
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-5 top-5 text-white/50 transition-colors hover:text-white"
-        >
-          <X className="size-5" />
-        </button>
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        {children}
-      </div>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+          />
+
+          {/* Panel */}
+          <motion.div
+            className="relative w-full rounded-xl border border-white/10 bg-[#181818] p-7 shadow-2xl"
+            style={{ maxWidth }}
+            initial={{ opacity: 0, scale: 0.86, y: 28 }}
+            animate={{ opacity: 1, scale: 1,    y: 0  }}
+            exit={{    opacity: 0, scale: 0.86, y: 28 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.9 }}
+          >
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-5 top-5 text-white/50 transition-colors hover:text-white"
+            >
+              <X className="size-5" />
+            </button>
+            <h2 className="text-xl font-bold text-white">{title}</h2>
+            {children}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
