@@ -105,8 +105,7 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-sooty-rho.vercel.app";
-        const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=12`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`);
         const json = await res.json();
         setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number; title?: Record<string, string>; coverImage?: Record<string, string>; seasonYear?: number; format?: string }) => ({
           id: a.id,

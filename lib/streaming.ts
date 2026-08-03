@@ -1,5 +1,5 @@
 export const STREAMING_BASE = (
-  process.env.STREAMING_API_URL?.trim() ?? "https://miruro-api-sooty-rho.vercel.app"
+  process.env.STREAMING_API_URL?.trim() ?? "https://anivexa-api.vercel.app"
 ).replace(/\/$/, "");
 
 export async function fetchEpisodesRaw(anilistId: number): Promise<Record<string, unknown> | null> {
