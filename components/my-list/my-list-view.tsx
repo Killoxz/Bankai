@@ -3,12 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Eye, Bookmark, CheckCircle2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { useCardAnimation } from "@/hooks/use-card-animation";
 
 interface AnimeStub {
   id: string;
@@ -32,50 +33,8 @@ const TABS: { key: TabKey; label: string; icon: typeof Eye }[] = [
   { key: "watched", label: "Watched", icon: CheckCircle2 },
 ];
 
-const TILT_X = 18;
-const TILT_Y = 22;
-
 function MyListCard({ anime, index }: { anime: AnimeStub; index: number }) {
-  const wrapRef  = useRef<HTMLDivElement>(null);
-  const cardRef  = useRef<HTMLDivElement>(null);
-  const glareRef = useRef<HTMLDivElement>(null);
-
-  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const wrap  = wrapRef.current;
-    const card  = cardRef.current;
-    const glare = glareRef.current;
-    if (!wrap || !card) return;
-
-    const { left, top, width, height } = wrap.getBoundingClientRect();
-    const x = (e.clientX - left) / width;
-    const y = (e.clientY - top)  / height;
-
-    const rY =  (x - 0.5) * TILT_Y * 2;
-    const rX = -(y - 0.5) * TILT_X * 2;
-
-    const dark = document.documentElement.classList.contains("dark") ||
-                 document.documentElement.classList.contains("anilist");
-    const sa = dark ? "0.55" : "0.12";
-    const sb = dark ? "0.40" : "0.08";
-
-    card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.07,1.07,1.07)`;
-    card.style.boxShadow = `${-rY * 1.2}px ${rX * 1.2}px 40px rgba(0,0,0,${sa}), 0 8px 24px rgba(0,0,0,${sb})`;
-
-    if (glare) {
-      glare.style.opacity    = "1";
-      glare.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(255,255,255,0.22) 0%, transparent 62%)`;
-    }
-  }, []);
-
-  const onLeave = useCallback(() => {
-    const card  = cardRef.current;
-    const glare = glareRef.current;
-    if (!card) return;
-    card.style.transform = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
-    card.style.boxShadow = "";
-    if (glare) glare.style.opacity = "0";
-  }, []);
-
+  const { wrapRef, cardRef, glareRef, onMove, onLeave } = useCardAnimation();
   const href = `/anime/${anime.id.replace("anilist:", "")}`;
 
   return (
@@ -110,7 +69,6 @@ function MyListCard({ anime, index }: { anime: AnimeStub; index: number }) {
               />
             )}
 
-            {/* Hover play overlay */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/35">
               <div className="scale-75 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
                 <div className="grid size-12 place-items-center rounded-full bg-primary shadow-xl">
@@ -119,7 +77,6 @@ function MyListCard({ anime, index }: { anime: AnimeStub; index: number }) {
               </div>
             </div>
 
-            {/* Glare layer */}
             <div
               ref={glareRef}
               className="pointer-events-none absolute inset-0 z-10 rounded-xl"

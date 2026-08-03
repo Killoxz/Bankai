@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,7 +18,11 @@ import {
   Sun,
   Monitor,
   Trash2,
+  Layers,
+  MousePointer2,
+  Sparkles,
 } from "lucide-react";
+import { useCardAnimationStore, type CardAnimation } from "@/store/card-animation-store";
 import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 import { Navbar } from "@/components/layout/navbar";
@@ -79,6 +84,7 @@ export function SettingsView() {
   const defaultAudio     = useLanguageStore((s) => s.defaultAudio);
   const setDefaultAudio  = useLanguageStore((s) => s.setDefaultAudio);
   const { resolvedTheme, setTheme } = useTheme();
+  const { cardAnimation, setCardAnimation } = useCardAnimationStore();
 
   const [mounted, setMounted]       = useState(false);
   const [activeSection, setActiveSection] = useState<Section>("account");
@@ -210,8 +216,32 @@ export function SettingsView() {
                     })}
                   </div>
                 </SettingRow>
-                <SettingRow label="Card size" hint="Coming in a future update">
-                  <span className="text-xs text-muted-foreground">Coming soon</span>
+                <SettingRow label="Card animation" hint="How anime cards react when you hover over them">
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      { value: "tilt",  label: "3D Tilt", Icon: Layers       },
+                      { value: "hover", label: "Plain",   Icon: MousePointer2 },
+                      { value: "glow",  label: "Glow",    Icon: Sparkles      },
+                    ] as { value: CardAnimation; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ value, label, Icon }) => {
+                      const active = cardAnimation === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setCardAnimation(value)}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all",
+                            active
+                              ? "border-primary bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-card-foreground hover:border-primary/30"
+                          )}
+                        >
+                          <Icon className="size-4" />
+                          {label}
+                          {active && <Check className="size-3 ml-0.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </SettingRow>
                 <SettingRow label="Autoplay next episode" hint="Automatically start the next episode when one ends">
                   <Toggle checked={true} onChange={() => {}} />
