@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, User, LogOut, ChevronDown, AlertCircle, Settings, History } from "lucide-react";
+import { Search, Bell, User, LogOut, ChevronDown, Settings, History } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,13 +81,7 @@ export function Navbar() {
 
   return (
     <header className="relative z-50 w-full">
-      {/* Status banner */}
-      <div className="flex items-center justify-center gap-1.5 border-b border-border bg-gray-100/80 dark:bg-background/40 px-4 py-1.5 text-center text-xs font-medium text-gray-600 dark:text-white/60 backdrop-blur-md">
-        <AlertCircle className="size-3.5 shrink-0 text-green-500 dark:text-green-400/70" />
-        Now Streaming via AniList — Enjoy!
-      </div>
-
-      <div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-background/80 px-8 backdrop-blur-md">
+<div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-background/80 px-8 backdrop-blur-md">
         {/* Logo */}
         <Link href="/" aria-label="Bankai home" className="shrink-0">
           <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto invert dark:invert-0" priority />
