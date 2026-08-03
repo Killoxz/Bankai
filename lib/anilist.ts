@@ -1,10 +1,11 @@
 import { useLanguageStore } from "@/store/language-store";
 import { readCache, writeCache } from "./api-cache";
 
-const JIKAN = "https://api.jikan.moe/v4";
-const ARM   = "https://arm.haglund.dev/api/v2/ids";
+const MIRURO_BASE = (process.env.STREAMING_API_URL?.trim() ?? "https://public-miruro-consumet-api.vercel.app")
+  .replace(/\/$/, "")
+  .replace(/^(?!https?:\/\/)/, "https://");
 
-// ─── Public interfaces ────────────────────────────────────────────────────────
+// ─── Public interfaces (shapes unchanged — all consumers keep working) ────────
 
 export interface AnimeMedia {
   id: number;
@@ -100,323 +101,337 @@ export interface BrowsePage {
   hasNextPage: boolean;
 }
 
-// ─── Jikan raw types ──────────────────────────────────────────────────────────
+// ─── Miruro API raw types ─────────────────────────────────────────────────────
 
-interface JImage { image_url: string; large_image_url?: string }
-
-interface JAnime {
-  mal_id: number;
-  title: string;
-  title_english: string | null;
-  title_japanese: string | null;
-  images: { jpg: JImage };
-  trailer: { youtube_id: string | null; images?: { maximum_image_url: string | null } } | null;
-  synopsis: string | null;
-  type: string | null;
-  episodes: number | null;
-  status: string | null;
-  score: number | null;
-  genres: { name: string }[];
-  themes?: { name: string }[];
-  year: number | null;
-  season: string | null;
-  duration: string | null;
-  aired?: { from: string | null };
-  studios: { name: string }[];
-  relations?: { relation: string; entry: { mal_id: number; type: string; name: string }[] }[];
-  broadcast?: { day: string | null; time: string | null; timezone: string | null };
+interface MiruroTitle {
+  romaji?: string | null;
+  english?: string | null;
+  native?: string | null;
+  userPreferred?: string | null;
 }
 
-interface JCharacter {
-  character: { mal_id: number; name: string; images: { jpg: JImage } };
+interface MiruroAnime {
+  id: string;
+  malId?: string | number | null;
+  title: MiruroTitle;
+  image: string;
+  cover?: string | null;
+  description?: string | null;
+  status?: string | null;
+  releaseDate?: number | null;
+  totalEpisodes?: number | null;
+  currentEpisode?: number | null;
+  rating?: number | null;
+  duration?: number | null;
+  genres?: string[];
+  studios?: string[];
+  season?: string | null;
+  type?: string | null;
+  startDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
+  endDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
+  characters?: MiruroCharacter[];
+  relations?: MiruroRelation[];
+  recommendations?: MiruroRecommendation[];
+  trailer?: { id: string; site: string; thumbnail?: string | null } | null;
+  color?: string | null;
+}
+
+interface MiruroPaging {
+  currentPage?: number;
+  hasNextPage?: boolean;
+  totalPages?: number;
+  totalResults?: number;
+  results: MiruroAnime[];
+}
+
+interface MiruroCharacter {
+  id: string;
   role: string;
+  name: { full?: string; romaji?: string; english?: string | null; native?: string | null };
+  image: string;
 }
 
-interface JRecommendation {
-  entry: { mal_id: number; title: string; images: { jpg: JImage } };
+interface MiruroRelation {
+  id: string;
+  relationType: string;
+  title: MiruroTitle;
+  image: string;
+  cover?: string | null;
+  type?: string | null;
+  format?: string | null;
+  status?: string | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function jikanGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${JIKAN}${path}`, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) throw new Error(`Jikan ${res.status} ${path}`);
-  return res.json() as Promise<T>;
+interface MiruroRecommendation {
+  id: string;
+  title: MiruroTitle;
+  image: string;
+  rating?: number | null;
+  type?: string | null;
+  status?: string | null;
+  episodes?: number | null;
 }
 
-async function armLookup(source: "anilist" | "myanimelist", id: number): Promise<Record<string, number | null> | null> {
-  try {
-    const res = await fetch(`${ARM}?source=${source}&id=${id}`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    return res.json() as Promise<Record<string, number | null>>;
-  } catch { return null; }
+interface MiruroScheduleEntry {
+  id: number;
+  airingAt: number;
+  episode: number;
+  anime: MiruroAnime;
 }
+
+// ─── Mapping helpers ──────────────────────────────────────────────────────────
 
 function mapStatus(s: string | null | undefined): AnimeMedia["status"] {
-  const m: Record<string, AnimeMedia["status"]> = {
-    "Currently Airing": "RELEASING", "Finished Airing": "FINISHED",
-    "Not yet aired": "NOT_YET_RELEASED", "On Hiatus": "HIATUS",
+  if (!s) return null;
+  const map: Record<string, AnimeMedia["status"]> = {
+    Ongoing: "RELEASING",
+    RELEASING: "RELEASING",
+    Completed: "FINISHED",
+    FINISHED: "FINISHED",
+    "Not yet aired": "NOT_YET_RELEASED",
+    NOT_YET_RELEASED: "NOT_YET_RELEASED",
+    Cancelled: "CANCELLED",
+    CANCELLED: "CANCELLED",
+    Hiatus: "HIATUS",
+    HIATUS: "HIATUS",
   };
-  return (s && m[s]) ? m[s]! : null;
+  return map[s] ?? null;
 }
 
 function mapFormat(t: string | null | undefined): AnimeMedia["format"] {
-  const m: Record<string, AnimeMedia["format"]> = {
-    TV: "TV", "TV Short": "TV_SHORT", Movie: "MOVIE",
-    Special: "SPECIAL", OVA: "OVA", ONA: "ONA", Music: "MUSIC",
+  if (!t) return null;
+  const map: Record<string, AnimeMedia["format"]> = {
+    TV: "TV",
+    "TV Short": "TV_SHORT",
+    TV_SHORT: "TV_SHORT",
+    Movie: "MOVIE",
+    MOVIE: "MOVIE",
+    Special: "SPECIAL",
+    SPECIAL: "SPECIAL",
+    OVA: "OVA",
+    ONA: "ONA",
+    Music: "MUSIC",
+    MUSIC: "MUSIC",
   };
-  return (t && m[t]) ? m[t]! : null;
+  return map[t] ?? null;
 }
 
-function parseDuration(s: string | null | undefined): number | null {
-  if (!s) return null;
-  const hr  = s.match(/(\d+)\s*hr/);
-  const min = s.match(/(\d+)\s*min/);
-  const v   = (hr ? parseInt(hr[1]) * 60 : 0) + (min ? parseInt(min[1]) : 0);
-  return v > 0 ? v : null;
-}
-
-function cover(a: JAnime): string {
-  return a.images.jpg.large_image_url ?? a.images.jpg.image_url;
-}
-
-// Build an AnimeMedia from a Jikan result.
-// id defaults to mal_id so the homepage never needs ARM.
-function toMedia(a: JAnime, id?: number): AnimeMedia {
+function toMedia(a: MiruroAnime): AnimeMedia {
   return {
-    id: id ?? a.mal_id,
-    title: { romaji: a.title ?? "", english: a.title_english ?? null, native: a.title_japanese ?? null },
-    coverImage: { large: cover(a), extraLarge: cover(a) },
-    bannerImage: a.trailer?.images?.maximum_image_url ?? null,
-    description: a.synopsis ?? null,
-    genres: [...(a.genres?.map(g => g.name) ?? []), ...(a.themes?.map(t => t.name) ?? [])],
-    averageScore: a.score != null ? Math.round(a.score * 10) : null,
-    episodes: a.episodes ?? null,
-    status:   mapStatus(a.status),
-    format:   mapFormat(a.type),
-    seasonYear: a.year ?? null,
+    id: parseInt(a.id, 10),
+    title: {
+      romaji: a.title.romaji ?? "",
+      english: a.title.english ?? null,
+      native: a.title.native ?? null,
+    },
+    coverImage: { large: a.image, extraLarge: a.image },
+    bannerImage: a.cover ?? null,
+    description: a.description ?? null,
+    genres: a.genres ?? [],
+    averageScore: a.rating ?? null,
+    episodes: a.totalEpisodes ?? null,
+    status: mapStatus(a.status),
+    format: mapFormat(a.type),
+    seasonYear: a.releaseDate ?? null,
   };
 }
 
-// ─── Home data ────────────────────────────────────────────────────────────────
+function toDetail(a: MiruroAnime): AnimeDetail {
+  const characters: CharacterEntry[] = (a.characters ?? []).map((c) => ({
+    role: c.role,
+    node: {
+      id: parseInt(c.id, 10),
+      name: { full: c.name.full ?? c.name.romaji ?? "" },
+      image: { large: c.image },
+    },
+  }));
+
+  const relations: RelationEntry[] = (a.relations ?? []).map((r) => ({
+    relationType: r.relationType,
+    node: {
+      id: parseInt(r.id, 10),
+      title: { romaji: r.title.romaji ?? "", english: r.title.english ?? null },
+      coverImage: { large: r.image },
+      format: r.format ?? null,
+      type: r.type ?? "ANIME",
+    },
+  }));
+
+  const recommendations = (a.recommendations ?? []).map((r) => ({
+    mediaRecommendation: {
+      id: parseInt(r.id, 10),
+      title: {
+        romaji: r.title.romaji ?? "",
+        english: r.title.english ?? null,
+        native: r.title.native ?? null,
+      },
+      coverImage: { large: r.image, extraLarge: r.image },
+      bannerImage: null,
+      description: null,
+      genres: [],
+      averageScore: r.rating ?? null,
+      episodes: r.episodes ?? null,
+      status: mapStatus(r.status),
+      format: mapFormat(r.type),
+      seasonYear: null,
+    } satisfies AnimeMedia,
+  }));
+
+  return {
+    id: parseInt(a.id, 10),
+    idMal: a.malId != null ? parseInt(String(a.malId), 10) : null,
+    title: {
+      romaji: a.title.romaji ?? "",
+      english: a.title.english ?? null,
+      native: a.title.native ?? null,
+    },
+    coverImage: { large: a.image, extraLarge: a.image },
+    bannerImage: a.cover ?? null,
+    description: a.description ?? null,
+    genres: a.genres ?? [],
+    averageScore: a.rating ?? null,
+    episodes: a.totalEpisodes ?? null,
+    duration: a.duration ?? null,
+    status: mapStatus(a.status),
+    format: mapFormat(a.type),
+    season: a.season ?? null,
+    seasonYear: a.releaseDate ?? null,
+    startDate: {
+      year: a.startDate?.year ?? null,
+      month: a.startDate?.month ?? null,
+      day: a.startDate?.day ?? null,
+    },
+    endDate: {
+      year: a.endDate?.year ?? null,
+      month: a.endDate?.month ?? null,
+      day: a.endDate?.day ?? null,
+    },
+    source: null,
+    studios: { nodes: (a.studios ?? []).map((name) => ({ name })) },
+    trailer: a.trailer ? { id: a.trailer.id, site: a.trailer.site } : null,
+    characters: { edges: characters },
+    staff: { edges: [] },
+    relations: { edges: relations },
+    recommendations: { nodes: recommendations },
+    externalLinks: [],
+  };
+}
+
+// ─── Core fetch helper ────────────────────────────────────────────────────────
+
+async function miruro<T>(path: string): Promise<T> {
+  const res = await fetch(`${MIRURO_BASE}${path}`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Miruro ${res.status}: ${path}`);
+  return res.json() as Promise<T>;
+}
+
+// ─── Exported functions ───────────────────────────────────────────────────────
+
+const HERO_PIN_ID = 178789;
 
 type HomeData = {
   heroItems: AnimeMedia[];
-  trending:  AnimeMedia[];
-  popular:   AnimeMedia[];
-  topRated:  AnimeMedia[];
+  trending: AnimeMedia[];
+  popular: AnimeMedia[];
+  topRated: AnimeMedia[];
   newSeason: AnimeMedia[];
 };
 
 export async function getHomeData(): Promise<HomeData> {
   try {
-    const [airRes, popRes, topRes, seasonRes] = await Promise.all([
-      jikanGet<{ data: JAnime[] }>("/top/anime?filter=airing&limit=20&sfw=true"),
-      jikanGet<{ data: JAnime[] }>("/top/anime?filter=bypopularity&limit=16&sfw=true"),
-      jikanGet<{ data: JAnime[] }>("/top/anime?limit=16&sfw=true"),
-      jikanGet<{ data: JAnime[] }>("/seasons/now?limit=16&sfw=true").catch(() => null),
+    const [trending, popular, topRated, newSeason, pinned] = await Promise.all([
+      miruro<MiruroPaging>("/trending?per_page=16"),
+      miruro<MiruroPaging>("/popular?per_page=16"),
+      miruro<MiruroPaging>("/filter?sort=SCORE_DESC&status=FINISHED&per_page=16").catch(() => null),
+      miruro<MiruroPaging>("/filter?sort=TRENDING_DESC&status=RELEASING&per_page=16").catch(() => null),
+      miruro<MiruroAnime>(`/info/${HERO_PIN_ID}`).catch(() => null),
     ]);
 
-    // Convert immediately using MAL IDs — no ARM needed, never blocks rendering.
-    const trending  = (airRes?.data    ?? []).map(a => toMedia(a));
-    const popular   = (popRes?.data    ?? []).map(a => toMedia(a));
-    const topRated  = (topRes?.data    ?? []).map(a => toMedia(a));
-    const newSeason = (seasonRes?.data ?? []).map(a => toMedia(a));
+    const trendingMedia  = (trending?.results  ?? []).map(toMedia);
+    const popularMedia   = (popular?.results   ?? []).map(toMedia);
+    const topRatedMedia  = (topRated?.results  ?? []).map(toMedia);
+    const newSeasonMedia = (newSeason?.results ?? []).map(toMedia);
+    const pinnedMedia    = pinned ? toMedia(pinned) : null;
 
     const heroItems: AnimeMedia[] = [];
-    for (const m of [...newSeason, ...trending]) {
-      if (heroItems.length >= 5) break;
-      if (!m.bannerImage) continue;
-      if (heroItems.some(h => h.id === m.id)) continue;
+    if (pinnedMedia?.bannerImage) heroItems.push(pinnedMedia);
+    for (const m of [...newSeasonMedia, ...trendingMedia]) {
+      if (heroItems.length >= 4) break;
+      if (!m.bannerImage || m.status !== "RELEASING") continue;
+      if (heroItems.some((h) => h.id === m.id)) continue;
       heroItems.push(m);
     }
 
-    const result: HomeData = { heroItems, trending, popular, topRated, newSeason };
-    writeCache("home_jikan", result);
+    const result: HomeData = { heroItems, trending: trendingMedia, popular: popularMedia, topRated: topRatedMedia, newSeason: newSeasonMedia };
+    writeCache("home", result); // fire-and-forget, never awaited
     return result;
   } catch (err) {
-    console.error("[getHomeData] Jikan failed:", err);
-    const cached =
-      (await readCache<HomeData>("home_jikan")) ??
-      (await readCache<HomeData>("home"));
+    console.error("[getHomeData] API unavailable, serving cached data:", err);
+    const cached = await readCache<HomeData>("home");
     if (cached) return cached;
     throw err;
   }
 }
-
-// ─── Title helpers ────────────────────────────────────────────────────────────
 
 export function preferredTitle(anime: AnimeMedia): string {
   return anime.title.english || anime.title.romaji;
 }
 
 export function usePreferredTitle(anime: AnimeMedia): string {
-  const lang = useLanguageStore(s => s.titleLanguage);
+  const lang = useLanguageStore((s) => s.titleLanguage);
   if (lang === "native") return anime.title.native || anime.title.english || anime.title.romaji;
   if (lang === "romaji") return anime.title.romaji;
   return anime.title.english || anime.title.romaji;
 }
 
-// ─── Anime detail ─────────────────────────────────────────────────────────────
-
-// Resolves an ID (AniList or MAL) to a { malId, anilistId } pair.
-async function resolveIds(id: number): Promise<{ malId: number; anilistId: number }> {
-  // Try treating id as an AniList ID first.
-  const byAnilist = await armLookup("anilist", id);
-  if (byAnilist?.myanimelist) {
-    return { malId: byAnilist.myanimelist, anilistId: id };
-  }
-  // Try treating id as a MAL ID.
-  const byMal = await armLookup("myanimelist", id);
-  if (byMal?.myanimelist === id && byMal?.anilist) {
-    return { malId: id, anilistId: byMal.anilist };
-  }
-  // ARM couldn't map it either way — treat id as its own MAL ID.
-  return { malId: id, anilistId: id };
-}
-
 export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
-  const cacheKey = `anime:${id}`;
   try {
-    const { malId, anilistId } = await resolveIds(id);
-
-    const [fullRes, charsRes, recsRes] = await Promise.all([
-      jikanGet<{ data: JAnime }>(`/anime/${malId}/full`),
-      jikanGet<{ data: JCharacter[] }>(`/anime/${malId}/characters`).catch(() => null),
-      jikanGet<{ data: JRecommendation[] }>(`/anime/${malId}/recommendations`).catch(() => null),
-    ]);
-
-    const a = fullRes.data;
-
-    const characters: CharacterEntry[] = (charsRes?.data ?? []).slice(0, 24).map(c => ({
-      role: c.role,
-      node: {
-        id: c.character.mal_id,
-        name: { full: c.character.name },
-        image: { large: c.character.images.jpg.large_image_url ?? c.character.images.jpg.image_url ?? null },
-      },
-    }));
-
-    // Relations — use MAL IDs for links (resolveIds handles them on detail load)
-    const relations: RelationEntry[] = (a.relations ?? []).flatMap(r =>
-      r.entry
-        .filter(e => e.type === "anime")
-        .map(e => ({
-          relationType: r.relation.toUpperCase().replace(/ /g, "_"),
-          node: { id: e.mal_id, title: { romaji: e.name, english: null }, coverImage: { large: "" }, format: null, type: "ANIME" },
-        }))
-    );
-
-    const recommendations = (recsRes?.data ?? []).slice(0, 10).map(r => {
-      const img = r.entry.images.jpg.large_image_url ?? r.entry.images.jpg.image_url;
-      return {
-        mediaRecommendation: {
-          id: r.entry.mal_id,
-          title: { romaji: r.entry.title, english: null, native: null },
-          coverImage: { large: img, extraLarge: img },
-          bannerImage: null, description: null, genres: [],
-          averageScore: null, episodes: null, status: null, format: null, seasonYear: null,
-        } satisfies AnimeMedia,
-      };
-    });
-
-    const fromDate = a.aired?.from ? new Date(a.aired.from) : null;
-
-    const detail: AnimeDetail = {
-      id: anilistId,
-      idMal: malId,
-      title: { romaji: a.title ?? "", english: a.title_english ?? null, native: a.title_japanese ?? null },
-      coverImage: { large: cover(a), extraLarge: cover(a) },
-      bannerImage: a.trailer?.images?.maximum_image_url ?? null,
-      description: a.synopsis ?? null,
-      genres: [...(a.genres?.map(g => g.name) ?? []), ...(a.themes?.map(t => t.name) ?? [])],
-      averageScore: a.score != null ? Math.round(a.score * 10) : null,
-      episodes: a.episodes ?? null,
-      duration: parseDuration(a.duration),
-      status:   mapStatus(a.status),
-      format:   mapFormat(a.type),
-      season:   a.season ? a.season.toUpperCase() : null,
-      seasonYear: a.year ?? null,
-      startDate: {
-        year:  fromDate?.getFullYear()           ?? null,
-        month: fromDate ? fromDate.getMonth() + 1 : null,
-        day:   fromDate?.getDate()               ?? null,
-      },
-      endDate: { year: null, month: null, day: null },
-      source: null,
-      studios: { nodes: (a.studios ?? []).map(s => ({ name: s.name })) },
-      trailer: a.trailer?.youtube_id ? { id: a.trailer.youtube_id, site: "youtube" } : null,
-      characters:      { edges: characters },
-      staff:           { edges: [] },
-      relations:       { edges: relations },
-      recommendations: { nodes: recommendations },
-      externalLinks:   [],
-    };
-
-    writeCache(cacheKey, detail);
+    const data = await miruro<MiruroAnime>(`/info/${id}`);
+    const detail = toDetail(data);
+    writeCache(`anime:${id}`, detail);
     return detail;
   } catch (err) {
-    console.error(`[getAnimeDetail] Failed for ${id}:`, err);
-    return readCache<AnimeDetail>(cacheKey);
+    console.error(`[getAnimeDetail] API unavailable for ${id}, serving cached data:`, err);
+    return readCache<AnimeDetail>(`anime:${id}`);
   }
-}
-
-// ─── Weekly schedule ──────────────────────────────────────────────────────────
-
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
-
-function nextOccurrence(day: string, time: string | null): number {
-  const idx = DAYS.indexOf(day.toLowerCase() as typeof DAYS[number]);
-  if (idx < 0) return Math.floor(Date.now() / 1000);
-  const now    = new Date();
-  const target = (idx + 1) % 7; // Jikan monday=0 → JS Date monday=1
-  let diff = (target - now.getDay() + 7) % 7 || 7;
-  const next = new Date(now);
-  next.setDate(now.getDate() + diff);
-  if (time) { const [h, m] = time.split(":").map(Number); next.setHours(h, m, 0, 0); }
-  return Math.floor(next.getTime() / 1000);
 }
 
 export async function getWeeklySchedule(): Promise<AiringEntry[]> {
   try {
-    const dayResults = await Promise.allSettled(
-      DAYS.map(day => jikanGet<{ data: JAnime[] }>(`/schedules?filter=${day}&limit=25&sfw=true`))
-    );
-
+    const raw = await miruro<MiruroScheduleEntry[] | { results?: MiruroScheduleEntry[] }>("/schedule");
+    const entries: MiruroScheduleEntry[] = Array.isArray(raw) ? raw : (raw.results ?? []);
     const seen = new Set<string>();
-    const entries: AiringEntry[] = [];
 
-    dayResults.forEach((r, i) => {
-      if (r.status !== "fulfilled") return;
-      for (const a of r.value.data ?? []) {
-        const key = `${a.mal_id}-${DAYS[i]}`;
-        if (seen.has(key)) continue;
+    const result = entries
+      .filter((e) => e.anime)
+      .map((e) => ({
+        id: e.id,
+        airingAt: e.airingAt,
+        episode: e.episode,
+        media: { ...toMedia(e.anime), season: e.anime.season ?? null },
+      }))
+      .filter(({ media, episode }) => {
+        const key = `${media.id}-${episode}`;
+        if (seen.has(key)) return false;
         seen.add(key);
-        entries.push({
-          id:      a.mal_id,
-          airingAt: nextOccurrence(DAYS[i], a.broadcast?.time ?? null),
-          episode: 1,
-          media:   { ...toMedia(a), season: a.season ? a.season.toUpperCase() : null },
-        });
-      }
-    });
+        return true;
+      });
 
-    entries.sort((a, b) => a.airingAt - b.airingAt);
-    writeCache("schedule", entries);
-    return entries;
+    writeCache("schedule", result);
+    return result;
   } catch (err) {
-    console.error("[getWeeklySchedule] Jikan failed:", err);
+    console.error("[getWeeklySchedule] API unavailable, serving cached data:", err);
     return (await readCache<AiringEntry[]>("schedule")) ?? [];
   }
 }
 
-// ─── Browse / filter ──────────────────────────────────────────────────────────
+export async function getTrendingPage(page: number): Promise<BrowsePage> {
+  return browseAnime({ sort: "TRENDING_DESC", page });
+}
 
 export const ANIME_GENRES = [
   "Action", "Fantasy", "Slice of Life", "Adventure", "Comedy", "Romance",
@@ -424,59 +439,31 @@ export const ANIME_GENRES = [
   "Horror", "Music", "Thriller", "Mecha",
 ];
 
-export async function getTagCollection(): Promise<string[]> { return []; }
-
-export async function getTrendingPage(page: number): Promise<BrowsePage> {
-  return browseAnime({ sort: "TRENDING_DESC", page });
+export async function getTagCollection(): Promise<string[]> {
+  // Miruro API does not expose a tag-collection endpoint.
+  return [];
 }
 
-const GENRE_IDS: Record<string, number> = {
-  Action: 1, Adventure: 2, Comedy: 4, Drama: 8, Fantasy: 10, Horror: 14,
-  Mystery: 7, Romance: 22, "Sci-Fi": 24, "Slice of Life": 36, Sports: 30,
-  Supernatural: 37, Thriller: 41, Mecha: 18, Music: 19, Psychological: 40,
-};
-
 export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
-  try {
-    const page  = filters.page ?? 1;
-    const limit = 24;
-
-    let jikanPath: string;
-    const simple = !filters.format && !filters.status && !filters.genre && !filters.year && !filters.search;
-
-    if (filters.search) {
-      const p = new URLSearchParams({ q: filters.search, page: String(page), limit: String(limit), sfw: "true" });
-      jikanPath = `/anime?${p}`;
-    } else if (simple && filters.sort === "TRENDING_DESC") {
-      jikanPath = `/top/anime?filter=airing&page=${page}&limit=${limit}`;
-    } else if (simple && filters.sort === "POPULARITY_DESC") {
-      jikanPath = `/top/anime?filter=bypopularity&page=${page}&limit=${limit}`;
-    } else if (simple && filters.sort === "SCORE_DESC") {
-      jikanPath = `/top/anime?page=${page}&limit=${limit}`;
-    } else {
-      const p = new URLSearchParams({ page: String(page), limit: String(limit), sfw: "true" });
-      if (filters.sort === "TRENDING_DESC")   { p.set("order_by", "members");    p.set("sort", "desc"); }
-      if (filters.sort === "POPULARITY_DESC") { p.set("order_by", "popularity"); p.set("sort", "asc");  }
-      if (filters.sort === "SCORE_DESC")      { p.set("order_by", "score");      p.set("sort", "desc"); }
-      if (filters.sort === "START_DATE_DESC") { p.set("order_by", "start_date"); p.set("sort", "desc"); }
-      const fmtMap: Record<string, string> = {
-        TV: "tv", MOVIE: "movie", OVA: "ova", ONA: "ona", SPECIAL: "special", MUSIC: "music", TV_SHORT: "tv",
-      };
-      if (filters.format) p.set("type", fmtMap[filters.format] ?? filters.format.toLowerCase());
-      const stMap: Record<string, string> = { RELEASING: "airing", FINISHED: "complete", NOT_YET_RELEASED: "upcoming" };
-      if (filters.status) p.set("status", stMap[filters.status] ?? "airing");
-      if (filters.year) p.set("start_date", `${filters.year}-01-01`);
-      const genreIds = (filters.genre ?? []).map(g => GENRE_IDS[g]).filter(Boolean);
-      if (genreIds.length) p.set("genres", genreIds.join(","));
-      jikanPath = `/anime?${p}`;
-    }
-
-    const res  = await jikanGet<{ data: JAnime[]; pagination?: { has_next_page: boolean } }>(jikanPath);
-    const data = res.data ?? [];
-    const items = data.map(a => toMedia(a));
-    return { items, hasNextPage: res.pagination?.has_next_page ?? items.length === limit };
-  } catch (err) {
-    console.error("[browseAnime] Jikan failed:", err);
-    return { items: [], hasNextPage: false };
+  if (filters.search) {
+    const params = new URLSearchParams({
+      query: filters.search,
+      page: String(filters.page ?? 1),
+      per_page: "24",
+    });
+    const res = await miruro<MiruroPaging>(`/search?${params}`).catch(() => null);
+    return { items: (res?.results ?? []).map(toMedia), hasNextPage: res?.hasNextPage ?? false };
   }
+
+  const params = new URLSearchParams({ page: String(filters.page ?? 1), per_page: "24" });
+  if (filters.sort)   params.set("sort", filters.sort);
+  if (filters.format) params.set("format", filters.format);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.year)   params.set("year", String(filters.year));
+  if (filters.genre?.length) {
+    for (const g of filters.genre) params.append("genre", g);
+  }
+
+  const res = await miruro<MiruroPaging>(`/filter?${params}`).catch(() => null);
+  return { items: (res?.results ?? []).map(toMedia), hasNextPage: res?.hasNextPage ?? false };
 }
