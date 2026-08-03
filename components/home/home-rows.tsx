@@ -100,8 +100,12 @@ function ContinueWatchingCard({
     const y = (e.clientY - top)  / height;
     const rY =  (x - 0.5) * CW_TILT_Y * 2;
     const rX = -(y - 0.5) * CW_TILT_X * 2;
+    const dark = document.documentElement.classList.contains("dark");
+    const sa   = dark ? "0.55" : "0.12";
+    const sb   = dark ? "0.40" : "0.08";
+
     card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.06,1.06,1.06)`;
-    card.style.boxShadow = `${-rY * 1.2}px ${rX * 1.2}px 36px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.4)`;
+    card.style.boxShadow = `${-rY * 1.2}px ${rX * 1.2}px 36px rgba(0,0,0,${sa}), 0 8px 24px rgba(0,0,0,${sb})`;
     if (glare) {
       glare.style.opacity    = "1";
       glare.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(255,255,255,0.18) 0%, transparent 62%)`;
