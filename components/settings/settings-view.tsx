@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -34,18 +33,6 @@ const SECTIONS: { key: Section; label: string; icon: typeof User }[] = [
   { key: "notifications", label: "Notifications", icon: Bell    },
   { key: "privacy",       label: "Privacy & Data", icon: Shield },
 ];
-
-function AnilistIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 77" className={className} fill="currentColor" aria-hidden="true">
-      <polygon points="0,77 20,77 31,0 14,0 0,13"/>
-      <polygon points="14,0 31,0 68,77 51,77"/>
-      <rect x="11" y="41" width="33" height="10"/>
-      <rect x="74" y="11" width="10" height="66"/>
-      <rect x="74" y="65" width="26" height="12"/>
-    </svg>
-  );
-}
 
 const TITLE_LANGUAGES: { value: TitleLanguage; label: string; hint: string }[] = [
   { value: "english", label: "English",        hint: "Prefer English titles when available" },
@@ -182,10 +169,10 @@ export function SettingsView() {
                 <SettingRow label="Theme" hint="Choose your preferred appearance">
                   <div className="flex flex-wrap gap-1.5">
                     {([
-                      { value: "dark",    label: "Dark",    Icon: Moon        },
-                      { value: "light",   label: "Light",   Icon: Sun         },
-                      { value: "anilist", label: "AniList", Icon: AnilistIcon },
-                    ] as { value: "dark" | "light" | "anilist"; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ value, label, Icon }) => {
+                      { value: "dark",    label: "Dark",    Icon: Moon },
+                      { value: "light",   label: "Light",   Icon: Sun  },
+                      { value: "anilist", label: "AniList", Icon: null  },
+                    ] as const).map(({ value, label, Icon }) => {
                       const active = resolvedTheme === value;
                       return (
                         <button
@@ -198,7 +185,24 @@ export function SettingsView() {
                               : "border-border text-muted-foreground hover:text-card-foreground hover:border-primary/30"
                           )}
                         >
-                          <Icon className="size-4" />
+                          {Icon ? (
+                            <Icon className="size-4" />
+                          ) : (
+                            <span
+                              className="inline-block size-4 shrink-0"
+                              style={{
+                                backgroundColor: "currentColor",
+                                WebkitMaskImage: "url(/anilist-icon.svg)",
+                                WebkitMaskSize: "contain",
+                                WebkitMaskRepeat: "no-repeat",
+                                WebkitMaskPosition: "center",
+                                maskImage: "url(/anilist-icon.svg)",
+                                maskSize: "contain",
+                                maskRepeat: "no-repeat",
+                                maskPosition: "center",
+                              }}
+                            />
+                          )}
                           {label}
                           {active && <Check className="size-3 ml-0.5" />}
                         </button>
