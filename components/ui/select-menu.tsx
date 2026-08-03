@@ -7,6 +7,8 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Renders as a non-clickable section label */
+  isHeader?: boolean;
 }
 
 interface SelectMenuProps {
@@ -72,6 +74,13 @@ export function SelectMenu({
           style={{ maxHeight }}
         >
           {options.map((opt) => {
+            if (opt.isHeader) {
+              return (
+                <p key={opt.value} className="px-3 pb-1 pt-2.5 text-[10px] font-bold uppercase tracking-wider text-white/30">
+                  {opt.label}
+                </p>
+              );
+            }
             const isActive = opt.value === value;
             return (
               <button

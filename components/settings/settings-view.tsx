@@ -22,6 +22,7 @@ import { PROVIDER_LABELS } from "@/components/watch/episode-utils";
 import { Navbar }  from "@/components/layout/navbar";
 import { Footer }  from "@/components/layout/footer";
 import { cn }      from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type Section = "account" | "appearance" | "language" | "media" | "notifications" | "comments" | "privacy";
 
@@ -418,22 +419,16 @@ export function SettingsView() {
 
                 {/* Default provider */}
                 <SettingRow label="Default Provider" hint="Which streaming provider to prefer. Auto lets Bankai pick the best available source.">
-                  <select
+                  <SelectMenu
                     value={defaultProvider}
-                    onChange={(e) => setDefaultProvider(e.target.value)}
-                    className={cn(
-                      "rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-card-foreground",
-                      "focus:outline-none focus:ring-2 focus:ring-primary/40",
-                      "cursor-pointer transition-colors hover:border-primary/40"
-                    )}
-                  >
-                    <option value="auto">Auto (Recommended)</option>
-                    <optgroup label="Providers">
-                      {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                    onChange={setDefaultProvider}
+                    maxHeight={280}
+                    options={[
+                      { value: "auto", label: "Auto (Recommended)" },
+                      { value: "_h", label: "Providers", isHeader: true },
+                      ...Object.entries(PROVIDER_LABELS).map(([key, label]) => ({ value: key, label })),
+                    ]}
+                  />
                 </SettingRow>
 
                 {/* Default audio */}

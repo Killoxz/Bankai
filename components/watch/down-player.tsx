@@ -164,7 +164,6 @@ export function DownPlayer({
   const [muted,       setMuted]       = useState(false);
   const [fullscreen,  setFullscreen]  = useState(false);
   const [showCtrl,    setShowCtrl]    = useState(true);
-  const [sourceOpen,  setSourceOpen]  = useState(false);
 
   // ── Caption & speed state (persisted via Zustand → synced cross-device) ──
   const captionsOn   = usePlayerPrefsStore((s) => s.captionsOn);
@@ -180,6 +179,9 @@ export function DownPlayer({
   const setCaptionFont  = usePlayerPrefsStore((s) => s.setCaptionFont);
   const setSpeed        = usePlayerPrefsStore((s) => s.setSpeed);
 
+  const PLAYER_TYPES = ["plyr", "natv", "vidk"] as const;
+  type PlayerType = typeof PLAYER_TYPES[number];
+  const [playerType,       setPlayerType]       = useState<PlayerType>("plyr");
   const [selectedTrack,    setSelectedTrack]    = useState(0);
   const [hlsLevels,        setHlsLevels]        = useState<HLSLevel[]>([]);
   const [selectedLevel,    setSelectedLevel]    = useState(-1); // -1 = Auto
@@ -187,14 +189,10 @@ export function DownPlayer({
   const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
 
+
   // Ref kept in sync with the Zustand speed value for use inside stable callbacks
   useEffect(() => { speedRef.current = speed; }, [speed]);
 
-  const availableProviders = providersData
-    ? Object.entries(providersData)
-        .filter(([, d]) => !d.error && (d.episodes?.[audio] ?? []).some((e) => e.number === episode))
-        .map(([n]) => n)
-    : [];
 
   // ── Caption ::cue style injection ─────────────────────────────────────────
   useEffect(() => {
@@ -1077,41 +1075,18 @@ export function DownPlayer({
             Lights Off
           </button>
 
-          {/* Source picker */}
-          {availableProviders.length > 0 && (
-            <div className="relative"
-              onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSourceOpen(false); }}>
-              <button
-                onClick={() => setSourceOpen((o) => !o)}
-                className="text-xs font-medium text-white/40 transition-colors hover:text-white/70 [touch-action:manipulation]"
-              >
-                {selectedProvider ? providerLabel(selectedProvider) : "Source"} ▾
-              </button>
-              {sourceOpen && (
-                <div className="absolute bottom-8 left-0 z-30 min-w-[150px] overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
-                  <div className="flex border-b border-white/10">
-                    {(["sub", "dub"] as const).map((a) => (
-                      <button key={a} onClick={() => handleAudioChange(a)}
-                        className={["flex-1 py-1.5 text-xs font-semibold uppercase transition-colors [touch-action:manipulation]",
-                          audio === a ? "bg-primary/15 text-primary" : "text-white/55 hover:text-white"].join(" ")}>
-                        {a}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="py-1">
-                    {availableProviders.map((name) => (
-                      <button key={name}
-                        onClick={() => { onProviderChange(name); setSourceOpen(false); }}
-                        className={["flex w-full items-center px-3.5 py-2 text-left text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                          name === selectedProvider ? "text-primary" : "text-white/75"].join(" ")}>
-                        {providerLabel(name)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Player type cycling button: Plyr → Natv → Vidk → Plyr */}
+          <button
+            onClick={() => {
+              const idx = PLAYER_TYPES.indexOf(playerType);
+              setPlayerType(PLAYER_TYPES[(idx + 1) % PLAYER_TYPES.length]);
+            }}
+            title="Switch player type"
+            className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white/70 transition-colors hover:bg-white/15 hover:text-white [touch-action:manipulation]"
+          >
+            <Play className="size-2.5 fill-white/70" />
+            {playerType}
+          </button>
         </div>
 
         {/* Prev / Next episode */}

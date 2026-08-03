@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Search, LayoutList, LayoutGrid, GalleryHorizontal, ChevronDown,
+  Search, LayoutList, LayoutGrid, Image as ImageIcon, ChevronDown,
   Mic2, Zap, Play,
 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
@@ -147,7 +147,7 @@ export function EpisodeList({
           {([
             { mode: "list",  Icon: LayoutList },
             { mode: "grid",  Icon: LayoutGrid },
-            { mode: "image", Icon: GalleryHorizontal },
+            { mode: "image", Icon: ImageIcon },
           ] as const).map(({ mode, Icon }) => (
             <button
               key={mode}
@@ -295,45 +295,50 @@ export function EpisodeList({
                 key={n}
                 ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
                 onClick={() => { onSelectEpisode(n); setSearch(""); }}
-                className={["flex w-full gap-0 text-left transition-colors", isActive ? "bg-primary/10" : "hover:bg-white/[0.04]"].join(" ")}
+                className={["flex w-full text-left transition-colors", isActive ? "bg-primary/10" : "hover:bg-white/[0.04]"].join(" ")}
               >
                 {/* Thumbnail */}
-                <div className="relative aspect-video w-[38%] shrink-0 bg-white/5">
+                <div className="relative aspect-video w-[42%] shrink-0 overflow-hidden bg-white/5">
                   {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
                   ) : (
-                    <div className="flex size-full items-center justify-center">
-                      <span className="text-[10px] font-bold text-white/20">EP {pad2(n)}</span>
+                    <div className="flex size-full items-center justify-center bg-white/5">
+                      <ImageIcon className="size-6 text-white/15" />
                     </div>
                   )}
-                  <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white/90">
-                    EP {pad2(n)}
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                  {/* EP badge */}
+                  <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+                    EP {n}
                   </span>
+                  {/* Active play overlay */}
                   {isActive && (
                     <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
-                      <Play className="size-5 fill-primary text-primary" />
+                      <div className="flex size-9 items-center justify-center rounded-full bg-primary shadow-lg">
+                        <Play className="size-4 translate-x-px fill-black text-black" />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Info */}
-                <div className="flex min-w-0 flex-1 flex-col justify-between px-3 py-2.5">
-                  <div>
-                    <p className={["line-clamp-2 text-xs font-bold leading-snug", isActive ? "text-primary" : "text-white"].join(" ")}>
-                      {title}
-                    </p>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-3">
+                  <p className={["line-clamp-1 text-sm font-bold leading-tight", isActive ? "text-primary" : "text-white/90"].join(" ")}>
+                    {title}
+                  </p>
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                     <div className="flex items-center gap-1.5">
                       {hasSub && (
-                        <span className="rounded border border-white/10 px-1 py-0.5 text-[9px] font-bold tracking-wide text-white/40">
+                        <span className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white/50">
                           CC
                         </span>
                       )}
-                      {hasDub && <Mic2 className="size-3 text-white/50" />}
+                      {hasDub && <Mic2 className="size-3.5 text-white/50" />}
                     </div>
-                    {airDate && <span className="text-[10px] text-white/30">{airDate}</span>}
+                    {airDate && <span className="text-[10px] text-white/35">{airDate}</span>}
                   </div>
                 </div>
               </button>
