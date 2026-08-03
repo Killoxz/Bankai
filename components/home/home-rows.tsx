@@ -246,8 +246,8 @@ export function HomeRows({
         continueItems.length > 0 ? (
           <section>
             <h2 className="mb-4 text-base font-semibold text-foreground">Continue Watching</h2>
-            <div className="-my-4">
-              <ScrollRow className="gap-3 py-4">
+            <div className="-mx-4 -my-4">
+              <ScrollRow className="gap-3 px-4 py-4">
                 {continueItems.map((entry, i) => (
                   <ContinueWatchingCard key={entry.id} entry={entry} index={i} onDismiss={dismissEntry} />
                 ))}

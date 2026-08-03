@@ -25,8 +25,8 @@ export function AnimeRow({
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       {/* -my-4 pulls the vertical padding back so section spacing stays the same;
           py-4 inside gives cards room to tilt/scale without overflow clipping */}
-      <div className="-my-4">
-        <ScrollRow className="gap-3 py-4">
+      <div className="-mx-4 -my-4">
+        <ScrollRow className="gap-3 px-4 py-4">
           {items.map((anime, i) => (
             <AnimeCard
               key={anime.id}
