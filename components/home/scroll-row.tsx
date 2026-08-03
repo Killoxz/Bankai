@@ -48,7 +48,7 @@ export function ScrollRow({
 
       {canLeft && (
         <>
-          <div className="pointer-events-none absolute inset-y-0 -left-1 z-[5] w-14 bg-gradient-to-r from-[#141414] to-transparent sm:w-20" />
+          <div className="pointer-events-none absolute inset-y-0 -left-1 z-[5] w-14 bg-gradient-to-r from-[hsl(0,0%,97%)] dark:from-[#141414] to-transparent sm:w-20" />
           <button onClick={() => scrollByDir(-1)} aria-label="Scroll left" className={`${arrowBase} -left-4`}>
             <ChevronLeft className="size-5" />
           </button>
@@ -56,7 +56,7 @@ export function ScrollRow({
       )}
       {canRight && (
         <>
-          <div className="pointer-events-none absolute inset-y-0 -right-1 z-[5] w-14 bg-gradient-to-l from-[#141414] to-transparent sm:w-20" />
+          <div className="pointer-events-none absolute inset-y-0 -right-1 z-[5] w-14 bg-gradient-to-l from-[hsl(0,0%,97%)] dark:from-[#141414] to-transparent sm:w-20" />
           <button onClick={() => scrollByDir(1)} aria-label="Scroll right" className={`${arrowBase} -right-4`}>
             <ChevronRight className="size-5" />
           </button>
