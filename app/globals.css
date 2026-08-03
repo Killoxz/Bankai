@@ -48,6 +48,29 @@
     --ring: 37 91% 55%;
   }
 
+  /* AniList theme — inherits dark Tailwind variants, overrides palette */
+  .anilist {
+    --background: 209 51% 9%;       /* #0B1622 */
+    --foreground: 210 20% 95%;      /* near-white with blue tint */
+    --card: 213 38% 13%;            /* #151F2E */
+    --card-foreground: 210 20% 95%;
+    --popover: 213 38% 13%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 199 100% 50%;        /* #02A9FF — AniList blue */
+    --primary-foreground: 209 51% 9%;
+    --secondary: 211 36% 18%;       /* #1D2D3E */
+    --secondary-foreground: 210 20% 95%;
+    --muted: 211 36% 18%;
+    --muted-foreground: 207 19% 62%;/* #8BA0B2 */
+    --accent: 211 36% 22%;
+    --accent-foreground: 210 20% 95%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 211 36% 18%;          /* #1D2D3E */
+    --input: 211 36% 18%;
+    --ring: 199 100% 50%;
+  }
+
   * {
     box-sizing: border-box;
   }

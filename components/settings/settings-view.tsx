@@ -167,12 +167,13 @@ export function SettingsView() {
               <div>
                 <h2 className="mb-5 text-base font-bold text-card-foreground">Appearance</h2>
                 <SettingRow label="Theme" hint="Choose your preferred appearance">
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {([
-                      { value: "dark",  label: "Dark",  Icon: Moon },
-                      { value: "light", label: "Light", Icon: Sun  },
-                    ] as const).map(({ value, label, Icon }) => {
-                      const active = value === "dark" ? resolvedTheme !== "light" : resolvedTheme === "light";
+                      { value: "dark",    label: "Dark",    Icon: Moon, iconColor: undefined },
+                      { value: "light",   label: "Light",   Icon: Sun,  iconColor: undefined },
+                      { value: "anilist", label: "AniList", Icon: null,  iconColor: "#02A9FF" },
+                    ] as const).map(({ value, label, Icon, iconColor }) => {
+                      const active = resolvedTheme === value;
                       return (
                         <button
                           key={value}
@@ -184,7 +185,14 @@ export function SettingsView() {
                               : "border-border text-muted-foreground hover:text-card-foreground hover:border-primary/30"
                           )}
                         >
-                          <Icon className="size-4" />
+                          {Icon ? (
+                            <Icon className="size-4" />
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill={active ? "currentColor" : iconColor!} className="size-4 shrink-0">
+                              <path d="M6.61 21 12 5l5.39 16h-2.87l-1.08-3.47H10.56L9.48 21zm4.69-5.84h1.4L12 12.2z" />
+                              <path d="M19 3H5v2h14V3z" opacity=".4"/>
+                            </svg>
+                          )}
                           {label}
                           {active && <Check className="size-3 ml-0.5" />}
                         </button>
