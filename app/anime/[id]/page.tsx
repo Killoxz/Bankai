@@ -88,20 +88,20 @@ export default async function AnimeDetailPage({
           </div>
 
           <div className="flex-1 pb-1">
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">{title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-white/70">
+            <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-foreground/70">
               {detail.averageScore && (
                 <p className="flex items-center gap-1.5">
                   <span className="text-primary">★</span>
                   {(detail.averageScore / 10).toFixed(2)}
-                  <span className="text-xs text-white/40">AniList</span>
+                  <span className="text-xs text-foreground/50">AniList</span>
                 </p>
               )}
               {malScore && (
                 <p className="flex items-center gap-1.5">
                   <span className="text-primary">★</span>
                   {malScore.score.toFixed(2)}
-                  <span className="text-xs text-white/40">MAL</span>
+                  <span className="text-xs text-foreground/50">MAL</span>
                 </p>
               )}
             </div>
