@@ -18,6 +18,7 @@ import {
   useSettingsStore,
   type CardLayout, type CardSize, type EpisodeLayout,
 } from "@/store/settings-store";
+import { PROVIDER_LABELS } from "@/components/watch/episode-utils";
 import { Navbar }  from "@/components/layout/navbar";
 import { Footer }  from "@/components/layout/footer";
 import { cn }      from "@/lib/utils";
@@ -416,36 +417,24 @@ export function SettingsView() {
                 <SectionHeading>Media</SectionHeading>
 
                 {/* Default provider */}
-                <div className="mb-6">
-                  <SubHeading>Default Provider</SubHeading>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Which streaming provider to use when loading episodes. Auto lets Bankai pick the best available source.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["auto", "custom"] as const).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setDefaultProvider(p)}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all",
-                          defaultProvider === p
-                            ? "border-primary/50 bg-primary/10"
-                            : "border-border hover:border-primary/30 hover:bg-accent"
-                        )}
-                      >
-                        <div>
-                          <p className={cn("text-sm font-semibold", defaultProvider === p ? "text-primary" : "text-card-foreground")}>
-                            {p === "auto" ? "Auto" : "Custom"}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {p === "auto" ? "Recommended — picks best source" : "Use a specific provider key"}
-                          </p>
-                        </div>
-                        {defaultProvider === p && <Check className="size-4 shrink-0 text-primary" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <SettingRow label="Default Provider" hint="Which streaming provider to prefer. Auto lets Bankai pick the best available source.">
+                  <select
+                    value={defaultProvider}
+                    onChange={(e) => setDefaultProvider(e.target.value)}
+                    className={cn(
+                      "rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-card-foreground",
+                      "focus:outline-none focus:ring-2 focus:ring-primary/40",
+                      "cursor-pointer transition-colors hover:border-primary/40"
+                    )}
+                  >
+                    <option value="auto">Auto (Recommended)</option>
+                    <optgroup label="Providers">
+                      {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </SettingRow>
 
                 {/* Default audio */}
                 <div className="mb-6">
@@ -480,19 +469,17 @@ export function SettingsView() {
                 </div>
 
                 {/* Playback toggles */}
-                <div>
+                <div className="mt-2 border-t border-border pt-4">
                   <SubHeading>Playback</SubHeading>
-                  <div className="mt-2 rounded-xl border border-border">
-                    <SettingRow label="Auto Play" hint="Start playing the episode automatically when the page loads">
-                      <Toggle checked={autoPlay} onChange={setAutoPlay} />
-                    </SettingRow>
-                    <SettingRow label="Auto Skip Intro / Outro" hint="Automatically skip opening and ending sequences">
-                      <Toggle checked={autoSkipIntroOutro} onChange={setAutoSkipIntroOutro} />
-                    </SettingRow>
-                    <SettingRow label="Auto Next Episode" hint="Automatically move to the next episode when one ends">
-                      <Toggle checked={autoNextEpisode} onChange={setAutoNextEpisode} />
-                    </SettingRow>
-                  </div>
+                  <SettingRow label="Auto Play" hint="Start playing the episode automatically when the page loads">
+                    <Toggle checked={autoPlay} onChange={setAutoPlay} />
+                  </SettingRow>
+                  <SettingRow label="Auto Skip Intro / Outro" hint="Automatically skip opening and ending sequences">
+                    <Toggle checked={autoSkipIntroOutro} onChange={setAutoSkipIntroOutro} />
+                  </SettingRow>
+                  <SettingRow label="Auto Next Episode" hint="Automatically move to the next episode when one ends">
+                    <Toggle checked={autoNextEpisode} onChange={setAutoNextEpisode} />
+                  </SettingRow>
                 </div>
               </div>
             )}

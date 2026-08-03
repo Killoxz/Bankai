@@ -40,20 +40,14 @@ export function AnimeRow({
     );
   }
 
-  // ── Anichart layout: grid wraps into multiple rows ────────────────────────
+  // ── Anichart layout: horizontal info cards ───────────────────────────────
   if (cardLayout === "anichart") {
     return (
       <section>
         <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        <div className="space-y-3">
           {items.map((anime, i) => (
-            <AnimeCard
-              key={anime.id}
-              anime={anime}
-              showProgress={showProgress}
-              showBadge={showBadge}
-              index={i}
-            />
+            <AniChartCard key={anime.id} anime={anime} showBadge={showBadge} index={i} />
           ))}
         </div>
       </section>
@@ -173,6 +167,109 @@ function AnimeCard({
         {anime.seasonYear && (
           <p className="text-[11px] text-muted-foreground">{anime.seasonYear}</p>
         )}
+      </Link>
+    </motion.div>
+  );
+}
+
+function AniChartCard({
+  anime,
+  showBadge,
+  index,
+}: {
+  anime: AnimeMedia;
+  showBadge?: boolean;
+  index: number;
+}) {
+  const title    = usePreferredTitle(anime);
+  const altTitle = anime.title.native ?? anime.title.romaji ?? null;
+  const isNew    = anime.status === "RELEASING";
+
+  const description = anime.description
+    ? anime.description.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "").trim()
+    : null;
+
+  const statusDot =
+    anime.status === "RELEASING"          ? "bg-emerald-500" :
+    anime.status === "NOT_YET_RELEASED"   ? "bg-yellow-500"  :
+    anime.status === "FINISHED"           ? "bg-gray-400 dark:bg-white/30" :
+                                            "bg-gray-400 dark:bg-white/30";
+
+  const formatLabel =
+    anime.format === "TV"       ? "TV"      :
+    anime.format === "TV_SHORT" ? "TV Short":
+    anime.format === "MOVIE"    ? "Movie"   :
+    anime.format === "OVA"      ? "OVA"     :
+    anime.format === "ONA"      ? "ONA"     :
+    anime.format               ?? null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
+    >
+      <Link
+        href={`/anime/${anime.id}`}
+        className="group flex gap-4 rounded-xl border border-gray-200 dark:border-white/[0.07] bg-card p-4 transition-colors hover:border-primary/30 hover:bg-gray-50 dark:hover:bg-white/[0.04]"
+      >
+        {/* Cover */}
+        <div className="relative h-[130px] w-[88px] shrink-0 overflow-hidden rounded-lg bg-gray-200 dark:bg-white/5">
+          {anime.coverImage.large && (
+            <Image
+              src={anime.coverImage.large}
+              alt={title}
+              fill
+              sizes="88px"
+              className="object-cover"
+            />
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1 flex flex-col justify-between">
+          <div>
+            <p className="line-clamp-1 text-sm font-bold text-card-foreground group-hover:text-foreground leading-tight">
+              {title}
+            </p>
+            {altTitle && altTitle !== title && (
+              <p className="mt-0.5 line-clamp-1 text-xs text-primary/80">{altTitle}</p>
+            )}
+            {description && (
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-white/50">
+                {description}
+              </p>
+            )}
+          </div>
+
+          <div>
+            {/* Metadata row */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-white/40">
+              <span className={`size-2 rounded-full shrink-0 ${statusDot}`} />
+              {formatLabel && <span>{formatLabel}</span>}
+              {anime.seasonYear && <span>{anime.seasonYear}</span>}
+              {anime.episodes && <span>■ {anime.episodes} ep</span>}
+              {anime.averageScore && <span>☆ {(anime.averageScore / 10).toFixed(0)}</span>}
+              {(showBadge || isNew) && (
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">New</span>
+              )}
+            </div>
+
+            {/* Genre tags */}
+            {anime.genres.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {anime.genres.slice(0, 4).map((g) => (
+                  <span
+                    key={g}
+                    className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                  >
+                    {g}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </Link>
     </motion.div>
   );

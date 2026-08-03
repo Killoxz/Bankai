@@ -70,14 +70,22 @@ function useContinueWatching() {
   return { items, setItems, loading, loggedIn: mounted && !!currentUser };
 }
 
+const CW_WIDTHS = {
+  small:  "w-[160px] sm:w-[200px]",
+  medium: "w-[200px] sm:w-[260px]",
+  large:  "w-[240px] sm:w-[300px]",
+} as const;
+
 function ContinueWatchingCard({
   entry,
   index,
   onDismiss,
+  cardSize = "medium",
 }: {
   entry: HistoryEntry;
   index: number;
   onDismiss: (animeId: string) => void;
+  cardSize?: "small" | "medium" | "large";
 }) {
   const anilistId = entry.animeId.replace("anilist:", "");
   const href      = `/watch/${anilistId}?ep=${entry.episodeNumber}`;
@@ -98,7 +106,7 @@ function ContinueWatchingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4) }}
-      className="relative flex-shrink-0 w-[200px] sm:w-[260px]"
+      className={`relative flex-shrink-0 ${CW_WIDTHS[cardSize]}`}
     >
       <Link href={href} className="group block">
         <div ref={wrapRef} onMouseMove={onMove} onMouseLeave={onLeave} style={{ perspective: "700px" }}>
@@ -185,6 +193,7 @@ export function HomeRows({
 
   const { items: continueItems, setItems: setContinueItems, loading: watchingLoading, loggedIn } = useContinueWatching();
   const showWatchHistory = useSettingsStore((s) => s.showWatchHistory);
+  const cardSize         = useSettingsStore((s) => s.cardSize);
 
   const season      = byGenre(newSeason);
   const recommended = byGenre(topRated);
@@ -226,7 +235,7 @@ export function HomeRows({
             <div className="-mx-4 -my-4">
               <ScrollRow className="gap-3 px-4 py-4">
                 {continueItems.map((entry, i) => (
-                  <ContinueWatchingCard key={entry.id} entry={entry} index={i} onDismiss={dismissEntry} />
+                  <ContinueWatchingCard key={entry.id} entry={entry} index={i} onDismiss={dismissEntry} cardSize={cardSize} />
                 ))}
               </ScrollRow>
             </div>
