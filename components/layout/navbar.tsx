@@ -63,15 +63,15 @@ export function Navbar() {
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://anivexa-api.vercel.app";
-        const res = await fetch(`${base}/search?q=${encodeURIComponent(q)}&limit=6`);
+        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-sooty-rho.vercel.app";
+        const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=6`);
         const json = await res.json();
-        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number | string; title?: Record<string, string>; image?: string; releaseDate?: number; type?: string }) => ({
-          id: typeof a.id === "number" ? a.id : parseInt(a.id as string, 10),
+        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number; title?: Record<string, string>; coverImage?: Record<string, string>; seasonYear?: number; format?: string }) => ({
+          id: a.id,
           title: { romaji: a.title?.romaji ?? "", english: a.title?.english ?? null },
-          coverImage: { medium: a.image as string },
-          seasonYear: a.releaseDate ?? null,
-          format: a.type ?? null,
+          coverImage: { medium: a.coverImage?.large ?? a.coverImage?.extraLarge ?? "" },
+          seasonYear: a.seasonYear ?? null,
+          format: a.format ?? null,
         })));
       } catch { setResults([]); }
     }, 350);
@@ -85,7 +85,7 @@ export function Navbar() {
       {/* Status banner */}
       <div className="flex items-center justify-center gap-1.5 border-b border-gray-200 dark:border-white/[0.06] bg-gray-100/80 dark:bg-black/20 px-4 py-1.5 text-center text-xs font-medium text-gray-600 dark:text-white/60 backdrop-blur-md">
         <AlertCircle className="size-3.5 shrink-0 text-green-500 dark:text-green-400/70" />
-        Now Streaming via AniKoto — Enjoy!
+        Now Streaming via Miruro — Enjoy!
       </div>
 
       <div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-[#141414]/60 px-8 backdrop-blur-md">

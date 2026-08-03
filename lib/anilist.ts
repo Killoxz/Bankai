@@ -101,82 +101,91 @@ export interface BrowsePage {
   hasNextPage: boolean;
 }
 
-// ─── Miruro API raw types ─────────────────────────────────────────────────────
+// ─── API raw types (AniList-compatible fields from Miruro-API Python backend) ──
 
-interface MiruroTitle {
+interface APITitle {
   romaji?: string | null;
   english?: string | null;
   native?: string | null;
-  userPreferred?: string | null;
 }
 
-interface MiruroAnime {
-  id: string;
-  malId?: string | number | null;
-  title: MiruroTitle;
-  image: string;
-  cover?: string | null;
+interface APICoverImage {
+  large?: string | null;
+  extraLarge?: string | null;
+}
+
+interface APIAnime {
+  id: number;
+  idMal?: number | null;
+  title: APITitle;
+  coverImage: APICoverImage;
+  bannerImage?: string | null;
   description?: string | null;
-  status?: string | null;
-  releaseDate?: number | null;
-  totalEpisodes?: number | null;
-  currentEpisode?: number | null;
-  rating?: number | null;
-  duration?: number | null;
-  genres?: string[];
-  studios?: string[];
+  format?: string | null;
   season?: string | null;
-  type?: string | null;
+  seasonYear?: number | null;
+  episodes?: number | null;
+  duration?: number | null;
+  status?: string | null;
+  averageScore?: number | null;
+  genres?: string[];
+  source?: string | null;
+  studios?: { nodes: { name: string; isAnimationStudio?: boolean }[] };
+  nextAiringEpisode?: { episode: number; airingAt: number; timeUntilAiring: number } | null;
   startDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
   endDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
-  characters?: MiruroCharacter[];
-  relations?: MiruroRelation[];
-  recommendations?: MiruroRecommendation[];
   trailer?: { id: string; site: string; thumbnail?: string | null } | null;
-  color?: string | null;
+  characters?: { edges: APICharacterEdge[] };
+  staff?: { edges: APIStaffEdge[] };
+  relations?: { edges: APIRelationEdge[] };
+  recommendations?: { nodes: APIRecommendationNode[] };
+  externalLinks?: { url: string; site: string; type: string }[];
+  // Schedule endpoint adds these fields directly onto each anime object
+  next_episode?: number | null;
+  airingAt?: number | null;
+  timeUntilAiring?: number | null;
 }
 
-interface MiruroPaging {
-  currentPage?: number;
-  hasNextPage?: boolean;
-  totalPages?: number;
-  totalResults?: number;
-  results: MiruroAnime[];
-}
-
-interface MiruroCharacter {
-  id: string;
+interface APICharacterEdge {
   role: string;
-  name: { full?: string; romaji?: string; english?: string | null; native?: string | null };
-  image: string;
+  node: {
+    id: number;
+    name: { full?: string; first?: string; last?: string };
+    image?: { large?: string | null };
+  };
 }
 
-interface MiruroRelation {
-  id: string;
+interface APIStaffEdge {
+  role: string;
+  node: {
+    id: number;
+    name: { full?: string };
+    image?: { large?: string | null };
+  };
+}
+
+interface APIRelationEdge {
   relationType: string;
-  title: MiruroTitle;
-  image: string;
-  cover?: string | null;
-  type?: string | null;
-  format?: string | null;
-  status?: string | null;
+  node: {
+    id: number;
+    title: APITitle;
+    coverImage: APICoverImage;
+    format?: string | null;
+    type?: string | null;
+  };
 }
 
-interface MiruroRecommendation {
-  id: string;
-  title: MiruroTitle;
-  image: string;
+interface APIRecommendationNode {
   rating?: number | null;
-  type?: string | null;
-  status?: string | null;
-  episodes?: number | null;
+  mediaRecommendation: APIAnime | null;
 }
 
-interface MiruroScheduleEntry {
-  id: number;
-  airingAt: number;
-  episode: number;
-  anime: MiruroAnime;
+interface APIPage {
+  page?: number;
+  perPage?: number;
+  total?: number;
+  hasNextPage?: boolean;
+  results: APIAnime[];
 }
 
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
@@ -198,8 +207,8 @@ function mapStatus(s: string | null | undefined): AnimeMedia["status"] {
   return map[s] ?? null;
 }
 
-function mapFormat(t: string | null | undefined): AnimeMedia["format"] {
-  if (!t) return null;
+function mapFormat(f: string | null | undefined): AnimeMedia["format"] {
+  if (!f) return null;
   const map: Record<string, AnimeMedia["format"]> = {
     TV: "TV",
     "TV Short": "TV_SHORT",
@@ -213,89 +222,90 @@ function mapFormat(t: string | null | undefined): AnimeMedia["format"] {
     Music: "MUSIC",
     MUSIC: "MUSIC",
   };
-  return map[t] ?? null;
+  return map[f] ?? null;
 }
 
-function toMedia(a: MiruroAnime): AnimeMedia {
+function toMedia(a: APIAnime): AnimeMedia {
   return {
-    id: parseInt(a.id, 10),
+    id: a.id,
     title: {
       romaji: a.title.romaji ?? "",
       english: a.title.english ?? null,
       native: a.title.native ?? null,
     },
-    coverImage: { large: a.image, extraLarge: a.image },
-    bannerImage: a.cover ?? null,
+    coverImage: {
+      large: a.coverImage.large ?? a.coverImage.extraLarge ?? "",
+      extraLarge: a.coverImage.extraLarge ?? null,
+    },
+    bannerImage: a.bannerImage ?? null,
     description: a.description ?? null,
     genres: a.genres ?? [],
-    averageScore: a.rating ?? null,
-    episodes: a.totalEpisodes ?? null,
+    averageScore: a.averageScore ?? null,
+    episodes: a.episodes ?? null,
     status: mapStatus(a.status),
-    format: mapFormat(a.type),
-    seasonYear: a.releaseDate ?? null,
+    format: mapFormat(a.format),
+    seasonYear: a.seasonYear ?? null,
   };
 }
 
-function toDetail(a: MiruroAnime): AnimeDetail {
-  const characters: CharacterEntry[] = (a.characters ?? []).map((c) => ({
-    role: c.role,
+function toDetail(a: APIAnime): AnimeDetail {
+  const characters: CharacterEntry[] = (a.characters?.edges ?? []).map((e) => ({
+    role: e.role,
     node: {
-      id: parseInt(c.id, 10),
-      name: { full: c.name.full ?? c.name.romaji ?? "" },
-      image: { large: c.image },
+      id: e.node.id,
+      name: { full: e.node.name.full ?? "" },
+      image: { large: e.node.image?.large ?? null },
     },
   }));
 
-  const relations: RelationEntry[] = (a.relations ?? []).map((r) => ({
-    relationType: r.relationType,
+  const staff: StaffEntry[] = (a.staff?.edges ?? []).map((e) => ({
+    role: e.role,
     node: {
-      id: parseInt(r.id, 10),
-      title: { romaji: r.title.romaji ?? "", english: r.title.english ?? null },
-      coverImage: { large: r.image },
-      format: r.format ?? null,
-      type: r.type ?? "ANIME",
+      id: e.node.id,
+      name: { full: e.node.name.full ?? "" },
+      image: { large: e.node.image?.large ?? null },
     },
   }));
 
-  const recommendations = (a.recommendations ?? []).map((r) => ({
-    mediaRecommendation: {
-      id: parseInt(r.id, 10),
-      title: {
-        romaji: r.title.romaji ?? "",
-        english: r.title.english ?? null,
-        native: r.title.native ?? null,
-      },
-      coverImage: { large: r.image, extraLarge: r.image },
-      bannerImage: null,
-      description: null,
-      genres: [],
-      averageScore: r.rating ?? null,
-      episodes: r.episodes ?? null,
-      status: mapStatus(r.status),
-      format: mapFormat(r.type),
-      seasonYear: null,
-    } satisfies AnimeMedia,
+  const relations: RelationEntry[] = (a.relations?.edges ?? []).map((e) => ({
+    relationType: e.relationType,
+    node: {
+      id: e.node.id,
+      title: { romaji: e.node.title.romaji ?? "", english: e.node.title.english ?? null },
+      coverImage: { large: e.node.coverImage.large ?? e.node.coverImage.extraLarge ?? "" },
+      format: mapFormat(e.node.format) ?? null,
+      type: e.node.type ?? "ANIME",
+    },
   }));
+
+  const recommendations = (a.recommendations?.nodes ?? [])
+    .filter((n): n is APIRecommendationNode & { mediaRecommendation: APIAnime } =>
+      n.mediaRecommendation !== null
+    )
+    .map((n) => ({ mediaRecommendation: toMedia(n.mediaRecommendation) }));
 
   return {
-    id: parseInt(a.id, 10),
-    idMal: a.malId != null ? parseInt(String(a.malId), 10) : null,
+    id: a.id,
+    idMal: a.idMal ?? null,
     title: {
       romaji: a.title.romaji ?? "",
       english: a.title.english ?? null,
       native: a.title.native ?? null,
     },
-    coverImage: { large: a.image, extraLarge: a.image },
-    bannerImage: a.cover ?? null,
+    coverImage: {
+      large: a.coverImage.large ?? a.coverImage.extraLarge ?? "",
+      extraLarge: a.coverImage.extraLarge ?? null,
+    },
+    bannerImage: a.bannerImage ?? null,
     description: a.description ?? null,
     genres: a.genres ?? [],
-    averageScore: a.rating ?? null,
-    episodes: a.totalEpisodes ?? null,
+    averageScore: a.averageScore ?? null,
+    episodes: a.episodes ?? null,
     duration: a.duration ?? null,
     status: mapStatus(a.status),
-    format: mapFormat(a.type),
+    format: mapFormat(a.format),
     season: a.season ?? null,
-    seasonYear: a.releaseDate ?? null,
+    seasonYear: a.seasonYear ?? null,
     startDate: {
       year: a.startDate?.year ?? null,
       month: a.startDate?.month ?? null,
@@ -306,14 +316,21 @@ function toDetail(a: MiruroAnime): AnimeDetail {
       month: a.endDate?.month ?? null,
       day: a.endDate?.day ?? null,
     },
-    source: null,
-    studios: { nodes: (a.studios ?? []).map((name) => ({ name })) },
+    source: a.source ?? null,
+    studios: { nodes: (a.studios?.nodes ?? []).map((s) => ({ name: s.name })) },
     trailer: a.trailer ? { id: a.trailer.id, site: a.trailer.site } : null,
     characters: { edges: characters },
-    staff: { edges: [] },
+    staff: { edges: staff },
     relations: { edges: relations },
     recommendations: { nodes: recommendations },
-    externalLinks: [],
+    externalLinks: (a.externalLinks ?? []).map((l) => ({
+      url: l.url,
+      site: l.site,
+      type: l.type,
+      color: null,
+      icon: null,
+      language: null,
+    })),
   };
 }
 
@@ -344,11 +361,11 @@ type HomeData = {
 export async function getHomeData(): Promise<HomeData> {
   try {
     const [trending, popular, topRated, newSeason, pinned] = await Promise.all([
-      miruro<MiruroPaging>("/trending?per_page=16"),
-      miruro<MiruroPaging>("/popular?per_page=16"),
-      miruro<MiruroPaging>("/filter?sort=SCORE_DESC&status=FINISHED&per_page=16").catch(() => null),
-      miruro<MiruroPaging>("/filter?sort=TRENDING_DESC&status=RELEASING&per_page=16").catch(() => null),
-      miruro<MiruroAnime>(`/info/${HERO_PIN_ID}`).catch(() => null),
+      miruro<APIPage>("/trending?per_page=16"),
+      miruro<APIPage>("/popular?per_page=16"),
+      miruro<APIPage>("/filter?sort=SCORE_DESC&status=FINISHED&per_page=16").catch(() => null),
+      miruro<APIPage>("/filter?sort=TRENDING_DESC&status=RELEASING&per_page=16").catch(() => null),
+      miruro<APIAnime>(`/info/${HERO_PIN_ID}`).catch(() => null),
     ]);
 
     const trendingMedia  = (trending?.results  ?? []).map(toMedia);
@@ -367,7 +384,7 @@ export async function getHomeData(): Promise<HomeData> {
     }
 
     const result: HomeData = { heroItems, trending: trendingMedia, popular: popularMedia, topRated: topRatedMedia, newSeason: newSeasonMedia };
-    writeCache("home", result); // fire-and-forget, never awaited
+    writeCache("home", result);
     return result;
   } catch (err) {
     console.error("[getHomeData] API unavailable, serving cached data:", err);
@@ -390,7 +407,7 @@ export function usePreferredTitle(anime: AnimeMedia): string {
 
 export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
   try {
-    const data = await miruro<MiruroAnime>(`/info/${id}`);
+    const data = await miruro<APIAnime>(`/info/${id}`);
     const detail = toDetail(data);
     writeCache(`anime:${id}`, detail);
     return detail;
@@ -402,17 +419,18 @@ export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
 
 export async function getWeeklySchedule(): Promise<AiringEntry[]> {
   try {
-    const raw = await miruro<MiruroScheduleEntry[] | { results?: MiruroScheduleEntry[] }>("/schedule");
-    const entries: MiruroScheduleEntry[] = Array.isArray(raw) ? raw : (raw.results ?? []);
+    // Schedule endpoint returns APIAnime[] with next_episode and airingAt added per item
+    const raw = await miruro<APIAnime[] | { results?: APIAnime[] }>("/schedule");
+    const entries: APIAnime[] = Array.isArray(raw) ? raw : (raw.results ?? []);
     const seen = new Set<string>();
 
     const result = entries
-      .filter((e) => e.anime)
+      .filter((e) => e.id && e.airingAt != null)
       .map((e) => ({
         id: e.id,
-        airingAt: e.airingAt,
-        episode: e.episode,
-        media: { ...toMedia(e.anime), season: e.anime.season ?? null },
+        airingAt: e.airingAt!,
+        episode: e.next_episode ?? 1,
+        media: { ...toMedia(e), season: e.season ?? null },
       }))
       .filter(({ media, episode }) => {
         const key = `${media.id}-${episode}`;
@@ -440,7 +458,6 @@ export const ANIME_GENRES = [
 ];
 
 export async function getTagCollection(): Promise<string[]> {
-  // Miruro API does not expose a tag-collection endpoint.
   return [];
 }
 
@@ -451,7 +468,7 @@ export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
       page: String(filters.page ?? 1),
       per_page: "24",
     });
-    const res = await miruro<MiruroPaging>(`/search?${params}`).catch(() => null);
+    const res = await miruro<APIPage>(`/search?${params}`).catch(() => null);
     return { items: (res?.results ?? []).map(toMedia), hasNextPage: res?.hasNextPage ?? false };
   }
 
@@ -464,6 +481,6 @@ export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {
     for (const g of filters.genre) params.append("genre", g);
   }
 
-  const res = await miruro<MiruroPaging>(`/filter?${params}`).catch(() => null);
+  const res = await miruro<APIPage>(`/filter?${params}`).catch(() => null);
   return { items: (res?.results ?? []).map(toMedia), hasNextPage: res?.hasNextPage ?? false };
 }

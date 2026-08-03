@@ -105,15 +105,15 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://anivexa-api.vercel.app";
-        const res = await fetch(`${base}/search?q=${encodeURIComponent(q)}&limit=12`);
+        const base = process.env.NEXT_PUBLIC_STREAMING_API_URL ?? "https://miruro-api-sooty-rho.vercel.app";
+        const res = await fetch(`${base}/search?query=${encodeURIComponent(q)}&per_page=12`);
         const json = await res.json();
-        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number | string; title?: Record<string, string>; image?: string; releaseDate?: number; type?: string }) => ({
-          id: typeof a.id === "number" ? a.id : parseInt(a.id as string, 10),
+        setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number; title?: Record<string, string>; coverImage?: Record<string, string>; seasonYear?: number; format?: string }) => ({
+          id: a.id,
           title: { romaji: a.title?.romaji ?? "", english: a.title?.english ?? null },
-          coverImage: { medium: a.image as string },
-          seasonYear: a.releaseDate ?? null,
-          format: a.type ?? null,
+          coverImage: { medium: a.coverImage?.large ?? a.coverImage?.extraLarge ?? "" },
+          seasonYear: a.seasonYear ?? null,
+          format: a.format ?? null,
         })));
       } catch { setResults([]); }
     }, 350);
