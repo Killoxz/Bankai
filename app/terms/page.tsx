@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -6,40 +6,79 @@ export const metadata: Metadata = { title: "Terms & Privacy — Bankai" };
 
 const SECTIONS: { heading: string; body: string[] }[] = [
   {
-    heading: "What Bankai is",
+    heading: "About Bankai",
     body: [
-      "Bankai is a personal anime-tracking project: create an account, keep a watchlist, leave reviews, and comment on titles. Anime metadata (titles, covers, banners, descriptions, genres) is pulled live from AniList's public API — we don't host, store, or stream any video ourselves.",
+      "Bankai is a free anime streaming and tracking platform. You can browse titles, build a personal watchlist, track watch history, write reviews, and interact with a community of fans. Video streams are sourced through third-party providers — Bankai itself does not host, own, or distribute any video content.",
+      "Anime metadata including titles, cover art, banners, descriptions, and genre tags is fetched from AniList's public GraphQL API under their terms of use.",
     ],
   },
   {
-    heading: "Account data we collect",
+    heading: "Acceptance of Terms",
     body: [
-      "Just a username and a password. Passwords are hashed before they ever touch the database — nobody, including us, can see your actual password.",
-      "If you add a custom profile picture or banner, that image file is stored with our hosting provider (Vercel Blob) and the resulting link is saved to your account.",
+      "By accessing or using Bankai you agree to these terms. If you do not agree, please discontinue use of the platform. We reserve the right to update these terms at any time; continued use after a change constitutes acceptance of the revised terms.",
     ],
   },
   {
-    heading: "What you add yourself",
+    heading: "Account Registration",
     body: [
-      "Your watchlist entries, reviews, and comments are tied to your account and visible as part of using the site. You're responsible for what you post — don't upload anything you don't have the right to use, and don't post anything abusive or illegal.",
+      "Creating an account requires a username and password. You are responsible for keeping your credentials secure and for all activity that occurs under your account. Do not share your password with anyone.",
+      "You must be at least 13 years old to create an account. By registering you confirm you meet this requirement.",
+      "Passwords are hashed using bcrypt before being stored — neither Bankai staff nor the database can retrieve your plaintext password.",
     ],
   },
   {
-    heading: "Local storage & staying signed in",
+    heading: "User Content",
     body: [
-      "If you check \"Keep me Logged In,\" your username is cached in your browser's local storage so you don't have to log in on every visit. Unchecking it (or logging out) clears that cache. We don't use tracking cookies or third-party analytics.",
+      "You retain ownership of any reviews or comments you post on Bankai. By submitting content you grant Bankai a non-exclusive, royalty-free licence to display that content as part of the service.",
+      "You agree not to post content that is unlawful, harassing, defamatory, obscene, or that infringes any third-party intellectual property rights. We reserve the right to remove any content that violates these guidelines and to suspend or terminate accounts that repeatedly do so.",
+      "Profile pictures and banner images you upload are stored via Vercel Blob. You confirm that you have the right to use any image you upload.",
     ],
   },
   {
-    heading: "What we don't do",
+    heading: "Streaming & Third-Party Sources",
     body: [
-      "We don't sell your data, and we don't share it with advertisers. There's no ad network on this site. Account data is used only to run the features you're actually using — your list, your reviews, your profile.",
+      "Episode streams are provided by third-party sources and are embedded within the Bankai player. We do not control, host, or guarantee the availability or quality of those streams. If you are the rights holder of content that appears on Bankai and wish to have it removed, please contact us via the Contact page.",
+      "Bankai is intended for personal, non-commercial use only. Using the platform to redistribute, scrape, or commercially exploit any content is strictly prohibited.",
     ],
   },
   {
-    heading: "Changes",
+    heading: "Data We Collect",
     body: [
-      "This is a small, actively-developed project, so this page may change as features change. Nothing here is intended as formal legal advice — if that matters to you, treat it as a plain-language description of how the site actually works.",
+      "We collect only what is necessary to run the service: your username, hashed password, profile image (if provided), watchlist entries, watch history, reviews, and comments.",
+      "Watch history is recorded per episode and includes playback progress so you can resume where you left off. This data is tied to your account and is not shared with third parties.",
+      "We do not collect your email address, phone number, real name, or payment information. Bankai is entirely free with no paid tiers.",
+    ],
+  },
+  {
+    heading: "Cookies & Local Storage",
+    body: [
+      "Bankai does not use tracking cookies or third-party analytics. We use your browser's local storage solely to persist your session (if you choose \"Keep me logged in\") and your UI preferences such as theme and title language. Logging out clears the session data. You can clear local storage at any time through your browser settings.",
+    ],
+  },
+  {
+    heading: "Privacy & Data Sharing",
+    body: [
+      "We do not sell, rent, or share your personal data with advertisers, data brokers, or any third party. Your data is used exclusively to provide and improve the Bankai experience.",
+      "We may disclose data if required by law or to protect the rights and safety of users or the platform.",
+    ],
+  },
+  {
+    heading: "Intellectual Property",
+    body: [
+      "The Bankai name, logo, and original design elements are the property of their respective creators. Anime titles, artwork, and related media belong to their original studios and licensors. Bankai claims no ownership over any third-party intellectual property displayed through the platform.",
+    ],
+  },
+  {
+    heading: "Disclaimers & Limitation of Liability",
+    body: [
+      "Bankai is provided \"as is\" without warranties of any kind. We do not guarantee uninterrupted availability, error-free operation, or that any specific stream will be accessible at any given time.",
+      "To the fullest extent permitted by applicable law, Bankai and its operators shall not be liable for any indirect, incidental, or consequential damages arising from your use of the platform.",
+    ],
+  },
+  {
+    heading: "Changes to These Terms",
+    body: [
+      "Bankai is an actively developed project and these terms may be updated as new features are added or as legal requirements change. The \"Last updated\" date at the top of this page reflects the most recent revision. We encourage you to review this page periodically.",
     ],
   },
 ];
@@ -50,7 +89,7 @@ export default function TermsPage() {
       <Navbar />
       <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10">
         <h1 className="text-3xl font-bold text-foreground">Terms &amp; Privacy</h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-white/40">Last updated 2026-07-29.</p>
+        <p className="mt-2 text-sm text-gray-500 dark:text-white/40">Last updated 2026-08-03.</p>
 
         <div className="mt-10 space-y-8">
           {SECTIONS.map((s) => (
