@@ -7,35 +7,35 @@ export type CardLayout    = "default" | "anichart" | "row";
 export type CardSize      = "small"   | "medium"   | "large";
 export type EpisodeLayout = "list"    | "grid"     | "image";
 
-interface SettingsState {
-  // Home
-  showWatchHistory: boolean;
-  setShowWatchHistory: (v: boolean) => void;
-  // Appearance
-  cardLayout: CardLayout;
-  setCardLayout: (v: CardLayout) => void;
-  cardSize: CardSize;
-  setCardSize: (v: CardSize) => void;
-  // Episode list
-  episodeLayout: EpisodeLayout;
-  setEpisodeLayout: (v: EpisodeLayout) => void;
-  // Media
-  defaultProvider: string;
-  setDefaultProvider: (v: string) => void;
-  autoPlay: boolean;
-  setAutoPlay: (v: boolean) => void;
+/** The serialisable subset written to/from the remote settings blob. */
+export interface SettingsData {
+  showWatchHistory:   boolean;
+  cardLayout:         CardLayout;
+  cardSize:           CardSize;
+  episodeLayout:      EpisodeLayout;
+  defaultProvider:    string;
+  autoPlay:           boolean;
   autoSkipIntroOutro: boolean;
-  setAutoSkipIntroOutro: (v: boolean) => void;
-  autoNextEpisode: boolean;
-  setAutoNextEpisode: (v: boolean) => void;
-  // Comments
-  showComments: boolean;
-  setShowComments: (v: boolean) => void;
-  // Notifications
-  notifNewEp: boolean;
-  setNotifNewEp: (v: boolean) => void;
-  notifTrending: boolean;
-  setNotifTrending: (v: boolean) => void;
+  autoNextEpisode:    boolean;
+  showComments:       boolean;
+  notifNewEp:         boolean;
+  notifTrending:      boolean;
+}
+
+interface SettingsState extends SettingsData {
+  setShowWatchHistory:   (v: boolean)       => void;
+  setCardLayout:         (v: CardLayout)    => void;
+  setCardSize:           (v: CardSize)      => void;
+  setEpisodeLayout:      (v: EpisodeLayout) => void;
+  setDefaultProvider:    (v: string)        => void;
+  setAutoPlay:           (v: boolean)       => void;
+  setAutoSkipIntroOutro: (v: boolean)       => void;
+  setAutoNextEpisode:    (v: boolean)       => void;
+  setShowComments:       (v: boolean)       => void;
+  setNotifNewEp:         (v: boolean)       => void;
+  setNotifTrending:      (v: boolean)       => void;
+  /** Bulk-apply remote settings in a single setState call (no extra renders). */
+  _applyRemote:          (data: Partial<SettingsData>) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -73,6 +73,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       notifTrending:    false,
       setNotifTrending: (v) => set({ notifTrending: v }),
+
+      _applyRemote: (data) => set(data),
     }),
     { name: "bankai-settings" }
   )
