@@ -91,13 +91,26 @@ export function findEpisode(
   return list.find((e) => e.number === num) ?? null;
 }
 
+const PROVIDER_PREFERENCE = [
+  "anineko",
+  "zoro", "kiwi", "hop", "arc",
+  "kaa", "animegg", "anikoto", "animedunya",
+  "animenosub", "2dhive", "anidbapp", "reanime", "senshi", "anibd", "anizone",
+];
+
 export function firstAvailableProvider(
   providers: EpisodesMap,
   audio: "sub" | "dub",
   num: number
 ): string | null {
-  for (const [name, data] of Object.entries(providers)) {
-    if (data.error) continue;
+  // Check in preferred order first, then any remaining providers
+  const ordered = [
+    ...PROVIDER_PREFERENCE,
+    ...Object.keys(providers).filter((k) => !PROVIDER_PREFERENCE.includes(k)),
+  ];
+  for (const name of ordered) {
+    const data = providers[name];
+    if (!data || data.error) continue;
     if ((data.episodes?.[audio] ?? []).some((e) => e.number === num)) return name;
   }
   return null;
