@@ -23,17 +23,21 @@ export function AnimeRow({
   return (
     <section>
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
-      <ScrollRow className="gap-3 pb-2">
-        {items.map((anime, i) => (
-          <AnimeCard
-            key={anime.id}
-            anime={anime}
-            showProgress={showProgress}
-            showBadge={showBadge}
-            index={i}
-          />
-        ))}
-      </ScrollRow>
+      {/* -my-4 pulls the vertical padding back so section spacing stays the same;
+          py-4 inside gives cards room to tilt/scale without overflow clipping */}
+      <div className="-my-4">
+        <ScrollRow className="gap-3 py-4">
+          {items.map((anime, i) => (
+            <AnimeCard
+              key={anime.id}
+              anime={anime}
+              showProgress={showProgress}
+              showBadge={showBadge}
+              index={i}
+            />
+          ))}
+        </ScrollRow>
+      </div>
     </section>
   );
 }
