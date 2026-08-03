@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import {
+  type LucideIcon,
+  RefreshCw,
+  Globe,
+  Server,
+  MonitorPlay,
+  Library,
+  ListChecks,
+  MessagesSquare,
+} from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -43,34 +52,34 @@ const STATUS_META: Record<
   },
 };
 
-const SERVICE_INFO: Record<string, { icon: string; description: string }> = {
+const SERVICE_INFO: Record<string, { icon: LucideIcon; description: string }> = {
   Website: {
-    icon: "🌐",
+    icon: Globe,
     description:
       "The Bankai web app. If you're reading this, the website is up.",
   },
   AniList: {
-    icon: "📚",
+    icon: Library,
     description:
       "Supplies anime titles, cover art, descriptions, genres, and ratings shown across Bankai. Outages affect search, browse, and detail pages.",
   },
   "My List": {
-    icon: "📋",
+    icon: ListChecks,
     description:
       "Your personal watchlist on Bankai — tracks watching, completed, plan-to-watch, and dropped entries. Stored in the Bankai database.",
   },
   "Streaming Server": {
-    icon: "📡",
+    icon: Server,
     description:
       "The backend that fetches episode sources. Required for loading any episode list or starting playback.",
   },
   Player: {
-    icon: "▶️",
+    icon: MonitorPlay,
     description:
       "The in-browser video player that streams episodes. Depends on the Streaming Server — if the server is down, the player cannot load content.",
   },
   "Community Comments": {
-    icon: "💬",
+    icon: MessagesSquare,
     description:
       "The database that stores user comments and reviews on anime pages. If down, comments will not load or post.",
   },
@@ -288,9 +297,11 @@ export default function StatusPage() {
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 {/* Icon */}
-                <span className="text-xl shrink-0 select-none" aria-hidden>
-                  {info?.icon}
-                </span>
+                {info && (
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/8 text-gray-500 dark:text-white/50">
+                    <info.icon className="size-[18px]" />
+                  </div>
+                )}
 
                 {/* Name + description */}
                 <div className="flex-1 min-w-0">
