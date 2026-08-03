@@ -5,7 +5,7 @@ import pkg from "../../package.json";
 
 const LINKS = [
   { label: "Home", href: "/" },
-  { label: "Terms & Privacy", href: "/terms" },
+  { label: "Status", href: "/status" },
   { label: "Contact", href: "/contact" },
 ];
 
