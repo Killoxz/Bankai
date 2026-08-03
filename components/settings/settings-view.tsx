@@ -188,9 +188,13 @@ export function SettingsView() {
                           {Icon ? (
                             <Icon className="size-4" />
                           ) : (
-                            <svg viewBox="0 0 24 24" fill={active ? "currentColor" : iconColor!} className="size-4 shrink-0">
-                              <path d="M6.61 21 12 5l5.39 16h-2.87l-1.08-3.47H10.56L9.48 21zm4.69-5.84h1.4L12 12.2z" />
-                              <path d="M19 3H5v2h14V3z" opacity=".4"/>
+                            /* AniList "AL" logo */
+                            <svg viewBox="0 0 58 46" fill={active ? "currentColor" : iconColor!} className="size-4 shrink-0">
+                              <polygon points="1,46 12,46 22,2 17,2"/>
+                              <polygon points="20,2 30,2 42,46 31,46"/>
+                              <rect x="10" y="27" width="23" height="6"/>
+                              <rect x="35" y="11" width="8" height="35"/>
+                              <rect x="35" y="38" width="23" height="8"/>
                             </svg>
                           )}
                           {label}
