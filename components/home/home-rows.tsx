@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimeRow } from "./anime-row";
 import { ScrollRow } from "./scroll-row";
 import { useAuthStore } from "@/store/auth-store";
 import { ANIME_GENRES, type AnimeMedia } from "@/lib/anilist";
+import { useCardAnimation } from "@/hooks/use-card-animation";
 
 const GENRES = ["All Genres", ...ANIME_GENRES];
 
@@ -66,9 +67,6 @@ function useContinueWatching() {
   return { items, setItems, loading, loggedIn: mounted && !!currentUser };
 }
 
-const CW_TILT_X = 14;
-const CW_TILT_Y = 18;
-
 function ContinueWatchingCard({
   entry,
   index,
@@ -86,40 +84,7 @@ function ContinueWatchingCard({
   const anime   = entry.Anime!;
   const bgImage = entry.episodeThumbnail ?? anime.bannerImage ?? anime.coverImage;
 
-  const wrapRef  = useRef<HTMLDivElement>(null);
-  const cardRef  = useRef<HTMLDivElement>(null);
-  const glareRef = useRef<HTMLDivElement>(null);
-
-  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const wrap  = wrapRef.current;
-    const card  = cardRef.current;
-    const glare = glareRef.current;
-    if (!wrap || !card) return;
-    const { left, top, width, height } = wrap.getBoundingClientRect();
-    const x = (e.clientX - left) / width;
-    const y = (e.clientY - top)  / height;
-    const rY =  (x - 0.5) * CW_TILT_Y * 2;
-    const rX = -(y - 0.5) * CW_TILT_X * 2;
-    const dark = document.documentElement.classList.contains("dark");
-    const sa   = dark ? "0.55" : "0.12";
-    const sb   = dark ? "0.40" : "0.08";
-
-    card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.06,1.06,1.06)`;
-    card.style.boxShadow = `${-rY * 1.2}px ${rX * 1.2}px 36px rgba(0,0,0,${sa}), 0 8px 24px rgba(0,0,0,${sb})`;
-    if (glare) {
-      glare.style.opacity    = "1";
-      glare.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(255,255,255,0.18) 0%, transparent 62%)`;
-    }
-  }, []);
-
-  const onLeave = useCallback(() => {
-    const card  = cardRef.current;
-    const glare = glareRef.current;
-    if (!card) return;
-    card.style.transform = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
-    card.style.boxShadow = "";
-    if (glare) glare.style.opacity = "0";
-  }, []);
+  const { wrapRef, cardRef, glareRef, onMove, onLeave } = useCardAnimation();
 
   return (
     <motion.div
@@ -190,7 +155,7 @@ function ContinueWatchingCard({
           </div>
         </div>
 
-        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-gray-800 dark:text-white/90">
+        <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-card-foreground group-hover:text-foreground">
           {anime.title}
         </p>
       </Link>
