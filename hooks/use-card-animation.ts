@@ -25,9 +25,25 @@ export function useCardAnimation() {
       }
 
       if (cardAnimation === "glow") {
+        const wrap = wrapRef.current;
+        if (!wrap) return;
+        const { left, top, width, height } = wrap.getBoundingClientRect();
+        const x = (e.clientX - left) / width;
+        const y = (e.clientY - top) / height;
+        const hue = Math.round(x * 360);
         card.style.transform = "scale3d(1.04,1.04,1.04)";
-        card.style.boxShadow =
-          "0 0 0 2px hsl(var(--primary) / 0.9), 0 0 32px 8px hsl(var(--primary) / 0.28), 0 12px 36px rgba(0,0,0,0.45)";
+        card.style.boxShadow = `0 8px 40px rgba(0,0,0,0.5)`;
+        if (glare) {
+          glare.style.opacity = "1";
+          glare.style.background = [
+            `radial-gradient(ellipse at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,`,
+            `  hsla(${hue}, 100%, 72%, 0.60) 0%,`,
+            `  hsla(${(hue + 72) % 360}, 100%, 68%, 0.45) 22%,`,
+            `  hsla(${(hue + 144) % 360}, 100%, 64%, 0.30) 44%,`,
+            `  hsla(${(hue + 216) % 360}, 100%, 68%, 0.18) 66%,`,
+            `  transparent 88%)`,
+          ].join(" ");
+        }
         return;
       }
 
@@ -64,7 +80,7 @@ export function useCardAnimation() {
     if (!card) return;
     card.style.transform = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
     card.style.boxShadow = "";
-    if (glare) glare.style.opacity = "0";
+    if (glare) { glare.style.opacity = "0"; glare.style.background = ""; }
   }, []);
 
   return { wrapRef, cardRef, glareRef, onMove, onLeave };

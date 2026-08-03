@@ -41,7 +41,7 @@ export function Modal({
 
           {/* Panel */}
           <motion.div
-            className="relative w-full rounded-xl border border-white/10 bg-[#181818] p-7 shadow-2xl"
+            className="relative w-full rounded-xl border border-border bg-card p-7 shadow-2xl"
             style={{ maxWidth }}
             initial={{ opacity: 0, scale: 0.86, y: 28 }}
             animate={{ opacity: 1, scale: 1,    y: 0  }}
@@ -51,11 +51,11 @@ export function Modal({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-5 top-5 text-white/50 transition-colors hover:text-white"
+              className="absolute right-5 top-5 text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="size-5" />
             </button>
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className="text-xl font-bold text-card-foreground">{title}</h2>
             {children}
           </motion.div>
         </div>

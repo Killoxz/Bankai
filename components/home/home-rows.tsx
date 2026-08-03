@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { AnimeRow } from "./anime-row";
 import { ScrollRow } from "./scroll-row";
 import { useAuthStore } from "@/store/auth-store";
+import { useLanguageStore } from "@/store/language-store";
 import { ANIME_GENRES, type AnimeMedia } from "@/lib/anilist";
 import { useCardAnimation } from "@/hooks/use-card-animation";
 
@@ -26,6 +27,7 @@ interface HistoryEntry {
   Anime: {
     id: string;
     title: string;
+    titleNative: string | null;
     coverImage: string | null;
     bannerImage: string | null;
     episodes: number | null;
@@ -81,8 +83,12 @@ function ContinueWatchingCard({
   const pct       = entry.duration > 0
     ? Math.min(100, Math.round((entry.progress / entry.duration) * 100))
     : 0;
-  const anime   = entry.Anime!;
-  const bgImage = entry.episodeThumbnail ?? anime.bannerImage ?? anime.coverImage;
+  const anime        = entry.Anime!;
+  const bgImage      = entry.episodeThumbnail ?? anime.bannerImage ?? anime.coverImage;
+  const titleLang    = useLanguageStore((s) => s.titleLanguage);
+  const displayTitle = titleLang === "native"
+    ? (anime.titleNative ?? anime.title)
+    : anime.title;
 
   const { wrapRef, cardRef, glareRef, onMove, onLeave } = useCardAnimation();
 
@@ -156,7 +162,7 @@ function ContinueWatchingCard({
         </div>
 
         <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-card-foreground group-hover:text-foreground">
-          {anime.title}
+          {displayTitle}
         </p>
       </Link>
     </motion.div>

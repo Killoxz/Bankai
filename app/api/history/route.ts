@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           title: true,
+          titleNative: true,
           coverImage: true,
           bannerImage: true,
           episodes: true,

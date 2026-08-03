@@ -221,7 +221,7 @@ export function SettingsView() {
                     {([
                       { value: "tilt",  label: "3D Tilt", Icon: Layers       },
                       { value: "hover", label: "Plain",   Icon: MousePointer2 },
-                      { value: "glow",  label: "Glow",    Icon: Sparkles      },
+                      { value: "glow",  label: "Foil",    Icon: Sparkles      },
                     ] as { value: CardAnimation; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ value, label, Icon }) => {
                       const active = cardAnimation === value;
                       return (
