@@ -192,11 +192,11 @@ export function SettingsView() {
                               className="inline-block size-4 shrink-0"
                               style={{
                                 backgroundColor: "currentColor",
-                                WebkitMaskImage: "url(/anilist-icon-mask.png)",
+                                WebkitMaskImage: "url(/anilist-icon.svg)",
                                 WebkitMaskSize: "contain",
                                 WebkitMaskRepeat: "no-repeat",
                                 WebkitMaskPosition: "center",
-                                maskImage: "url(/anilist-icon-mask.png)",
+                                maskImage: "url(/anilist-icon.svg)",
                                 maskSize: "contain",
                                 maskRepeat: "no-repeat",
                                 maskPosition: "center",
