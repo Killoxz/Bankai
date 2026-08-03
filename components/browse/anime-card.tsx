@@ -128,10 +128,10 @@ export function AnimeCard({
           </div>
         </div>
 
-        <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90 group-hover:text-gray-900 dark:group-hover:text-white">
+        <p className="mt-2 line-clamp-2 text-sm font-medium text-card-foreground group-hover:text-foreground">
           {title}
         </p>
-        <p className="text-xs text-gray-500 dark:text-white/40">
+        <p className="text-xs text-muted-foreground">
           {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
         </p>
       </Link>

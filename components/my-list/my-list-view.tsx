@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Eye, Bookmark, CheckCircle2 } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Eye, Bookmark, CheckCircle2, Play } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -30,6 +31,115 @@ const TABS: { key: TabKey; label: string; icon: typeof Eye }[] = [
   { key: "toWatch", label: "To Watch", icon: Bookmark },
   { key: "watched", label: "Watched", icon: CheckCircle2 },
 ];
+
+const TILT_X = 18;
+const TILT_Y = 22;
+
+function MyListCard({ anime, index }: { anime: AnimeStub; index: number }) {
+  const wrapRef  = useRef<HTMLDivElement>(null);
+  const cardRef  = useRef<HTMLDivElement>(null);
+  const glareRef = useRef<HTMLDivElement>(null);
+
+  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const wrap  = wrapRef.current;
+    const card  = cardRef.current;
+    const glare = glareRef.current;
+    if (!wrap || !card) return;
+
+    const { left, top, width, height } = wrap.getBoundingClientRect();
+    const x = (e.clientX - left) / width;
+    const y = (e.clientY - top)  / height;
+
+    const rY =  (x - 0.5) * TILT_Y * 2;
+    const rX = -(y - 0.5) * TILT_X * 2;
+
+    const dark = document.documentElement.classList.contains("dark") ||
+                 document.documentElement.classList.contains("anilist");
+    const sa = dark ? "0.55" : "0.12";
+    const sb = dark ? "0.40" : "0.08";
+
+    card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.07,1.07,1.07)`;
+    card.style.boxShadow = `${-rY * 1.2}px ${rX * 1.2}px 40px rgba(0,0,0,${sa}), 0 8px 24px rgba(0,0,0,${sb})`;
+
+    if (glare) {
+      glare.style.opacity    = "1";
+      glare.style.background = `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(255,255,255,0.22) 0%, transparent 62%)`;
+    }
+  }, []);
+
+  const onLeave = useCallback(() => {
+    const card  = cardRef.current;
+    const glare = glareRef.current;
+    if (!card) return;
+    card.style.transform = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
+    card.style.boxShadow = "";
+    if (glare) glare.style.opacity = "0";
+  }, []);
+
+  const href = `/anime/${anime.id.replace("anilist:", "")}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.5) }}
+    >
+      <Link href={href} className="group block">
+        <div
+          ref={wrapRef}
+          onMouseMove={onMove}
+          onMouseLeave={onLeave}
+          style={{ perspective: "700px" }}
+        >
+          <div
+            ref={cardRef}
+            className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5"
+            style={{
+              transformStyle: "preserve-3d",
+              transition:     "transform 0.12s ease-out, box-shadow 0.12s ease-out",
+              willChange:     "transform",
+            }}
+          >
+            {anime.coverImage && (
+              <Image
+                src={anime.coverImage}
+                alt={anime.title}
+                fill
+                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
+                className="object-cover"
+              />
+            )}
+
+            {/* Hover play overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/35">
+              <div className="scale-75 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
+                <div className="grid size-12 place-items-center rounded-full bg-primary shadow-xl">
+                  <Play className="size-5 fill-black text-black" />
+                </div>
+              </div>
+            </div>
+
+            {/* Glare layer */}
+            <div
+              ref={glareRef}
+              className="pointer-events-none absolute inset-0 z-10 rounded-xl"
+              style={{ opacity: 0, transition: "opacity 0.25s ease-out" }}
+            />
+
+            <div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent transition-all duration-200 group-hover:ring-white/20" />
+          </div>
+        </div>
+
+        <p className="mt-2 line-clamp-2 text-sm font-medium text-card-foreground group-hover:text-foreground">
+          {anime.title}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
+        </p>
+      </Link>
+    </motion.div>
+  );
+}
 
 export function MyListView() {
   const router = useRouter();
@@ -63,7 +173,7 @@ export function MyListView() {
     );
   }
 
-  if (!currentUser) return null; // redirect in flight
+  if (!currentUser) return null;
 
   const counts: Record<TabKey, number> = {
     watching: data?.lists.watching.length ?? 0,
@@ -88,7 +198,7 @@ export function MyListView() {
                 "flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors",
                 tab === key
                   ? "border-primary text-foreground"
-                  : "border-transparent text-gray-400 dark:text-white/45 hover:text-gray-700 dark:hover:text-white/75",
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               <Icon className="size-4" />
@@ -102,32 +212,14 @@ export function MyListView() {
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-1.5 py-16 text-center">
               <p className="text-sm text-muted-foreground">Nothing in {activeLabel} yet.</p>
-              <p className="text-xs text-gray-400 dark:text-white/30">
+              <p className="text-xs text-muted-foreground/60">
                 Anime you add to your list will show up here.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {items.map((anime) => (
-                <Link key={anime.id} href={`/anime/${anime.id.replace("anilist:", "")}`} className="group">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5">
-                    {anime.coverImage && (
-                      <Image
-                        src={anime.coverImage}
-                        alt={anime.title}
-                        fill
-                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    )}
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90">
-                    {anime.title}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-white/40">
-                    {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
-                  </p>
-                </Link>
+              {items.map((anime, i) => (
+                <MyListCard key={anime.id} anime={anime} index={i} />
               ))}
             </div>
           )}
