@@ -18,7 +18,8 @@ import {
   type EpisodesMap,
   type ProviderEpisode,
 } from "./episode-utils";
-import { useLanguageStore } from "@/store/language-store";
+import { useLanguageStore }  from "@/store/language-store";
+import { useSettingsStore }  from "@/store/settings-store";
 
 interface WatchViewProps {
   detail: AnimeDetail;
@@ -65,7 +66,14 @@ export function WatchView({
 }: WatchViewProps) {
   const router        = useRouter();
   const searchParams  = useSearchParams();
-  const defaultAudio  = useLanguageStore((s) => s.defaultAudio);
+  const defaultAudio       = useLanguageStore((s) => s.defaultAudio);
+  const storeAutoPlay      = useSettingsStore((s) => s.autoPlay);
+  const storeAutoSkip      = useSettingsStore((s) => s.autoSkipIntroOutro);
+  const storeAutoNext      = useSettingsStore((s) => s.autoNextEpisode);
+  const setStoreAutoPlay   = useSettingsStore((s) => s.setAutoPlay);
+  const setStoreAutoSkip   = useSettingsStore((s) => s.setAutoSkipIntroOutro);
+  const setStoreAutoNext   = useSettingsStore((s) => s.setAutoNextEpisode);
+  const showComments       = useSettingsStore((s) => s.showComments);
 
   // Initialise all episode state synchronously from the SSR payload so
   // the player and provider list are ready on first render with zero delay.
@@ -82,9 +90,9 @@ export function WatchView({
   // We only apply it once, and only when the URL has no ?audio= param.
   const defaultAudioApplied = useRef(false);
 
-  const [autoNext,  setAutoNext]  = useState(true);
-  const [autoplay,  setAutoplay]  = useState(true);
-  const [autoSkip,  setAutoSkip]  = useState(true);
+  const [autoNext,  setAutoNext]  = useState(storeAutoNext);
+  const [autoplay,  setAutoplay]  = useState(storeAutoPlay);
+  const [autoSkip,  setAutoSkip]  = useState(storeAutoSkip);
   const [lightsOff, setLightsOff] = useState(false);
 
   const [isLoadingSources, setIsLoadingSources] = useState(!initialEpisodesRaw);
@@ -217,9 +225,9 @@ export function WatchView({
             autoNext={autoNext}
             autoSkip={autoSkip}
             lightsOff={lightsOff}
-            onAutoplayChange={setAutoplay}
-            onAutoNextChange={setAutoNext}
-            onAutoSkipChange={setAutoSkip}
+            onAutoplayChange={(v) => { setAutoplay(v);  setStoreAutoPlay(v);  }}
+            onAutoNextChange={(v) => { setAutoNext(v);  setStoreAutoNext(v);  }}
+            onAutoSkipChange={(v) => { setAutoSkip(v);  setStoreAutoSkip(v);  }}
             onLightsOffChange={setLightsOff}
             onPrevEpisode={handlePrevEp}
             onNextEpisode={handleNextEp}
@@ -241,7 +249,7 @@ export function WatchView({
             failedProviders={failedProviders}
             isLoading={isLoadingSources}
           />
-          <CommentsSection animeId={animeId} />
+          {showComments && <CommentsSection animeId={animeId} />}
         </motion.div>
 
         {/* Right: episode list → seasons → related */}

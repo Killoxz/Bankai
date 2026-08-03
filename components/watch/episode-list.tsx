@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Search, List, Grid2X2, ChevronDown, Subtitles } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Search, List, Grid2X2, Image as ImageIcon, ChevronDown, Subtitles } from "lucide-react";
 import type { ProviderEpisode } from "./episode-utils";
+import { useSettingsStore } from "@/store/settings-store";
 
 interface EpisodeListProps {
   totalEpisodes: number;
@@ -37,11 +38,19 @@ export function EpisodeList({
   hasSub,
   hasDub,
 }: EpisodeListProps) {
+  const defaultLayout = useSettingsStore((s) => s.episodeLayout);
+  const setStoredLayout = useSettingsStore((s) => s.setEpisodeLayout);
+
   const [search, setSearch]         = useState("");
   const [batchStart, setBatchStart] = useState(1);
   const [batchOpen, setBatchOpen]   = useState(false);
-  const [viewMode, setViewMode]     = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode]     = useState<"list" | "grid" | "image">(defaultLayout);
   const activeRef = useRef<HTMLButtonElement | null>(null);
+
+  function changeView(mode: "list" | "grid" | "image") {
+    setViewMode(mode);
+    setStoredLayout(mode);
+  }
 
   const batchEnd    = Math.min(batchStart + BATCH - 1, totalEpisodes);
   const totalBatches = Math.ceil(totalEpisodes / BATCH);
@@ -131,24 +140,22 @@ export function EpisodeList({
 
         {/* View toggle */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setViewMode("list")}
-            className={[
-              "rounded p-1.5 transition-colors",
-              viewMode === "list" ? "text-white" : "text-white/30 hover:text-white/60",
-            ].join(" ")}
-          >
-            <List className="size-4" />
-          </button>
-          <button
-            onClick={() => setViewMode("grid")}
-            className={[
-              "rounded p-1.5 transition-colors",
-              viewMode === "grid" ? "text-white" : "text-white/30 hover:text-white/60",
-            ].join(" ")}
-          >
-            <Grid2X2 className="size-4" />
-          </button>
+          {(["list", "grid", "image"] as const).map((mode) => {
+            const Icon = mode === "list" ? List : mode === "grid" ? Grid2X2 : ImageIcon;
+            return (
+              <button
+                key={mode}
+                onClick={() => changeView(mode)}
+                className={[
+                  "rounded p-1.5 transition-colors",
+                  viewMode === mode ? "text-white" : "text-white/30 hover:text-white/60",
+                ].join(" ")}
+                aria-label={mode}
+              >
+                <Icon className="size-4" />
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -234,6 +241,54 @@ export function EpisodeList({
                 </button>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* ── Image view ─────────────────────────────────────────────────────── */}
+      {viewMode === "image" && (
+        <div className="max-h-[560px] overflow-y-auto p-3">
+          {filtered.length === 0 ? (
+            <p className="py-8 text-center text-xs text-white/30">No episodes match.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {filtered.map((n) => {
+                const meta    = metaByNum.get(n);
+                const isActive = n === currentEpisode;
+                const thumb   = meta?.thumbnail ?? meta?.image ?? null;
+                return (
+                  <button
+                    key={n}
+                    ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
+                    onClick={() => { onSelectEpisode(n); setSearch(""); }}
+                    className={[
+                      "relative aspect-video overflow-hidden rounded-lg transition-all",
+                      isActive ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-white/30",
+                    ].join(" ")}
+                  >
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-white/5">
+                        <span className="text-[10px] font-bold text-white/20">EP {pad2(n)}</span>
+                      </div>
+                    )}
+                    <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white/90">
+                      {pad2(n)}
+                    </span>
+                    {isActive && (
+                      <span className="absolute right-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-black">NOW</span>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-4">
+                      <p className="line-clamp-1 text-left text-[10px] text-white/80">
+                        {meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

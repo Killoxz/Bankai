@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore } from "@/store/language-store";
 import { ANIME_GENRES, type AnimeMedia } from "@/lib/anilist";
 import { useCardAnimation } from "@/hooks/use-card-animation";
+import { useSettingsStore } from "@/store/settings-store";
 
 const GENRES = ["All Genres", ...ANIME_GENRES];
 
@@ -183,6 +184,7 @@ export function HomeRows({
     genre === "All Genres" ? list : list.filter((a) => a.genres.includes(genre));
 
   const { items: continueItems, setItems: setContinueItems, loading: watchingLoading, loggedIn } = useContinueWatching();
+  const showWatchHistory = useSettingsStore((s) => s.showWatchHistory);
 
   const season      = byGenre(newSeason);
   const recommended = byGenre(topRated);
@@ -217,7 +219,7 @@ export function HomeRows({
       </ScrollRow>
 
       {/* Continue Watching — uses real history, not profile list */}
-      {!watchingLoading && (
+      {!watchingLoading && showWatchHistory && (
         continueItems.length > 0 ? (
           <section>
             <h2 className="mb-4 text-base font-semibold text-foreground">Continue Watching</h2>
