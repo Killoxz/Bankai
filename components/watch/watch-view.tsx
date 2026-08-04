@@ -265,13 +265,6 @@ export function WatchView({
               isLoading={isLoadingSources}
             />
             <AnimeInfoCard detail={detail} animeId={animeId} />
-            {showComments && (
-              <CommentsSection
-                animeId={animeId}
-                malId={detail.idMal ?? null}
-                episode={episode}
-              />
-            )}
           </motion.div>
 
           {/* Right: episode list → seasons → related */}
@@ -302,6 +295,19 @@ export function WatchView({
             />
             <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
           </motion.div>
+
+          {/* Comments — third grid item so it sits after both columns on mobile
+              (naturally last in the stack), and on desktop snaps back into the
+              left column via explicit grid placement. */}
+          {showComments && (
+            <div className="lg:col-start-1 lg:row-start-2">
+              <CommentsSection
+                animeId={animeId}
+                malId={detail.idMal ?? null}
+                episode={episode}
+              />
+            </div>
+          )}
         </div>
     </>
   );
