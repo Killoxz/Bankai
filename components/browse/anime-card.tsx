@@ -17,7 +17,7 @@ export function AnimeCard({
   index?: number;
 }) {
   const title = usePreferredTitle(anime);
-  const { wrapRef, cardRef, glareRef, onMove, onLeave } = useCardAnimation();
+  const { wrapRef, cardRef, glareRef, bgRef, onMove, onLeave } = useCardAnimation();
 
   return (
     <motion.div
@@ -41,15 +41,21 @@ export function AnimeCard({
               willChange:     "transform",
             }}
           >
-            {anime.coverImage.large && (
-              <Image
-                src={anime.coverImage.large}
-                alt={title}
-                fill
-                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
-                className="object-cover"
-              />
-            )}
+            <div
+              ref={bgRef}
+              className="absolute inset-0"
+              style={{ transition: "transform 0.18s ease-out", willChange: "transform" }}
+            >
+              {anime.coverImage.large && (
+                <Image
+                  src={anime.coverImage.large}
+                  alt={title}
+                  fill
+                  sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
+                  className="object-cover"
+                />
+              )}
+            </div>
 
             {(anime.averageScore || statusLabel) && (
               <div className="absolute left-2 top-2 flex items-center gap-1.5">

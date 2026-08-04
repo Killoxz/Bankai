@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type CardAnimation = "tilt" | "hover" | "glow";
+export type CardAnimation = "tilt" | "hover" | "depth";
 
 interface CardAnimationState {
   cardAnimation: CardAnimation;
