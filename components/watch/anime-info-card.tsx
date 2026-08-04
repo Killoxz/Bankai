@@ -157,6 +157,8 @@ interface AnimeInfoCardProps {
 }
 
 export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
+  const [showFullDesc, setShowFullDesc] = useState(false);
+
   const cover       = detail.coverImage.extraLarge ?? detail.coverImage.large;
   const title       = detail.title.english ?? detail.title.romaji;
   const native      = detail.title.native ?? null;
@@ -180,7 +182,7 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
     : null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="rounded-xl border border-white/[0.06] bg-[#111]">
 
       {/* ── Cover + title/genres/description ─────────────────────────────── */}
       <div className="flex gap-4 p-4">
@@ -211,9 +213,20 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
           )}
 
           {description && (
-            <p className="mt-2.5 line-clamp-4 rounded-lg bg-white/[0.04] px-3 py-2 text-[11px] leading-relaxed text-white/50">
-              {description}
-            </p>
+            <div className="mt-2.5">
+              <p className={cn(
+                "rounded-lg bg-white/[0.04] px-3 py-2 text-[11px] leading-relaxed text-white/50",
+                !showFullDesc && "line-clamp-4",
+              )}>
+                {description}
+              </p>
+              <button
+                onClick={() => setShowFullDesc((v) => !v)}
+                className="mt-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showFullDesc ? "Show less" : "Show more"}
+              </button>
+            </div>
           )}
         </div>
       </div>

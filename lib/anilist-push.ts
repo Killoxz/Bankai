@@ -61,3 +61,23 @@ export async function pushStatusToAniList(
     throw new Error(`AniList mutation error: ${res.errors.map((e) => e.message).join(", ")}`);
   }
 }
+
+/**
+ * Update the watched episode count (progress) on AniList.
+ * Only bumps progress — never lowers it.
+ */
+export async function pushProgressToAniList(
+  token:          string,
+  anilistMediaId: number,
+  progress:       number,
+): Promise<void> {
+  const res = await gql(token, `
+    mutation ($mediaId: Int, $progress: Int) {
+      SaveMediaListEntry(mediaId: $mediaId, progress: $progress) { id progress }
+    }
+  `, { mediaId: anilistMediaId, progress });
+
+  if (res.errors?.length) {
+    throw new Error(`AniList progress error: ${res.errors.map((e) => e.message).join(", ")}`);
+  }
+}

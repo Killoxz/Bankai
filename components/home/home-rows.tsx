@@ -70,6 +70,18 @@ function useContinueWatching() {
   return { items, setItems, loading, loggedIn: mounted && !!currentUser };
 }
 
+function fmtDuration(seconds: number): string {
+  if (!seconds) return "";
+  return `${Math.floor(seconds / 60)} min`;
+}
+
+function fmtTimestamp(seconds: number): string {
+  if (!seconds) return "";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 const CW_WIDTHS = {
   small:  "w-[160px] sm:w-[200px]",
   medium: "w-[200px] sm:w-[260px]",
@@ -151,9 +163,17 @@ function ContinueWatchingCard({
               </div>
             </div>
 
-            <span className="absolute bottom-5 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
-              EP {entry.episodeNumber}
-            </span>
+            {/* Bottom info row */}
+            <div className="absolute inset-x-0 bottom-4 flex items-end justify-between px-2">
+              <span className="rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                EP {entry.episodeNumber}
+              </span>
+              {entry.duration > 0 && (
+                <span className="rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white/80 backdrop-blur-sm">
+                  {fmtDuration(entry.duration)}
+                </span>
+              )}
+            </div>
 
             <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20">
               <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
@@ -173,6 +193,11 @@ function ContinueWatchingCard({
         <p className="mt-2 line-clamp-2 text-xs font-medium leading-snug text-card-foreground group-hover:text-foreground">
           {displayTitle}
         </p>
+        {entry.progress > 0 && entry.duration > 0 && (
+          <p className="mt-0.5 text-[10px] text-white/35">
+            Left at {fmtTimestamp(entry.progress)} / {fmtTimestamp(entry.duration)}
+          </p>
+        )}
       </Link>
     </motion.div>
   );

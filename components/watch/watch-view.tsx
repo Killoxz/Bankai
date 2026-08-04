@@ -21,6 +21,7 @@ import {
 } from "./episode-utils";
 import { useLanguageStore }  from "@/store/language-store";
 import { useSettingsStore }  from "@/store/settings-store";
+import { useAuthStore }      from "@/store/auth-store";
 
 interface WatchViewProps {
   detail: AnimeDetail;
@@ -75,6 +76,7 @@ export function WatchView({
   const setStoreAutoSkip   = useSettingsStore((s) => s.setAutoSkipIntroOutro);
   const setStoreAutoNext   = useSettingsStore((s) => s.setAutoNextEpisode);
   const showComments       = useSettingsStore((s) => s.showComments);
+  const currentUser        = useAuthStore((s) => s.currentUser);
 
   // Initialise all episode state synchronously from the SSR payload so
   // the player and provider list are ready on first render with zero delay.
@@ -188,7 +190,19 @@ export function WatchView({
 
   const totalEpisodes = detail.episodes ?? epListData.length;
   function handlePrevEp() { if (episode > 1) handleSelectEpisode(episode - 1); }
-  function handleNextEp() { if (episode < totalEpisodes) handleSelectEpisode(episode + 1); }
+  function handleNextEp() {
+    if (episode < totalEpisodes) {
+      // Mark completed episode on AniList before advancing
+      if (currentUser) {
+        fetch(`/api/anime/${animeId}/progress`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: currentUser, progress: episode }),
+        }).catch(() => {});
+      }
+      handleSelectEpisode(episode + 1);
+    }
+  }
 
   const recs = detail.recommendations.nodes
     .map((n) => n.mediaRecommendation)
