@@ -3,9 +3,10 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { fetchEpisodesRaw } from "@/lib/streaming";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { WatchView } from "@/components/watch/watch-view";
+import { Navbar }         from "@/components/layout/navbar";
+import { Footer }         from "@/components/layout/footer";
+import { WatchView }      from "@/components/watch/watch-view";
+import { AnimeInfoCard }  from "@/components/watch/anime-info-card";
 
 export const revalidate = 3600;
 
@@ -43,19 +44,11 @@ export default async function WatchPage({
 
   const initialEpisode = Math.max(1, Number(sp.ep ?? 1) || 1);
   const initialAudio: "sub" | "dub" = sp.audio === "dub" ? "dub" : "sub";
-  const title    = preferredTitle(detail);
-  const subtitle = [
-    detail.episodes ? `${detail.episodes} Episodes` : null,
-    detail.format,
-    detail.genres.slice(0, 2).join(", "),
-  ].filter(Boolean).join(" · ");
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-1 text-xl font-bold text-foreground sm:text-2xl">{title}</h1>
-        {subtitle && <p className="mb-6 text-sm text-gray-500 dark:text-white/50">{subtitle}</p>}
+        <AnimeInfoCard detail={detail} animeId={anilistId} />
         <Suspense>
           <WatchView
             detail={detail}
