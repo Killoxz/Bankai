@@ -226,7 +226,7 @@ export function WatchView({
         <div className="fixed inset-0 z-10 bg-black/85 pointer-events-none" aria-hidden />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className={["grid gap-6 transition-all duration-300", lightsOff ? "grid-cols-1" : "lg:grid-cols-[1fr_380px]"].join(" ")}>
           {/* Left: player + server selector + info card + comments */}
           <motion.div
             className="relative z-20 min-w-0 space-y-4"
@@ -285,12 +285,13 @@ export function WatchView({
             )}
           </motion.div>
 
-          {/* Right: episode list → seasons → related */}
+          {/* Right: episode list → seasons → related (hidden in theater mode) */}
           <motion.div
             className="space-y-4"
             initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
+            animate={{ opacity: lightsOff ? 0 : 1, x: lightsOff ? 12 : 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ display: lightsOff ? "none" : undefined }}
           >
             <EpisodeList
               totalEpisodes={totalEpisodes}

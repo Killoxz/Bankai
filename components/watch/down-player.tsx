@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { useAuthStore } from "@/store/auth-store";
 import { usePlayerPrefsStore } from "@/store/player-prefs-store";
-import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episode-utils";
+import { firstAvailableProvider, type EpisodesMap } from "./episode-utils";
 
 interface Timestamp     { start: number; end: number }
 interface SubtitleTrack { file: string; label?: string; kind?: string }
@@ -38,18 +38,15 @@ interface DownPlayerProps {
   onError?: (provider: string) => void;
 }
 
-/**
- * Normalise a timestamp from any provider/AniSkip format and validate it.
- * Accepts {start,end} and {startTime,endTime} field names.
- * Returns null if the segment is invalid (zero-length, negative, or < 5 s long).
- */
+type SettingsView = "main" | "speed" | "quality" | "captions";
+
 function parseTimestamp(raw: Timestamp | Record<string, number> | null | undefined): Timestamp | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, number>;
   const start = r.start   ?? r.startTime   ?? -1;
   const end   = r.end     ?? r.endTime     ?? -1;
   if (typeof start !== "number" || typeof end !== "number") return null;
-  if (start < 0 || end <= start + 5) return null; // at least 5 s long
+  if (start < 0 || end <= start + 5) return null;
   return { start, end };
 }
 
@@ -141,7 +138,6 @@ export function DownPlayer({
   const scrubbingRef  = useRef(false);
   const currentUser   = useAuthStore((s) => s.currentUser);
 
-  // ── Stable refs so initPlayer deps stay minimal ───────────────────────────
   const autoplayRef         = useRef(autoplay);
   const autoSkipRef         = useRef(autoSkip);
   const onErrorRef          = useRef(onError);
@@ -184,34 +180,52 @@ export function DownPlayer({
   const [muted,       setMuted]       = useState(false);
   const [fullscreen,  setFullscreen]  = useState(false);
   const [showCtrl,    setShowCtrl]    = useState(true);
+  const [hoverX,      setHoverX]      = useState<number | null>(null);
 
-  // ── Caption & speed state (persisted via Zustand → synced cross-device) ──
+  // ── Caption & speed state ─────────────────────────────────────────────────
   const captionsOn   = usePlayerPrefsStore((s) => s.captionsOn);
   const captionSize  = usePlayerPrefsStore((s) => s.captionSize);
   const captionColor = usePlayerPrefsStore((s) => s.captionColor);
   const captionBg    = usePlayerPrefsStore((s) => s.captionBg);
   const captionFont  = usePlayerPrefsStore((s) => s.captionFont);
   const speed        = usePlayerPrefsStore((s) => s.speed);
+  const alwaysHD     = usePlayerPrefsStore((s) => s.alwaysHD);
   const setCaptionsOn   = usePlayerPrefsStore((s) => s.setCaptionsOn);
   const setCaptionSize  = usePlayerPrefsStore((s) => s.setCaptionSize);
   const setCaptionColor = usePlayerPrefsStore((s) => s.setCaptionColor);
   const setCaptionBg    = usePlayerPrefsStore((s) => s.setCaptionBg);
   const setCaptionFont  = usePlayerPrefsStore((s) => s.setCaptionFont);
   const setSpeed        = usePlayerPrefsStore((s) => s.setSpeed);
+  const setAlwaysHD     = usePlayerPrefsStore((s) => s.setAlwaysHD);
 
   const PLAYER_TYPES = ["plyr", "natv", "vidk"] as const;
   type PlayerType = typeof PLAYER_TYPES[number];
-  const [playerType,       setPlayerType]       = useState<PlayerType>("plyr");
-  const [selectedTrack,    setSelectedTrack]    = useState(0);
-  const [hlsLevels,        setHlsLevels]        = useState<HLSLevel[]>([]);
-  const [selectedLevel,    setSelectedLevel]    = useState(-1); // -1 = Auto
+  const [playerType,        setPlayerType]        = useState<PlayerType>("plyr");
+  const [selectedTrack,     setSelectedTrack]     = useState(0);
+  const [hlsLevels,         setHlsLevels]         = useState<HLSLevel[]>([]);
+  const [selectedLevel,     setSelectedLevel]     = useState(-1);
   const [captionPanelOpen,  setCaptionPanelOpen]  = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const [settingsView,      setSettingsView]      = useState<SettingsView>("main");
 
-
-  // Ref kept in sync with the Zustand speed value for use inside stable callbacks
   useEffect(() => { speedRef.current = speed; }, [speed]);
 
+  // Reset settings sub-view when panel closes
+  useEffect(() => {
+    if (!settingsPanelOpen) setSettingsView("main");
+  }, [settingsPanelOpen]);
+
+  // Auto-select highest quality when alwaysHD is on and levels are available
+  useEffect(() => {
+    if (!alwaysHD || hlsLevels.length === 0) return;
+    const highest = hlsLevels[0];
+    setSelectedLevel(highest.index);
+    const hls = hlsRef.current;
+    if (hls) {
+      hls.currentLevel = highest.index;
+      hls.loadLevel    = highest.index;
+    }
+  }, [alwaysHD, hlsLevels]);
 
   // ── Caption ::cue style injection ─────────────────────────────────────────
   useEffect(() => {
@@ -226,31 +240,23 @@ export function DownPlayer({
     el.textContent = `video::cue { font-size: ${pct}em; color: ${captionColor}; background-color: ${captionBg}; font-family: ${captionFont}; }`;
   }, [captionSize, captionColor, captionBg, captionFont]);
 
-  // ── Caption on/off — only show the selectedTrack index, hide all others ─────
-  // "hidden" keeps the track data loaded (instant toggle); "showing" renders cues.
-  // We listen to addtrack because the browser may override modes when tracks load,
-  // and we add a 100ms timeout as a fallback for streams where tracks register late.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     const applyModes = () => {
       for (let i = 0; i < video.textTracks.length; i++) {
         video.textTracks[i].mode = captionsOn && i === selectedTrack ? "showing" : "hidden";
       }
     };
-
     applyModes();
     const timer = setTimeout(applyModes, 100);
     video.textTracks.addEventListener("addtrack", applyModes);
-
     return () => {
       clearTimeout(timer);
       video.textTracks.removeEventListener("addtrack", applyModes);
     };
-  }, [captionsOn, subtitles, selectedTrack]); // subtitles dep re-runs after <track> elements render
+  }, [captionsOn, subtitles, selectedTrack]);
 
-  // ── Playback speed ────────────────────────────────────────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (video) video.playbackRate = speed;
@@ -274,6 +280,7 @@ export function DownPlayer({
     setSelectedTrack(0);
     setHlsLevels([]);
     setSelectedLevel(-1);
+    setHoverX(null);
 
     try {
       const epId = providersDataRef.current?.[selectedProvider]?.episodes?.[audio]
@@ -283,7 +290,6 @@ export function DownPlayer({
         ? `/api/stream?episodeId=${encodeURIComponent(epId)}`
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
-      // Local progress stored in sessionStorage as an instant, auth-independent fallback.
       const ssKey = `bankai-progress-${animeId}-${episode}`;
       const localProgress = (() => {
         try { return parseInt(sessionStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; }
@@ -305,7 +311,6 @@ export function DownPlayer({
           : Promise.resolve(0),
       ]);
 
-      // Prefer whichever position is further along
       const resumeAt = Math.max(localProgress, apiProgress);
 
       if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -322,7 +327,6 @@ export function DownPlayer({
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      // Megaplay embed — hand off to an iframe player, no HLS needed.
       if (/^https?:\/\/megaplay\.buzz/i.test(streamUrl)) {
         setEmbedUrl(streamUrl);
         setLoading(false);
@@ -345,20 +349,15 @@ export function DownPlayer({
         return;
       }
 
-      // ── HLS path ─────────────────────────────────────────────────────────────
       const video = videoRef.current;
       if (!video) return;
 
-      // Use provider timestamps immediately — they're already available.
-      // AniSkip fires async below and will override these if it has better data.
       const providerIntro = parseTimestamp(data.intro);
       const providerOutro = parseTimestamp(data.outro);
       if (providerIntro) setIntro(providerIntro);
       if (providerOutro) setOutro(providerOutro);
 
-      // AniSkip: community-verified, provider-independent skip times.
-      // Non-blocking — fires after the stream is set up so it never delays playback.
-      // Overrides provider timestamps when it arrives (AniSkip is more accurate).
+      // AniSkip: community-verified skip times — non-blocking, overrides provider timestamps
       if (malId != null && malId > 0) {
         fetch(`/api/skip-times?malId=${malId}&ep=${episode}`, {
           signal: AbortSignal.timeout(8000),
@@ -372,12 +371,10 @@ export function DownPlayer({
             if (aniOutro) setOutro(aniOutro);
           });
       }
+
       if (data.subtitles?.length) {
         setSubtitles(data.subtitles);
       } else if (audio === "dub") {
-        // Dub streams often have no embedded subtitle tracks.
-        // Fetch the sub stream in the background and borrow its subtitles so
-        // the captions toggle still works when the user is watching dubbed audio.
         const subEpId = providersDataRef.current?.[selectedProvider]?.episodes?.["sub"]
           ?.find((e) => e.number === episode)?.id;
         const subUrl = subEpId
@@ -402,7 +399,6 @@ export function DownPlayer({
           if (resumeAt > 0) video.currentTime = resumeAt;
           if (autoplayRef.current) video.play().catch(() => {});
 
-          // Build a deduplicated, height-sorted level list for the quality picker.
           const byHeight = new Map<number, HLSLevel>();
           hls.levels.forEach((l, i) => {
             const h = l.height || 0;
@@ -413,6 +409,13 @@ export function DownPlayer({
           });
           const sorted = Array.from(byHeight.values()).sort((a, b) => b.height - a.height);
           setHlsLevels(sorted);
+
+          // Apply alwaysHD immediately after levels load
+          if (usePlayerPrefsStore.getState().alwaysHD && sorted.length > 0) {
+            hls.currentLevel = sorted[0].index;
+            hls.loadLevel    = sorted[0].index;
+            setSelectedLevel(sorted[0].index);
+          }
         });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) {
@@ -448,7 +451,6 @@ export function DownPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     const onPlay   = () => setPlaying(true);
     const onPause  = () => setPlaying(false);
     const onEnded  = () => { setPlaying(false); onEpisodeEndRef.current?.(); };
@@ -460,7 +462,6 @@ export function DownPlayer({
         setBufferedPct((video.buffered.end(video.buffered.length - 1) / video.duration) * 100);
       }
     };
-
     video.addEventListener("play",           onPlay);
     video.addEventListener("pause",          onPause);
     video.addEventListener("ended",          onEnded);
@@ -477,7 +478,7 @@ export function DownPlayer({
     };
   }, []);
 
-  // ── Skip zone detection + auto-skip (intro AND outro) ────────────────────
+  // ── Skip zone detection + auto-skip ──────────────────────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -488,11 +489,8 @@ export function DownPlayer({
       else setSkipZone(null);
 
       if (autoSkipRef.current) {
-        if (intro && t >= intro.start && t < intro.end) {
-          video.currentTime = intro.end;
-        } else if (outro && t >= outro.start && t < outro.end) {
-          video.currentTime = outro.end;
-        }
+        if (intro && t >= intro.start && t < intro.end) video.currentTime = intro.end;
+        else if (outro && t >= outro.start && t < outro.end) video.currentTime = outro.end;
       }
     };
     video.addEventListener("timeupdate", handler);
@@ -529,12 +527,9 @@ export function DownPlayer({
       if (e.code === "ArrowDown")  { e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); }
       if (e.code === "KeyM")       { video.muted = !video.muted; }
       if (e.code === "KeyC")       { setCaptionsOn(!usePlayerPrefsStore.getState().captionsOn); }
-      if (e.code === "KeyF") {
-        e.preventDefault();
-        toggleFullscreen();
-      }
-      if (e.code === "Comma")  { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.max(0, i - 1)]); }
-      if (e.code === "Period") { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]); }
+      if (e.code === "KeyF")       { e.preventDefault(); toggleFullscreen(); }
+      if (e.code === "Comma")      { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.max(0, i - 1)]); }
+      if (e.code === "Period")     { const i = SPEEDS.indexOf(speedRef.current); setSpeed(SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -546,13 +541,10 @@ export function DownPlayer({
     if (!video) return;
     let lastSave = 0;
     const ssKey  = `bankai-progress-${animeId}-${episode}`;
-
     function saveProgress(completed = false) {
       if (!video || !video.duration) return;
       const pos = Math.floor(video.currentTime);
-      // Always save to sessionStorage — works even when not logged in
       try { sessionStorage.setItem(ssKey, String(pos)); } catch {}
-
       if (!currentUserRef.current) return;
       const pData    = providersDataRef.current;
       const provider = selectedProviderRef.current ?? "";
@@ -577,11 +569,9 @@ export function DownPlayer({
         }),
       }).catch(() => {});
     }
-
     const onTime  = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
     const onPause = () => saveProgress();
     const onEnded = () => saveProgress(true);
-
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("pause",      onPause);
     video.addEventListener("ended",      onEnded);
@@ -656,14 +646,31 @@ export function DownPlayer({
     const hls = hlsRef.current;
     if (!hls) return;
     if (levelIndex === -1) {
-      hls.currentLevel = -1; // auto
+      hls.currentLevel = -1;
+      hls.loadLevel    = -1;
     } else {
       hls.currentLevel = levelIndex;
+      hls.loadLevel    = levelIndex;
+    }
+  }
+
+  function toggleAlwaysHD() {
+    const next = !alwaysHD;
+    setAlwaysHD(next);
+    if (next && hlsLevels.length > 0) {
+      handleQualitySelect(hlsLevels[0].index);
+    } else if (!next) {
+      handleQualitySelect(-1);
     }
   }
 
   function qualityLabel(): string {
-    if (selectedLevel === -1) return "Auto";
+    if (selectedLevel === -1) {
+      const currentH = hlsRef.current?.currentLevel !== undefined
+        ? hlsLevels.find(l => l.index === hlsRef.current?.currentLevel)?.height
+        : undefined;
+      return currentH ? `Auto (${currentH}p)` : "Auto";
+    }
     const l = hlsLevels.find((l) => l.index === selectedLevel);
     return l?.height ? `${l.height}p` : "Auto";
   }
@@ -697,7 +704,16 @@ export function DownPlayer({
     }
   }
 
+  // Volume setter helper
+  function setVideoVolume(val: number) {
+    const v = videoRef.current;
+    if (!v) return;
+    v.volume = val;
+    v.muted  = val === 0;
+  }
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const displayVolume = muted ? 0 : volume;
 
   return (
     <div className="overflow-hidden rounded-xl bg-black shadow-2xl">
@@ -716,18 +732,18 @@ export function DownPlayer({
           bumpControls();
         }}
       >
-        {/* Poster (HLS only) */}
+        {/* Poster */}
         {poster && !embedUrl && (
           <img
             src={poster} alt=""
             className={[
               "pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-500",
-              loading ? "opacity-50" : "opacity-0",
+              loading ? "opacity-40" : "opacity-0",
             ].join(" ")}
           />
         )}
 
-        {/* Video (HLS mode) */}
+        {/* Video element */}
         {!embedUrl && (
           <video
             ref={videoRef}
@@ -746,7 +762,7 @@ export function DownPlayer({
           </video>
         )}
 
-        {/* Iframe embed player (Anikoto / MegaPlay) */}
+        {/* Embed player */}
         {embedUrl && (
           <iframe
             key={embedUrl}
@@ -757,11 +773,15 @@ export function DownPlayer({
           />
         )}
 
-        {/* Loading (HLS only) */}
+        {/* ── Loading: pulsing anime title ─────────────────────────────── */}
         {loading && !embedUrl && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <MI name="progress_activity" size={48} className="animate-spin text-white/80" />
-            <p className="text-sm font-medium text-white/50">Loading episode {episode}…</p>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <p className="animate-pulse text-xl font-bold tracking-tight text-white/80 md:text-2xl">
+              {animeTitle ?? "Loading…"}
+            </p>
+            <p className="animate-pulse text-sm font-medium text-white/35" style={{ animationDelay: "150ms" }}>
+              Episode {episode}
+            </p>
           </div>
         )}
 
@@ -784,7 +804,7 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Centre pause indicator (HLS only) */}
+        {/* Centre pause indicator */}
         {!embedUrl && !loading && !error && !playing && duration > 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
@@ -793,7 +813,7 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* Skip intro/outro (HLS only) */}
+        {/* Skip intro/outro buttons */}
         {!embedUrl && !loading && !error && (
           <div className="absolute bottom-20 right-4 z-10 flex flex-col items-end gap-2">
             {intro && currentTime >= intro.start && currentTime < intro.end && (
@@ -817,9 +837,10 @@ export function DownPlayer({
           </div>
         )}
 
-        {/* ── Custom control overlay (HLS only) ───────────────────────────── */}
+        {/* ── Custom control overlay ───────────────────────────────────── */}
         {!embedUrl && !error && (() => {
-          /* ── Shared: caption style panel ────────────────────────────────── */
+
+          /* ── Caption panel ─────────────────────────────────────────── */
           const captionPanel = captionPanelOpen ? (
             <div className="absolute bottom-10 right-0 z-30 w-64 rounded-xl border border-white/10 bg-[#1c1c1c] p-3 shadow-2xl">
               <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Captions</p>
@@ -886,132 +907,373 @@ export function DownPlayer({
             </div>
           ) : null;
 
-          /* ── Shared: combined quality + speed panel ──────────────────────── */
+          /* ── Settings panel: multi-level ───────────────────────────── */
           const settingsPanel = settingsPanelOpen ? (
-            <div className="absolute bottom-8 right-0 z-30 w-52 overflow-hidden rounded-xl border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
-              <p className="px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">Speed</p>
-              {SPEEDS.map((s) => (
-                <button key={s} onClick={() => { setSpeed(s); setSettingsPanelOpen(false); }}
-                  className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                    s === speed ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                  {s}x {s === 1 && <span className="text-white/30">Normal</span>}
-                </button>
-              ))}
-              {hlsLevels.length > 0 && (
-                <>
-                  <div className="my-1 border-t border-white/[0.06]" />
-                  <p className="px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">Quality</p>
-                  <button onClick={() => handleQualitySelect(-1)}
-                    className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                      selectedLevel === -1 ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                    Auto <span className="text-white/30">Recommended</span>
+            <div className="absolute bottom-10 right-0 z-30 w-64 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#1c1c1c] shadow-2xl">
+
+              {/* MAIN view */}
+              {settingsView === "main" && (
+                <div className="py-1">
+                  {/* Volume Boost */}
+                  <button className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 [touch-action:manipulation]">
+                    <MI name="music_note" size={18} className="shrink-0 text-white/50" />
+                    <span className="flex-1 text-sm text-white/90">Volume Boost</span>
+                    <span className="text-sm text-white/35">0%</span>
+                    <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
                   </button>
-                  {hlsLevels.map((l) => (
-                    <button key={l.index} onClick={() => { handleQualitySelect(l.index); setSettingsPanelOpen(false); }}
-                      className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                        selectedLevel === l.index ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                      {l.height ? `${l.height}p` : `Q${l.index + 1}`}
-                      <span className="text-white/25">{l.bitrate >= 1_000_000 ? `${(l.bitrate / 1_000_000).toFixed(1)}Mb` : `${Math.round(l.bitrate / 1000)}Kb`}</span>
+                  <div className="mx-4 border-t border-white/[0.06]" />
+
+                  {/* Accessibility */}
+                  <button className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 [touch-action:manipulation]">
+                    <MI name="accessibility_new" size={18} className="shrink-0 text-white/50" />
+                    <span className="flex-1 text-sm text-white/90">Accessibility</span>
+                    <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
+                  </button>
+                  <div className="mx-4 border-t border-white/[0.06]" />
+
+                  {/* Captions */}
+                  <button
+                    onClick={() => setSettingsView("captions")}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 [touch-action:manipulation]"
+                  >
+                    <MI name="closed_caption" size={18} className="shrink-0 text-white/50" />
+                    <span className="flex-1 text-sm text-white/90">Captions</span>
+                    <span className="text-sm text-white/35">
+                      {captionsOn && subtitles.length > 0
+                        ? subtitles[selectedTrack]?.label ?? "On"
+                        : captionsOn ? "On" : "Off"}
+                    </span>
+                    <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
+                  </button>
+                  <div className="mx-4 border-t border-white/[0.06]" />
+
+                  {/* Speed */}
+                  <button
+                    onClick={() => setSettingsView("speed")}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 [touch-action:manipulation]"
+                  >
+                    <MI name="speed" size={18} className="shrink-0 text-white/50" />
+                    <span className="flex-1 text-sm text-white/90">Speed</span>
+                    <span className="text-sm text-white/35">{speed === 1 ? "Normal" : `${speed}x`}</span>
+                    <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
+                  </button>
+                  <div className="mx-4 border-t border-white/[0.06]" />
+
+                  {/* Quality */}
+                  <button
+                    onClick={() => setSettingsView("quality")}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 [touch-action:manipulation]"
+                  >
+                    <MI name="hd" size={18} className="shrink-0 text-white/50" />
+                    <span className="flex-1 text-sm text-white/90">Quality</span>
+                    <span className="text-sm text-white/35">{qualityLabel()}</span>
+                    <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
+                  </button>
+                </div>
+              )}
+
+              {/* SPEED sub-panel */}
+              {settingsView === "speed" && (
+                <div>
+                  <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2.5">
+                    <button
+                      onClick={() => setSettingsView("main")}
+                      className="flex size-7 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
+                    >
+                      <MI name="arrow_back" size={16} />
                     </button>
-                  ))}
-                </>
+                    <span className="text-sm font-semibold text-white">Speed</span>
+                  </div>
+                  <div className="py-1">
+                    {SPEEDS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => { setSpeed(s); setSettingsPanelOpen(false); }}
+                        className={["flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                          s === speed ? "text-primary font-semibold" : "text-white/75"].join(" ")}
+                      >
+                        <span>{s === 1 ? "Normal" : `${s}x`}</span>
+                        {s === speed && <MI name="check" size={16} className="text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* QUALITY sub-panel */}
+              {settingsView === "quality" && (
+                <div>
+                  <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2.5">
+                    <button
+                      onClick={() => setSettingsView("main")}
+                      className="flex size-7 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
+                    >
+                      <MI name="arrow_back" size={16} />
+                    </button>
+                    <span className="text-sm font-semibold text-white">Quality</span>
+                  </div>
+
+                  {/* Always HD toggle */}
+                  <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <MI name="hd" size={16} className="text-white/60" />
+                      <span className="text-sm text-white/80">Always HD</span>
+                    </div>
+                    <button
+                      onClick={toggleAlwaysHD}
+                      className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
+                        alwaysHD ? "bg-primary" : "bg-white/20"].join(" ")}
+                    >
+                      <span className={["absolute size-3.5 rounded-full bg-white shadow transition-transform duration-200",
+                        alwaysHD ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
+                    </button>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleQualitySelect(-1)}
+                      className={["flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                        selectedLevel === -1 ? "text-primary font-semibold" : "text-white/75"].join(" ")}
+                    >
+                      <span>Auto</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/30">Recommended</span>
+                        {selectedLevel === -1 && <MI name="check" size={16} className="text-primary" />}
+                      </div>
+                    </button>
+                    {hlsLevels.map((l) => (
+                      <button
+                        key={l.index}
+                        onClick={() => { handleQualitySelect(l.index); }}
+                        className={["flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                          selectedLevel === l.index ? "text-primary font-semibold" : "text-white/75"].join(" ")}
+                      >
+                        <span>{l.height ? `${l.height}p` : `Q${l.index + 1}`}</span>
+                        {selectedLevel === l.index && <MI name="check" size={16} className="text-primary" />}
+                      </button>
+                    ))}
+                    {hlsLevels.length === 0 && (
+                      <p className="px-5 py-3 text-xs text-white/35">No quality options yet.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CAPTIONS sub-panel */}
+              {settingsView === "captions" && (
+                <div>
+                  <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2.5">
+                    <button
+                      onClick={() => setSettingsView("main")}
+                      className="flex size-7 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
+                    >
+                      <MI name="arrow_back" size={16} />
+                    </button>
+                    <span className="text-sm font-semibold text-white">Captions</span>
+                  </div>
+                  <div className="p-3">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs text-white/70">Show Captions</span>
+                      <button onClick={() => setCaptionsOn(!captionsOn)}
+                        className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
+                          captionsOn ? "bg-primary" : "bg-white/15"].join(" ")}>
+                        <span className={["absolute size-3.5 rounded-full bg-white shadow transition-transform duration-200",
+                          captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
+                      </button>
+                    </div>
+                    {subtitles.length > 1 && (
+                      <>
+                        <p className="mb-1 text-[10px] font-medium text-white/35">TRACK</p>
+                        <div className="mb-3 flex flex-wrap gap-1.5">
+                          {subtitles.map((s, i) => (
+                            <button key={i} onClick={() => { setSelectedTrack(i); setCaptionsOn(true); }}
+                              className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                                selectedTrack === i && captionsOn ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
+                              {s.label || `Track ${i + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    <p className="mb-1 text-[10px] font-medium text-white/35">SIZE</p>
+                    <div className="mb-3 flex gap-1.5">
+                      {[{ l: "S", v: "75" }, { l: "M", v: "100" }, { l: "L", v: "125" }, { l: "XL", v: "150" }].map(({ l, v }) => (
+                        <button key={v} onClick={() => setCaptionSize(v)}
+                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                            captionSize === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>{l}</button>
+                      ))}
+                    </div>
+                    <p className="mb-1 text-[10px] font-medium text-white/35">TEXT COLOR</p>
+                    <div className="mb-3 flex gap-2">
+                      {CAPTION_COLORS.map((c) => (
+                        <button key={c} onClick={() => setCaptionColor(c)} title={c}
+                          className={["size-5 rounded-full border-2 transition-transform hover:scale-110 [touch-action:manipulation]",
+                            captionColor === c ? "border-white scale-110" : "border-transparent"].join(" ")}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <p className="mb-1 text-[10px] font-medium text-white/35">BACKGROUND</p>
+                    <div className="flex gap-1.5">
+                      {CAPTION_BGS.map(({ l, v }) => (
+                        <button key={l} onClick={() => setCaptionBg(v)}
+                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                            captionBg === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           ) : null;
 
-          /* ── Shared: intro/outro cut markers ────────────────────────────── */
-          // Each cut = dark gap across the bar + white tick marks above & below it.
-          // Collect all cut-point timestamps, then render one set of marks per point.
-          const cutPoints: number[] = [];
-          if (intro  && duration > 0) { cutPoints.push(intro.start,  intro.end);  }
-          if (outro  && duration > 0) { cutPoints.push(outro.start,  outro.end);  }
-
-          const cutMarkers = cutPoints.length > 0 ? (
-            <>
-              {cutPoints.map((t, i) => {
-                const pct = `${(t / duration) * 100}%`;
-                return (
-                  <React.Fragment key={i}>
-                    {/* White tick above the bar */}
-                    <div className="pointer-events-none absolute z-20"
-                      style={{ left: pct, bottom: "100%", width: "2px", height: "6px", transform: "translateX(-50%)", background: "rgba(255,255,255,0.95)", borderRadius: "1px 1px 0 0" }} />
-                    {/* Dark gap through the bar (the actual "cut") */}
-                    <div className="pointer-events-none absolute inset-y-0 z-20"
-                      style={{ left: pct, width: "3px", transform: "translateX(-50%)", background: "rgba(0,0,0,0.75)" }} />
-                    {/* White tick below the bar */}
-                    <div className="pointer-events-none absolute z-20"
-                      style={{ left: pct, top: "100%", width: "2px", height: "6px", transform: "translateX(-50%)", background: "rgba(255,255,255,0.95)", borderRadius: "0 0 1px 1px" }} />
-                  </React.Fragment>
-                );
-              })}
-            </>
-          ) : null;
-
-          /* ── Shared: progress bar drag handlers ─────────────────────────── */
+          /* ── Progress bar drag + hover handlers ─────────────────────── */
           const barHandlers = {
             style: { touchAction: "none" as const },
             onMouseDown: (e: React.MouseEvent) => { scrubbingRef.current = true; seek(e.clientX); },
-            onMouseMove: (e: React.MouseEvent) => { if (scrubbingRef.current) seek(e.clientX); },
-            onMouseUp:   () => { scrubbingRef.current = false; },
-            onMouseLeave:() => { scrubbingRef.current = false; },
-            onTouchStart:(e: React.TouchEvent) => { e.stopPropagation(); scrubbingRef.current = true; seekTouch(e); },
-            onTouchMove: (e: React.TouchEvent) => { if (scrubbingRef.current) { e.preventDefault(); seekTouch(e); } },
-            onTouchEnd:  () => { scrubbingRef.current = false; },
+            onMouseMove: (e: React.MouseEvent) => {
+              const bar = progressRef.current;
+              if (bar && duration > 0) {
+                const rect = bar.getBoundingClientRect();
+                setHoverX(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)));
+              }
+              if (scrubbingRef.current) seek(e.clientX);
+            },
+            onMouseLeave: () => { scrubbingRef.current = false; setHoverX(null); },
+            onMouseUp:    () => { scrubbingRef.current = false; },
+            onTouchStart: (e: React.TouchEvent) => { e.stopPropagation(); scrubbingRef.current = true; seekTouch(e); },
+            onTouchMove:  (e: React.TouchEvent) => { if (scrubbingRef.current) { e.preventDefault(); seekTouch(e); } },
+            onTouchEnd:   () => { scrubbingRef.current = false; },
           };
+
+          /* ── Timeline hover tooltip ──────────────────────────────────── */
+          const timelineTooltip = hoverX !== null && duration > 0 ? (() => {
+            const hoverTime = (hoverX / 100) * duration;
+            const isIntro = !!(intro && hoverTime >= intro.start && hoverTime <= intro.end);
+            const isOutro = !!(outro && hoverTime >= outro.start && hoverTime <= outro.end);
+            return (
+              <div
+                className="pointer-events-none absolute bottom-full z-30 mb-2 flex -translate-x-1/2 flex-col items-center"
+                style={{ left: `${hoverX}%` }}
+              >
+                {(isIntro || isOutro) && (
+                  <span className="mb-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                    {isIntro ? "Intro" : "Outro"}
+                  </span>
+                )}
+                <span className="rounded-md bg-black/90 px-2.5 py-1 text-xs font-medium tabular-nums text-white shadow-lg whitespace-nowrap">
+                  {fmt(hoverTime)}
+                </span>
+                <div className="size-0 border-x-[5px] border-t-[5px] border-x-transparent border-t-black/90" />
+              </div>
+            );
+          })() : null;
+
+          /* ── Segmented progress bar renderer (shared) ───────────────── */
+          function renderSegments(colorClass: string) {
+            if (duration <= 0) return <div className="absolute inset-y-0 left-0 w-full rounded-[2px] bg-white/20" />;
+            const pts = [...new Set([
+              0,
+              ...(intro ? [intro.start, intro.end] : []),
+              ...(outro ? [outro.start, outro.end] : []),
+              duration,
+            ].filter((p) => p >= 0 && p <= duration))].sort((a, b) => a - b);
+            const bufTime = (bufferedPct / 100) * duration;
+            return pts.slice(0, -1).map((s, idx) => {
+              const e    = pts[idx + 1];
+              const dur  = e - s;
+              const skip = (!!intro && s >= intro.start - 0.05 && e <= intro.end + 0.05) ||
+                           (!!outro && s >= outro.start - 0.05 && e <= outro.end + 0.05);
+              const lPct     = (s / duration) * 100;
+              const wPct     = (dur / duration) * 100;
+              const watchPct = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(currentTime, e) - s) / dur) * 100)) : 0;
+              const bufPct   = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(bufTime, e) - s) / dur) * 100)) : 0;
+              return (
+                <div key={idx}
+                  className="absolute inset-y-0 overflow-hidden rounded-[2px]"
+                  style={{ left: `calc(${lPct}% + 1.5px)`, width: `calc(${wPct}% - 3px)` }}>
+                  <div className={["absolute inset-0", skip ? "bg-white/[0.16]" : "bg-white/[0.32]"].join(" ")} />
+                  {bufPct > watchPct && (
+                    <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: `${bufPct}%` }} />
+                  )}
+                  {watchPct > 0 && (
+                    <div className={["absolute inset-y-0 left-0", skip ? `${colorClass}/70` : colorClass].join(" ")}
+                      style={{ width: `${watchPct}%` }} />
+                  )}
+                </div>
+              );
+            });
+          }
+
+          /* ── Volume slider (shared, clean custom design) ─────────────── */
+          function VolumeControl({ iconSize = 20, sliderW = "w-20" }: { iconSize?: number; sliderW?: string }) {
+            return (
+              <div className="group/vol flex items-center gap-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) v.muted = !v.muted; }}
+                  className="flex size-9 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white [touch-action:manipulation]"
+                >
+                  <MI name={muted || volume === 0 ? "volume_off" : volume < 0.5 ? "volume_down" : "volume_up"} size={iconSize} />
+                </button>
+                {/* Track */}
+                <div
+                  className={`relative h-[3px] ${sliderW} cursor-pointer rounded-full bg-white/20 transition-all hover:h-1`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setVideoVolume(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const onMove = (mv: MouseEvent) => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setVideoVolume(Math.max(0, Math.min(1, (mv.clientX - rect.left) / rect.width)));
+                    };
+                    const onUp = () => {
+                      window.removeEventListener("mousemove", onMove);
+                      window.removeEventListener("mouseup", onUp);
+                    };
+                    window.addEventListener("mousemove", onMove);
+                    window.addEventListener("mouseup", onUp);
+                  }}
+                >
+                  {/* Fill */}
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-white transition-none"
+                    style={{ width: `${displayVolume * 100}%` }}
+                  />
+                  {/* Thumb */}
+                  <div
+                    className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-md transition-transform group-hover/vol:scale-100"
+                    style={{ left: `${displayVolume * 100}%` }}
+                  />
+                </div>
+              </div>
+            );
+          }
 
           const visible = showCtrl || !playing;
 
-          /* ── PLYR: Crunchyroll-style ─────────────────────────────────────── */
+          /* ── PLYR ────────────────────────────────────────────────────── */
           if (playerType === "plyr") return (
-            <div className={["absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-14 transition-opacity duration-300",
-              visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
-              onClick={(e) => e.stopPropagation()}>
-
-              {/* ── Segmented progress bar: gaps between segments = chapter cuts ─ */}
+            <div
+              className={["absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-14 transition-opacity duration-300",
+                visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Progress bar */}
               <div ref={progressRef} {...barHandlers}
-                className="group/bar relative mb-2.5 h-[5px] cursor-pointer overflow-visible transition-[height] duration-150 hover:h-[9px]">
-                {duration > 0 ? (() => {
-                  const pts = [...new Set([
-                    0,
-                    ...(intro ? [intro.start, intro.end] : []),
-                    ...(outro ? [outro.start, outro.end] : []),
-                    duration,
-                  ].filter((p) => p >= 0 && p <= duration))].sort((a, b) => a - b);
-                  const bufTime = (bufferedPct / 100) * duration;
-                  return pts.slice(0, -1).map((s, idx) => {
-                    const e    = pts[idx + 1];
-                    const dur  = e - s;
-                    const skip = (!!intro && s >= intro.start - 0.05 && e <= intro.end + 0.05) ||
-                                 (!!outro && s >= outro.start - 0.05 && e <= outro.end + 0.05);
-                    const lPct    = (s / duration) * 100;
-                    const wPct    = (dur / duration) * 100;
-                    const watchPct = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(currentTime, e) - s) / dur) * 100)) : 0;
-                    const bufPct   = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(bufTime, e) - s) / dur) * 100)) : 0;
-                    return (
-                      <div key={idx}
-                        className="absolute inset-y-0 overflow-hidden rounded-[2px]"
-                        style={{ left: `calc(${lPct}% + 1.5px)`, width: `calc(${wPct}% - 3px)` }}>
-                        <div className={["absolute inset-0", skip ? "bg-white/[0.16]" : "bg-white/[0.32]"].join(" ")} />
-                        {bufPct > watchPct && (
-                          <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: `${bufPct}%` }} />
-                        )}
-                        {watchPct > 0 && (
-                          <div className={["absolute inset-y-0 left-0", skip ? "bg-white/70" : "bg-white"].join(" ")}
-                            style={{ width: `${watchPct}%` }} />
-                        )}
-                      </div>
-                    );
-                  });
-                })() : (
-                  <div className="absolute inset-y-0 left-0 w-full rounded-[2px] bg-white/20" />
-                )}
+                className="group/bar relative mb-3 h-[5px] cursor-pointer overflow-visible transition-[height] duration-150 hover:h-[9px]">
+                {timelineTooltip}
+                {renderSegments("bg-white")}
                 {/* Scrubber dot */}
-                <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
-                  style={{ left: `${progress}%` }} />
+                <div
+                  className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
+                  style={{ left: `${progress}%` }}
+                />
               </div>
 
-              {/* ── Controls row ─────────────────────────────────────────────── */}
-              <div className="flex items-center gap-1">
+              {/* Controls row */}
+              <div className="flex items-center gap-0.5">
 
                 {/* Play / Pause */}
                 <button onClick={togglePlay} disabled={loading}
@@ -1027,16 +1289,7 @@ export function DownPlayer({
                 </button>
 
                 {/* Volume */}
-                <div className="flex items-center gap-1">
-                  <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                    className="flex items-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                    {muted || volume === 0 ? <MI name="volume_off" size={20} /> : <MI name="volume_up" size={20} />}
-                  </button>
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                    onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-14 cursor-pointer accent-white" />
-                </div>
+                <VolumeControl iconSize={20} sliderW="w-20" />
 
                 {/* Time */}
                 <span className="ml-1 shrink-0 text-xs tabular-nums text-white/80">
@@ -1045,13 +1298,13 @@ export function DownPlayer({
 
                 <div className="flex-1" />
 
-                {/* ↺ 10 */}
+                {/* -10s */}
                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
                   title="-10s" className="flex size-9 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                   <MI name="replay_10" size={22} />
                 </button>
 
-                {/* ↻ 10 */}
+                {/* +10s */}
                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
                   title="+10s" className="flex size-9 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                   <MI name="forward_10" size={22} />
@@ -1068,25 +1321,20 @@ export function DownPlayer({
                   {captionPanel}
                 </div>
 
-                {/* Download (placeholder) */}
-                <button title="Download" className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <MI name="download" size={20} />
-                </button>
-
                 {/* Screenshot */}
                 <button onClick={handleScreenshot} title="Screenshot"
                   className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                   <MI name="photo_camera" size={20} />
                 </button>
 
-                {/* Theater mode (lights off) */}
+                {/* Theater mode */}
                 <button onClick={() => onLightsOffChange(!lightsOff)} title="Theater mode"
                   className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                     lightsOff ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
                   <MI name="tv" size={20} />
                 </button>
 
-                {/* Settings (speed + quality) */}
+                {/* Settings */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
                   <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
                     title="Settings"
@@ -1096,11 +1344,6 @@ export function DownPlayer({
                   </button>
                   {settingsPanel}
                 </div>
-
-                {/* Cast (placeholder) */}
-                <button title="Cast" className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <MI name="cast" size={20} />
-                </button>
 
                 {/* PiP */}
                 <button onClick={handlePiP} title="Picture in Picture"
@@ -1117,154 +1360,98 @@ export function DownPlayer({
             </div>
           );
 
-          /* ── NATV: Plyr-style (inline progress, time remaining) ─────────── */
+          /* ── NATV ────────────────────────────────────────────────────── */
           if (playerType === "natv") return (
             <div className={["absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-10 transition-opacity duration-300",
               visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2">
 
-                {/* Play */}
                 <button onClick={togglePlay} disabled={loading}
-                  className="shrink-0 text-white disabled:opacity-40 [touch-action:manipulation]">
+                  className="flex size-9 shrink-0 items-center justify-center text-white disabled:opacity-40 [touch-action:manipulation]">
                   {playing ? <MI name="pause" size={18} /> : <MI name="play_arrow" size={18} />}
                 </button>
 
-                {/* Inline segmented progress bar — same chapter cuts as plyr */}
+                {/* Inline progress bar */}
                 <div ref={progressRef} {...barHandlers}
                   className="group/bar relative h-[9px] flex-1 cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3">
-                  {duration > 0 ? (() => {
-                    const pts = [...new Set([
-                      0,
-                      ...(intro ? [intro.start, intro.end] : []),
-                      ...(outro ? [outro.start, outro.end] : []),
-                      duration,
-                    ].filter((p) => p >= 0 && p <= duration))].sort((a, b) => a - b);
-                    const bufTime = (bufferedPct / 100) * duration;
-                    return pts.slice(0, -1).map((s, idx) => {
-                      const e    = pts[idx + 1];
-                      const dur  = e - s;
-                      const skip = (!!intro && s >= intro.start - 0.05 && e <= intro.end + 0.05) ||
-                                   (!!outro && s >= outro.start - 0.05 && e <= outro.end + 0.05);
-                      const lPct    = (s / duration) * 100;
-                      const wPct    = (dur / duration) * 100;
-                      const watchPct = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(currentTime, e) - s) / dur) * 100)) : 0;
-                      const bufPct   = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(bufTime, e) - s) / dur) * 100)) : 0;
-                      return (
-                        <div key={idx}
-                          className="absolute inset-y-0 overflow-hidden rounded-[2px]"
-                          style={{ left: `calc(${lPct}% + 1.5px)`, width: `calc(${wPct}% - 3px)` }}>
-                          <div className={["absolute inset-0", skip ? "bg-white/[0.16]" : "bg-white/[0.32]"].join(" ")} />
-                          {bufPct > watchPct && (
-                            <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: `${bufPct}%` }} />
-                          )}
-                          {watchPct > 0 && (
-                            <div className={["absolute inset-y-0 left-0", skip ? "bg-primary/70" : "bg-primary"].join(" ")}
-                              style={{ width: `${watchPct}%` }} />
-                          )}
-                        </div>
-                      );
-                    });
-                  })() : (
-                    <div className="absolute inset-y-0 left-0 w-full rounded-[2px] bg-white/25" />
-                  )}
-                  {/* Always-visible scrubber dot */}
+                  {timelineTooltip}
+                  {renderSegments("bg-primary")}
                   <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg transition-all group-hover/bar:size-3.5"
                     style={{ left: `${progress}%` }} />
                 </div>
 
-                {/* Time remaining */}
                 <span className="shrink-0 text-xs tabular-nums text-white/80">
                   {fmtRemaining(currentTime, duration)}
                 </span>
 
-                {/* Volume */}
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                    className="flex shrink-0 items-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                    {muted || volume === 0 ? <MI name="volume_off" size={18} /> : <MI name="volume_up" size={18} />}
-                  </button>
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                    onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-14 cursor-pointer accent-primary" />
-                </div>
+                <VolumeControl iconSize={18} sliderW="w-16" />
 
                 {/* CC toggle */}
                 <button onClick={() => setCaptionsOn(!captionsOn)} title="Captions"
-                  className={[captionsOn ? "text-primary" : "text-white/40 hover:text-white/70", "transition-colors [touch-action:manipulation]"].join(" ")}>
+                  className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
+                    captionsOn ? "text-primary" : "text-white/40 hover:text-white/70"].join(" ")}>
                   {captionsOn ? <MI name="closed_caption" size={18} /> : <MI name="closed_caption_disabled" size={18} />}
                 </button>
 
                 {/* Settings */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
                   <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
-                    className={[settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white", "transition-colors [touch-action:manipulation]"].join(" ")}
+                    className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
+                      settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}
                     title="Settings">
                     <MI name="settings" size={18} />
                   </button>
                   {settingsPanel}
                 </div>
 
-                {/* External link (placeholder) */}
-                <button title="Open externally" className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <MI name="open_in_new" size={18} />
-                </button>
-
                 {/* Fullscreen */}
-                <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                <button onClick={toggleFullscreen}
+                  className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                   {fullscreen ? <MI name="fullscreen_exit" size={18} /> : <MI name="fullscreen" size={18} />}
                 </button>
               </div>
             </div>
           );
 
-          /* ── VIDK: YouTube-minimal (thin bottom bar) ─────────────────────── */
+          /* ── VIDK ────────────────────────────────────────────────────── */
           return (
             <div className={["absolute inset-x-0 bottom-0 transition-opacity duration-300",
               visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
               onClick={(e) => e.stopPropagation()}>
 
-              {/* Controls bar */}
               <div className="flex items-center gap-2.5 bg-gradient-to-t from-black/80 to-transparent px-3 pb-1.5 pt-8">
-                {/* Play */}
                 <button onClick={togglePlay} disabled={loading}
-                  className="text-white disabled:opacity-40 [touch-action:manipulation]">
+                  className="flex size-9 shrink-0 items-center justify-center text-white disabled:opacity-40 [touch-action:manipulation]">
                   {playing ? <MI name="pause" size={20} /> : <MI name="play_arrow" size={20} />}
                 </button>
 
-                {/* Time */}
                 <span className="text-[13px] tabular-nums text-white/90">
                   {fmt(currentTime)} / {fmt(duration)}
                 </span>
 
                 <div className="flex-1" />
 
-                {/* Volume */}
-                <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                  className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
-                  {muted || volume === 0 ? <MI name="volume_off" size={20} /> : <MI name="volume_up" size={20} />}
-                </button>
+                <VolumeControl iconSize={20} sliderW="w-16" />
 
-                {/* Fullscreen */}
                 <button onClick={toggleFullscreen}
-                  className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
+                  className="flex size-9 shrink-0 items-center justify-center text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
                   {fullscreen ? <MI name="fullscreen_exit" size={20} /> : <MI name="fullscreen" size={20} />}
                 </button>
 
-                {/* ⋮ More */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
                   <button onClick={() => setSettingsPanelOpen((o) => !o)}
-                    className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
+                    className="flex size-9 shrink-0 items-center justify-center text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
                     <MI name="more_vert" size={20} />
                   </button>
                   {settingsPanel}
                 </div>
               </div>
 
-              {/* Thin progress bar at absolute bottom edge */}
+              {/* Thin progress bar */}
               <div ref={progressRef} {...barHandlers}
-                className="group/bar relative h-[3px] w-full cursor-pointer bg-white/25 hover:h-1 transition-all duration-150">
+                className="group/bar relative h-[3px] w-full cursor-pointer bg-white/25 transition-[height] duration-150 hover:h-1">
+                {timelineTooltip}
                 <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufferedPct}%` }} />
                 <div className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${progress}%` }} />
                 {intro && duration > 0 && (
@@ -1275,7 +1462,7 @@ export function DownPlayer({
                   <div className="pointer-events-none absolute inset-y-0 bg-amber-400/60"
                     style={{ left: `${(outro.start / duration) * 100}%`, width: `${((outro.end - outro.start) / duration) * 100}%` }} />
                 )}
-                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow group-hover/bar:scale-100 transition-transform"
+                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow transition-transform group-hover/bar:scale-100"
                   style={{ left: `${progress}%` }} />
               </div>
             </div>
@@ -1289,19 +1476,13 @@ export function DownPlayer({
           <Toggle label="Autoplay"  active={autoplay}  onClick={() => onAutoplayChange(!autoplay)} />
           <Toggle label="Auto Skip" active={autoSkip}  accent onClick={() => onAutoSkipChange(!autoSkip)} />
           <Toggle label="Auto Next" active={autoNext}  onClick={() => onAutoNextChange(!autoNext)} />
-          <button
+          <Toggle
+            label="Lights Off"
+            active={lightsOff}
             onClick={() => onLightsOffChange(!lightsOff)}
-            className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-white/50 transition-colors hover:text-white/80 [touch-action:manipulation]"
-          >
-            <span className={["relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors duration-200",
-              lightsOff ? "bg-primary" : "bg-white/15"].join(" ")}>
-              <span className={["absolute size-2.5 rounded-full bg-white shadow transition-transform duration-200",
-                lightsOff ? "translate-x-[11px]" : "translate-x-[1px]"].join(" ")} />
-            </span>
-            Lights Off
-          </button>
+          />
 
-          {/* Player type cycling button: Plyr → Natv → Vidk → Plyr */}
+          {/* Player type cycling */}
           <button
             onClick={() => {
               const idx = PLAYER_TYPES.indexOf(playerType);
