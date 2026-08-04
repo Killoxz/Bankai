@@ -25,36 +25,11 @@ export function useCardAnimation() {
         return;
       }
 
-      if (cardAnimation === "depth") {
-        const wrap = wrapRef.current;
-        if (!wrap) return;
-        const { left, top, width, height } = wrap.getBoundingClientRect();
-        const x  = (e.clientX - left) / width;   // 0–1
-        const y  = (e.clientY - top)  / height;  // 0–1
-        const dx = x - 0.5;  // −0.5 to 0.5
-        const dy = y - 0.5;
-
-        // Gentle card tilt — less aggressive than tilt mode
-        const rY = dx * 14;
-        const rX = -dy * 10;
-        card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.04,1.04,1.04)`;
-        card.style.boxShadow = `${-dx * 22}px ${dy * 16}px 40px rgba(0,0,0,0.50), 0 8px 24px rgba(0,0,0,0.30)`;
-
-        // Background layer: drifts opposite the cursor (it's "far away")
-        // Scale up slightly so edges never show during translation
-        const bg = bgRef.current;
-        if (bg) {
-          bg.style.transform = `translate3d(${-dx * 14}px, ${-dy * 14}px, 0) scale(1.08)`;
-        }
-
-        // Foreground glare: tracks cursor at surface speed — feels closest to viewer
-        if (glare) {
-          glare.style.opacity    = "1";
-          glare.style.transform  = `translate3d(${dx * 6}px, ${dy * 6}px, 0)`;
-          glare.style.background =
-            `radial-gradient(circle 60% at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,` +
-            `rgba(255,255,255,0.20) 0%, transparent 65%)`;
-        }
+      if (cardAnimation === "float") {
+        // Guard: don't reset the animation every mousemove — only start it once
+        if (card.style.animationName === "card-float") return;
+        card.style.transform = "";
+        card.style.animation = "card-float 3s ease-in-out infinite";
         return;
       }
 
@@ -90,11 +65,10 @@ export function useCardAnimation() {
     const glare = glareRef.current;
     const bg    = bgRef.current;
     if (!card) return;
+    card.style.animation  = "";
     card.style.transform  = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
     card.style.boxShadow  = "";
-    if (bg) {
-      bg.style.transform  = "translate3d(0,0,0) scale(1.08)";
-    }
+    if (bg) bg.style.transform = "";
     if (glare) {
       glare.style.opacity    = "0";
       glare.style.background = "";
