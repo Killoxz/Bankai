@@ -14,12 +14,19 @@ function getPrimaryColor(): string {
   return val ? `hsl(${val})` : "hsl(37,91%,55%)";
 }
 
+function isLightMode(): boolean {
+  if (typeof window === "undefined") return false;
+  const root = document.documentElement;
+  return !root.classList.contains("dark") && !root.classList.contains("anilist");
+}
+
 function buildConfig(
   malId:                number | null,
   anilistId:            number,
   episodeChapterNumber: string,
 ) {
   const primary = getPrimaryColor();
+  const light   = isLightMode();
   return {
     ...(malId != null ? { MAL_ID: String(malId) } : {}),
     AniList_ID:            String(anilistId),
@@ -29,12 +36,12 @@ function buildConfig(
     removePadding:         "true",
     colorScheme: {
       primaryColor:       primary,
-      backgroundColor:    "#111111",
-      dropDownTextColor:  "rgba(255,255,255,0.75)",
-      strongTextColor:    "#ffffff",
-      primaryTextColor:   "rgba(255,255,255,0.85)",
-      secondaryTextColor: "rgba(255,255,255,0.4)",
-      iconColor:          "rgba(255,255,255,0.5)",
+      backgroundColor:    light ? "#f7f7f7" : "#111111",
+      dropDownTextColor:  light ? "rgba(0,0,0,0.75)"   : "rgba(255,255,255,0.75)",
+      strongTextColor:    light ? "#111111"             : "#ffffff",
+      primaryTextColor:   light ? "rgba(0,0,0,0.85)"   : "rgba(255,255,255,0.85)",
+      secondaryTextColor: light ? "rgba(0,0,0,0.45)"   : "rgba(255,255,255,0.4)",
+      iconColor:          light ? "rgba(0,0,0,0.5)"    : "rgba(255,255,255,0.5)",
       accentColor:        primary,
     },
   };
@@ -113,18 +120,18 @@ export function CommentsSection({
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="rounded-xl border border-border bg-card">
 
       {/* ── Episode / Anime tab switcher ─────────────────────────────────── */}
-      <div className="flex items-center border-b border-white/[0.06] px-4 py-3">
-        <div className="flex items-center gap-1 rounded-lg bg-white/[0.05] p-0.5">
+      <div className="flex items-center border-b border-border px-4 py-3">
+        <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
           <button
             onClick={() => setTab("episode")}
             className={cn(
               "rounded-md px-3 py-1 text-[12px] font-semibold transition-colors",
               tab === "episode"
                 ? "bg-primary text-primary-foreground shadow"
-                : "text-white/50 hover:text-white",
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             Episode {episode}
@@ -135,7 +142,7 @@ export function CommentsSection({
               "rounded-md px-3 py-1 text-[12px] font-semibold transition-colors",
               tab === "anime"
                 ? "bg-primary text-primary-foreground shadow"
-                : "text-white/50 hover:text-white",
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             Anime

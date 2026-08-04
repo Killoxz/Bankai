@@ -17,7 +17,6 @@ interface EpisodeListProps {
   hasSub: boolean;
   hasDub: boolean;
   currentAudio: "sub" | "dub";
-  // Optional: passed for list-mode server/audio controls
   providersData?: EpisodesMap | null;
   selectedProvider?: string | null;
   onProviderChange?: (p: string) => void;
@@ -28,6 +27,7 @@ const BATCH = 50;
 const EXCLUDED = new Set(["allmanga"]);
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
+void pad2; // used externally
 
 function formatAirDate(d: string | null | undefined): string | null {
   if (!d) return null;
@@ -87,7 +87,6 @@ export function EpisodeList({
     return !!metaByNum.get(n)?.title?.toLowerCase().includes(q);
   });
 
-  // Per-episode server list from providersData
   function serversForEpisode(n: number, audio: "sub" | "dub"): string[] {
     if (!providersData) return [];
     return Object.keys(providersData).filter((name) => {
@@ -98,21 +97,21 @@ export function EpisodeList({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.05] bg-[#111]">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         {/* Batch range picker */}
         <div className="relative">
           <button
             onClick={() => setBatchOpen((o) => !o)}
-            className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/15"
+            className="flex items-center gap-1 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             {batchStart}–{batchEnd}
-            <ChevronDown className="size-3 text-white/40" />
+            <ChevronDown className="size-3 text-muted-foreground" />
           </button>
           {batchOpen && (
-            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-white/[0.05] bg-[#1a1a1a] py-1 shadow-2xl">
+            <div className="absolute left-0 top-9 z-30 max-h-40 w-28 overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-2xl">
               {Array.from({ length: totalBatches }, (_, i) => {
                 const s = i * BATCH + 1;
                 const e = Math.min(s + BATCH - 1, totalEpisodes);
@@ -120,7 +119,7 @@ export function EpisodeList({
                   <button
                     key={s}
                     onClick={() => { setBatchStart(s); setBatchOpen(false); setSearch(""); }}
-                    className={["block w-full px-3 py-1.5 text-left text-xs hover:bg-white/5", s === batchStart ? "text-primary" : "text-white/70"].join(" ")}
+                    className={["block w-full px-3 py-1.5 text-left text-xs hover:bg-accent", s === batchStart ? "text-primary" : "text-popover-foreground/80"].join(" ")}
                   >
                     {s}–{e}
                   </button>
@@ -132,18 +131,18 @@ export function EpisodeList({
 
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-white/30" />
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter episodes…"
-            className="w-full rounded-md border border-white/[0.05] bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/20"
+            className="w-full rounded-md border border-border bg-muted py-1.5 pl-8 pr-3 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-ring"
           />
         </div>
 
         {/* View toggles */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
           {([
             { mode: "list",  Icon: LayoutList },
             { mode: "grid",  Icon: LayoutGrid },
@@ -156,8 +155,8 @@ export function EpisodeList({
               className={[
                 "rounded-md p-1.5 transition-colors",
                 viewMode === mode
-                  ? "bg-white/10 text-white"
-                  : "text-white/30 hover:text-white/60",
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               <Icon className="size-4" />
@@ -168,9 +167,9 @@ export function EpisodeList({
 
       {/* ── List view ───────────────────────────────────────────────────── */}
       {viewMode === "list" && (
-        <div className="max-h-[560px] overflow-y-auto divide-y divide-white/[0.04]">
+        <div className="max-h-[560px] overflow-y-auto divide-y divide-border">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-xs text-white/30">No episodes match.</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : filtered.map((n) => {
             const meta     = metaByNum.get(n);
             const isActive = n === currentEpisode;
@@ -182,7 +181,7 @@ export function EpisodeList({
             return (
               <div
                 key={n}
-                className={["px-4 py-3.5 transition-colors", isActive ? "bg-primary/10" : "hover:bg-white/[0.03]"].join(" ")}
+                className={["px-4 py-3.5 transition-colors", isActive ? "bg-primary/10" : "hover:bg-accent/40"].join(" ")}
               >
                 {/* Row 1: title + AUDIO / SERVER labels */}
                 <div className="flex items-start justify-between gap-3">
@@ -191,11 +190,11 @@ export function EpisodeList({
                     onClick={() => { onSelectEpisode(n); setSearch(""); }}
                     className="text-left"
                   >
-                    <span className={["text-sm font-bold leading-tight", isActive ? "text-primary" : "text-white"].join(" ")}>
+                    <span className={["text-sm font-bold leading-tight", isActive ? "text-primary" : "text-foreground"].join(" ")}>
                       {n}. {title ?? `Episode ${n}`}
                     </span>
                   </button>
-                  <div className="flex shrink-0 items-center gap-3 text-[11px] text-white/30">
+                  <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
                     <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
                   </div>
@@ -204,20 +203,19 @@ export function EpisodeList({
                 {/* Row 2: meta badges + controls */}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {airDate && <span className="text-[11px] text-white/35">{airDate}</span>}
+                    {airDate && <span className="text-[11px] text-muted-foreground">{airDate}</span>}
                     {hasSub && (
-                      <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white/50">
+                      <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">
                         CC
                       </span>
                     )}
                     {hasDub && (
-                      <span className="flex items-center gap-0.5 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50">
+                      <span className="flex items-center gap-0.5 rounded border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                         <Mic2 className="size-2.5" /> DUB
                       </span>
                     )}
                   </div>
 
-                  {/* Inline controls (only on active episode) */}
                   {isActive && onAudioChange && onProviderChange && (
                     <div className="flex items-center gap-1.5">
                       <SelectMenu
@@ -252,7 +250,7 @@ export function EpisodeList({
       {viewMode === "grid" && (
         <div className="max-h-[560px] overflow-y-auto p-3">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-xs text-white/30">No episodes match.</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : (
             <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6">
               {filtered.map((n) => {
@@ -265,11 +263,11 @@ export function EpisodeList({
                     className={[
                       "flex items-center justify-center rounded-lg py-2.5 text-sm font-bold transition-colors",
                       isActive
-                        ? "bg-primary text-black shadow-lg shadow-primary/30"
-                        : "bg-white/10 text-white/65 hover:bg-white/15 hover:text-white",
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
                     ].join(" ")}
                   >
-                    {isActive ? <Play className="size-3.5 fill-black" /> : n}
+                    {isActive ? <Play className="size-3.5 fill-primary-foreground" /> : n}
                   </button>
                 );
               })}
@@ -280,9 +278,9 @@ export function EpisodeList({
 
       {/* ── Image view ──────────────────────────────────────────────────── */}
       {viewMode === "image" && (
-        <div className="max-h-[560px] overflow-y-auto divide-y divide-white/[0.04]">
+        <div className="max-h-[560px] overflow-y-auto divide-y divide-border">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-xs text-white/30">No episodes match.</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : filtered.map((n) => {
             const meta     = metaByNum.get(n);
             const isActive = n === currentEpisode;
@@ -295,30 +293,27 @@ export function EpisodeList({
                 key={n}
                 ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
                 onClick={() => { onSelectEpisode(n); setSearch(""); }}
-                className={["flex w-full text-left transition-colors", isActive ? "bg-primary/10" : "hover:bg-white/[0.04]"].join(" ")}
+                className={["flex w-full text-left transition-colors", isActive ? "bg-primary/10" : "hover:bg-accent/40"].join(" ")}
               >
                 {/* Thumbnail */}
-                <div className="relative aspect-video w-[42%] shrink-0 overflow-hidden bg-white/5">
+                <div className="relative aspect-video w-[42%] shrink-0 overflow-hidden bg-muted">
                   {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
                   ) : (
-                    <div className="flex size-full items-center justify-center bg-white/5">
-                      <ImageIcon className="size-6 text-white/15" />
+                    <div className="flex size-full items-center justify-center bg-muted">
+                      <ImageIcon className="size-6 text-muted-foreground/40" />
                     </div>
                   )}
-                  {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  {/* EP badge */}
                   <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
                     EP {n}
                   </span>
-                  {/* Active play overlay */}
                   {isActive && (
                     <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
                       <div className="flex size-9 items-center justify-center rounded-full bg-primary shadow-lg">
-                        <Play className="size-4 translate-x-px fill-black text-black" />
+                        <Play className="size-4 translate-x-px fill-primary-foreground text-primary-foreground" />
                       </div>
                     </div>
                   )}
@@ -326,19 +321,19 @@ export function EpisodeList({
 
                 {/* Info */}
                 <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-3">
-                  <p className={["line-clamp-1 text-sm font-bold leading-tight", isActive ? "text-primary" : "text-white/90"].join(" ")}>
+                  <p className={["line-clamp-1 text-sm font-bold leading-tight", isActive ? "text-primary" : "text-foreground"].join(" ")}>
                     {title}
                   </p>
                   <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                     <div className="flex items-center gap-1.5">
                       {hasSub && (
-                        <span className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white/50">
+                        <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">
                           CC
                         </span>
                       )}
-                      {hasDub && <Mic2 className="size-3.5 text-white/50" />}
+                      {hasDub && <Mic2 className="size-3.5 text-muted-foreground" />}
                     </div>
-                    {airDate && <span className="text-[10px] text-white/35">{airDate}</span>}
+                    {airDate && <span className="text-[10px] text-muted-foreground">{airDate}</span>}
                   </div>
                 </div>
               </button>

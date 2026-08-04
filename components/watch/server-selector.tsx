@@ -75,10 +75,10 @@ export function ServerSelector({
   }));
 
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-[#111] px-5 py-4">
+    <div className="rounded-xl border border-border bg-card px-5 py-4">
 
       {/* Row 1: AUDIO / SERVER labels — right-aligned */}
-      <div className="flex justify-end gap-5 text-[11px] font-medium text-white/30">
+      <div className="flex justify-end gap-5 text-[11px] font-medium text-muted-foreground">
         <span className="flex items-center gap-1">
           <Headphones className="size-3" /> AUDIO
         </span>
@@ -89,12 +89,11 @@ export function ServerSelector({
 
       {/* Row 2: episode title left · dropdowns right */}
       <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-white">
-          <span className="mr-1 text-white/50">{episode}.</span>{title}
+        <h2 className="text-base font-bold text-foreground">
+          <span className="mr-1 text-muted-foreground">{episode}.</span>{title}
         </h2>
 
         <div className="flex items-center gap-2">
-          {/* Audio dropdown */}
           <SelectMenu
             value={audio}
             options={audioOptions}
@@ -102,14 +101,13 @@ export function ServerSelector({
             icon={<Mic2 className="size-3.5" />}
           />
 
-          {/* Server dropdown */}
           {isLoading ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white/30">
+            <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
               <span>Loading…</span>
             </div>
           ) : servers.length === 0 ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-sm text-white/25">
+            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm text-muted-foreground">
               <Zap className="size-3.5" />
               <span>No servers</span>
             </div>
@@ -129,15 +127,15 @@ export function ServerSelector({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {airDate && (
-            <span className="text-xs text-white/40">{airDate}</span>
+            <span className="text-xs text-muted-foreground">{airDate}</span>
           )}
           {subCount > 0 && (
-            <span className="flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/50">
+            <span className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
               CC {subCount}
             </span>
           )}
           {dubCount > 0 && (
-            <span className="flex items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50">
+            <span className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
               <Mic2 className="size-3" /> {dubCount}
             </span>
           )}
@@ -152,7 +150,7 @@ export function ServerSelector({
             <button
               key={label}
               title={label}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Icon className="size-3.5" />
               {label}

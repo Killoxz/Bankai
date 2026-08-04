@@ -57,11 +57,11 @@ export function SeasonsPanel({
   if (seasons.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.05] bg-[#111]">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Tv2 className="size-4 text-primary" />
-        <h3 className="text-sm font-bold uppercase tracking-widest text-white">Seasons</h3>
+        <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">Seasons</h3>
       </div>
 
       {/* Grid */}

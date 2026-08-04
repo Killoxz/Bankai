@@ -18,12 +18,12 @@ function formatDate(d: { year: number | null; month: number | null; day: number 
 
 function animeStatus(s: string | null): { label: string; cls: string } {
   switch (s) {
-    case "FINISHED":          return { label: "Finished",       cls: "text-emerald-400" };
+    case "FINISHED":          return { label: "Finished",       cls: "text-emerald-500" };
     case "RELEASING":         return { label: "Releasing",      cls: "text-primary"     };
-    case "NOT_YET_RELEASED":  return { label: "Not Yet Aired",  cls: "text-yellow-400"  };
-    case "CANCELLED":         return { label: "Cancelled",      cls: "text-red-400"     };
-    case "HIATUS":            return { label: "Hiatus",         cls: "text-orange-400"  };
-    default:                  return { label: s ?? "Unknown",   cls: "text-white/60"    };
+    case "NOT_YET_RELEASED":  return { label: "Not Yet Aired",  cls: "text-yellow-500"  };
+    case "CANCELLED":         return { label: "Cancelled",      cls: "text-red-500"     };
+    case "HIATUS":            return { label: "Hiatus",         cls: "text-orange-500"  };
+    default:                  return { label: s ?? "Unknown",   cls: "text-muted-foreground" };
   }
 }
 
@@ -103,7 +103,7 @@ function QuickListButton({ animeId }: { animeId: number }) {
           "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors",
           status
             ? "border border-primary/30 bg-primary/10 text-primary"
-            : "border border-white/10 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white",
+            : "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
         )}
       >
         {status ? <Check className="size-3" /> : <Plus className="size-3" />}
@@ -112,7 +112,7 @@ function QuickListButton({ animeId }: { animeId: number }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-40 mt-1 min-w-[148px] rounded-lg border border-white/[0.08] bg-[#1c1c1c] py-1 shadow-2xl">
+        <div className="absolute left-0 top-full z-40 mt-1 min-w-[148px] rounded-lg border border-border bg-popover py-1 shadow-2xl">
           {LIST_OPTIONS.map(({ key, label }) => {
             const active = status === key;
             return (
@@ -120,8 +120,8 @@ function QuickListButton({ animeId }: { animeId: number }) {
                 key={key}
                 onClick={() => select(active ? null : key)}
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-white/[0.06]",
-                  active ? "font-semibold text-primary" : "text-white/70",
+                  "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-accent",
+                  active ? "font-semibold text-primary" : "text-popover-foreground/80",
                 )}
               >
                 <span className="size-3 shrink-0">
@@ -133,10 +133,10 @@ function QuickListButton({ animeId }: { animeId: number }) {
           })}
           {status && (
             <>
-              <div className="my-1 border-t border-white/[0.06]" />
+              <div className="my-1 border-t border-border" />
               <button
                 onClick={() => select(null)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-red-400/80 transition-colors hover:bg-white/[0.06]"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-red-500 transition-colors hover:bg-accent dark:text-red-400"
               >
                 <span className="size-3 shrink-0" />
                 Remove from list
@@ -182,7 +182,7 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
     : null;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="rounded-xl border border-border bg-card">
 
       {/* ── Cover + title/genres/description ─────────────────────────────── */}
       <div className="flex gap-4 p-4">
@@ -196,8 +196,8 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
 
         {/* Info */}
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold leading-snug text-white sm:text-lg">{title}</h1>
-          {native && <p className="mt-0.5 text-[12px] text-white/40">{native}</p>}
+          <h1 className="text-base font-bold leading-snug text-foreground sm:text-lg">{title}</h1>
+          {native && <p className="mt-0.5 text-[12px] text-muted-foreground">{native}</p>}
 
           {detail.genres.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -215,14 +215,14 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
           {description && (
             <div className="mt-2.5">
               <p className={cn(
-                "rounded-lg bg-white/[0.04] px-3 py-2 text-[11px] leading-relaxed text-white/50",
+                "rounded-lg bg-muted/60 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground",
                 !showFullDesc && "line-clamp-4",
               )}>
                 {description}
               </p>
               <button
                 onClick={() => setShowFullDesc((v) => !v)}
-                className="mt-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/30 hover:text-white/60 transition-colors"
+                className="mt-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground transition-colors"
               >
                 {showFullDesc ? "Show less" : "Show more"}
               </button>
@@ -231,7 +231,7 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
         </div>
       </div>
 
-      <div className="mx-4 border-t border-white/[0.05]" />
+      <div className="mx-4 border-t border-border" />
 
       {/* ── Action buttons ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-3">
@@ -240,9 +240,9 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
             href={trailerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+            className="flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-secondary-foreground transition-colors hover:bg-secondary/80"
           >
-            <Play className="size-3 fill-white/70" /> Trailer
+            <Play className="size-3 fill-current" /> Trailer
           </a>
         )}
 
@@ -262,14 +262,14 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
             href={`https://myanimelist.net/anime/${detail.idMal}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center rounded-md border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+            className="flex items-center rounded-md border border-border bg-secondary px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-secondary-foreground transition-colors hover:bg-secondary/80"
           >
             MAL
           </a>
         )}
       </div>
 
-      <div className="mx-4 border-t border-white/[0.05]" />
+      <div className="mx-4 border-t border-border" />
 
       {/* ── Metadata grid ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-x-8 gap-y-2 px-4 py-3 text-[12px]">
@@ -280,10 +280,10 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
           <MetaRow label="Episodes" value={detail.episodes ? String(detail.episodes) : "—"} />
           {detail.averageScore != null && (
             <div className="flex items-baseline gap-1.5">
-              <span className="shrink-0 text-white/40">Rating:</span>
-              <span className="font-semibold text-white/85">
+              <span className="shrink-0 text-muted-foreground">Rating:</span>
+              <span className="font-semibold text-foreground">
                 {detail.averageScore}
-                <span className="font-normal text-white/35"> /100</span>
+                <span className="font-normal text-muted-foreground"> /100</span>
               </span>
             </div>
           )}
@@ -299,7 +299,7 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
           {detail.source && <MetaRow label="Source"       value={detail.source.replace(/_/g, " ")} />}
           {officialSite && (
             <div className="flex items-baseline gap-1.5">
-              <span className="shrink-0 text-white/40">Official Site:</span>
+              <span className="shrink-0 text-muted-foreground">Official Site:</span>
               <a
                 href={officialSite.url}
                 target="_blank"
@@ -323,8 +323,8 @@ function MetaRow({
 }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="shrink-0 text-white/40">{label}:</span>
-      <span className={cn("font-semibold", bold ? "text-primary" : (valueCls ?? "text-white/85"))}>
+      <span className="shrink-0 text-muted-foreground">{label}:</span>
+      <span className={cn("font-semibold", bold ? "text-primary" : (valueCls ?? "text-foreground"))}>
         {value}
       </span>
     </div>
