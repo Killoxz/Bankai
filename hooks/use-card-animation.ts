@@ -25,24 +25,43 @@ export function useCardAnimation() {
       }
 
       if (cardAnimation === "glow") {
+        // Holographic prism: 3D tilt + shifting rainbow spectrum + specular highlight
         const wrap = wrapRef.current;
         if (!wrap) return;
         const { left, top, width, height } = wrap.getBoundingClientRect();
         const x = (e.clientX - left) / width;
         const y = (e.clientY - top) / height;
-        const hue = Math.round(x * 360);
-        card.style.transform = "scale3d(1.04,1.04,1.04)";
-        card.style.boxShadow = `0 8px 40px rgba(0,0,0,0.5)`;
+
+        // 3D tilt (same feel as tilt mode)
+        const rY = (x - 0.5) * TILT_Y * 1.6;
+        const rX = -(y - 0.5) * TILT_X * 1.6;
+        card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.07,1.07,1.07)`;
+        card.style.boxShadow = `${-rY * 1.5}px ${rX * 1.5}px 48px rgba(0,0,0,0.6)`;
+
         if (glare) {
-          glare.style.opacity = "1";
+          // Hue shifts across the full spectrum as you move the mouse
+          const hue   = Math.round((x * 0.65 + y * 0.35) * 360);
+          // Stripe angle tilts slightly with horizontal mouse position
+          const angle = 112 + (x - 0.5) * 45;
+
+          glare.style.opacity    = "1";
+          glare.style.mixBlendMode = "screen";
           glare.style.background = [
-            `radial-gradient(ellipse at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,`,
-            `  hsla(${hue}, 100%, 72%, 0.60) 0%,`,
-            `  hsla(${(hue + 72) % 360}, 100%, 68%, 0.45) 22%,`,
-            `  hsla(${(hue + 144) % 360}, 100%, 64%, 0.30) 44%,`,
-            `  hsla(${(hue + 216) % 360}, 100%, 68%, 0.18) 66%,`,
-            `  transparent 88%)`,
-          ].join(" ");
+            // Full-spectrum rainbow stripes
+            `linear-gradient(${angle}deg,` +
+              `hsla(${(hue      ) % 360},100%,62%,0.55) 0%,` +
+              `hsla(${(hue +  55) % 360},100%,68%,0.50) 17%,` +
+              `hsla(${(hue + 110) % 360},100%,62%,0.55) 33%,` +
+              `hsla(${(hue + 165) % 360},100%,68%,0.50) 50%,` +
+              `hsla(${(hue + 220) % 360},100%,62%,0.55) 66%,` +
+              `hsla(${(hue + 280) % 360},100%,68%,0.50) 83%,` +
+              `hsla(${(hue + 335) % 360},100%,62%,0.55) 100%)`,
+            // Bright specular highlight that follows the cursor
+            `radial-gradient(ellipse 48% 52% at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,` +
+              `rgba(255,255,255,0.55) 0%,` +
+              `rgba(255,255,255,0.18) 38%,` +
+              `transparent 72%)`,
+          ].join(", ");
         }
         return;
       }
@@ -78,9 +97,13 @@ export function useCardAnimation() {
     const card  = cardRef.current;
     const glare = glareRef.current;
     if (!card) return;
-    card.style.transform = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
-    card.style.boxShadow = "";
-    if (glare) { glare.style.opacity = "0"; glare.style.background = ""; }
+    card.style.transform    = "rotateX(0deg) rotateY(0deg) scale3d(1,1,1)";
+    card.style.boxShadow    = "";
+    if (glare) {
+      glare.style.opacity      = "0";
+      glare.style.background   = "";
+      glare.style.mixBlendMode = "";
+    }
   }, []);
 
   return { wrapRef, cardRef, glareRef, onMove, onLeave };
