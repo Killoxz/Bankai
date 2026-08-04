@@ -1,50 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Tab = "episode" | "anime";
 
-// Reads Bankai's current --primary CSS variable so TAC matches the active theme
-function getPrimaryColor(): string {
-  if (typeof window === "undefined") return "hsl(37,91%,55%)";
-  const val = getComputedStyle(document.documentElement)
-    .getPropertyValue("--primary")
-    .trim();
-  return val ? `hsl(${val})` : "hsl(37,91%,55%)";
-}
+// ─── TAC comment block ────────────────────────────────────────────────────────
+// Exactly the React pattern TAC documented.
+// Remounted via `key` whenever episode or tab changes so useEffect re-fires.
 
-function isLightMode(): boolean {
-  if (typeof window === "undefined") return false;
-  const root = document.documentElement;
-  return !root.classList.contains("dark") && !root.classList.contains("anilist");
-}
+function TACComments({
+  malId,
+  anilistId,
+  episodeChapterNumber,
+}: {
+  malId:                number | null;
+  anilistId:            number;
+  episodeChapterNumber: string;
+}) {
+  useEffect(() => {
+    try {
+      (window as unknown as Record<string, unknown>).theAnimeCommunityConfig = {
+        ...(malId != null ? { MAL_ID: String(malId) } : {}),
+        AniList_ID:            String(anilistId),
+        episodeChapterNumber,
+        mediaType:             "anime",
+      };
 
-function buildConfig(
-  malId:                number | null,
-  anilistId:            number,
-  episodeChapterNumber: string,
-) {
-  const primary = getPrimaryColor();
-  const light   = isLightMode();
-  return {
-    ...(malId != null ? { MAL_ID: String(malId) } : {}),
-    AniList_ID:            String(anilistId),
-    episodeChapterNumber,
-    mediaType:             "anime",
-    removeBorder:          "true",
-    removePadding:         "true",
-    colorScheme: {
-      primaryColor:       primary,
-      backgroundColor:    light ? "#f7f7f7" : "#111111",
-      dropDownTextColor:  light ? "rgba(0,0,0,0.75)"   : "rgba(255,255,255,0.75)",
-      strongTextColor:    light ? "#111111"             : "#ffffff",
-      primaryTextColor:   light ? "rgba(0,0,0,0.85)"   : "rgba(255,255,255,0.85)",
-      secondaryTextColor: light ? "rgba(0,0,0,0.45)"   : "rgba(255,255,255,0.4)",
-      iconColor:          light ? "rgba(0,0,0,0.5)"    : "rgba(255,255,255,0.5)",
-      accentColor:        primary,
-    },
-  };
+      const script    = document.createElement("script");
+      script.src      = `https://theanimecommunity.com/embed.js`;
+      script.id       = "anime-community-script";
+      script.defer    = true;
+
+      document.getElementById("anime-community-comment-section")?.appendChild(script);
+    } catch (e) {
+      console.log(e);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <div id={"anime-community-comment-section"}></div>;
 }
 
 // ─── CommentsSection ──────────────────────────────────────────────────────────
@@ -58,66 +52,10 @@ export function CommentsSection({
   malId:   number | null;
   episode: number;
 }) {
-  const [tab, setTab]  = useState<Tab>("episode");
-  const scriptLoaded   = useRef(false);
+  const [tab, setTab] = useState<Tab>("episode");
 
-  // "0" is used as the series-level (Anime tab) discussion thread
+  // "0" = series-level Anime tab; episode number = Episode tab
   const epKey = tab === "episode" ? String(episode) : "0";
-
-  // ── Mount: inject config + embed script once ─────────────────────────────
-  useEffect(() => {
-    const container = document.getElementById("anime-community-comment-section");
-    if (!container) return;
-
-    (window as unknown as Record<string, unknown>).theAnimeCommunityConfig =
-      buildConfig(malId, animeId, epKey);
-
-    const script = document.createElement("script");
-    script.src   = "https://theanimecommunity.com/embed.js";
-    script.id    = "anime-community-script";
-    script.defer = true;
-    container.appendChild(script);
-
-    scriptLoaded.current = true;
-
-    return () => {
-      document.getElementById("anime-community-script")?.remove();
-      delete (window as unknown as Record<string, unknown>).theAnimeCommunityConfig;
-      scriptLoaded.current = false;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Episode / tab change: update config then call the reload API ─────────
-  useEffect(() => {
-    // Always refresh config so it's current when the script eventually loads
-    (window as unknown as Record<string, unknown>).theAnimeCommunityConfig =
-      buildConfig(malId, animeId, epKey);
-
-    // If the embed is already running, tell it to reload with the new config
-    const tac = (
-      window as unknown as { theAnimeCommunity?: { reload?: () => void } }
-    ).theAnimeCommunity;
-    tac?.reload?.();
-  }, [epKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Timestamp clicks → seek the video player ─────────────────────────────
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (
-        event.data?.type === "TAC-TIMESTAMP-CLICK" &&
-        typeof event.data.time === "number"
-      ) {
-        // Dispatch a custom event so the player can listen and seek
-        window.dispatchEvent(
-          new CustomEvent("tac-seek", { detail: { time: event.data.time } }),
-        );
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="rounded-xl border border-border bg-card">
@@ -150,8 +88,13 @@ export function CommentsSection({
         </div>
       </div>
 
-      {/* ── TAC embed container ──────────────────────────────────────────── */}
-      <div id="anime-community-comment-section" />
+      {/* ── TAC embed — key remounts the component on every tab/episode change */}
+      <TACComments
+        key={`${animeId}-${epKey}`}
+        malId={malId}
+        anilistId={animeId}
+        episodeChapterNumber={epKey}
+      />
     </div>
   );
 }
