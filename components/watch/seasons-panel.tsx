@@ -7,11 +7,19 @@ import { cn } from "@/lib/utils";
 
 const SEASON_TYPES = new Set(["PREQUEL", "SEQUEL", "SIDE_STORY", "SPIN_OFF", "PARENT", "ALTERNATIVE"]);
 
-function shortLabel(title: string, relationType: string): string {
+function extractSeasonLabel(title: string): string | null {
+  const sp = title.match(/season\s*(\d+)[^]*?part\s*(\d+)/i);
+  if (sp) return `Season ${sp[1]} Part ${sp[2]}`;
   const s = title.match(/season\s*(\d+)/i);
   if (s) return `Season ${s[1]}`;
   const p = title.match(/part\s*(\d+)/i);
   if (p) return `Part ${p[1]}`;
+  return null;
+}
+
+function shortLabel(title: string, relationType: string): string {
+  const extracted = extractSeasonLabel(title);
+  if (extracted) return extracted;
   switch (relationType) {
     case "SIDE_STORY":   return "Specials";
     case "SPIN_OFF":     return "Spin-off";
@@ -23,11 +31,10 @@ function shortLabel(title: string, relationType: string): string {
 }
 
 function currentLabel(title: string): string {
-  const s = title.match(/season\s*(\d+)/i);
-  if (s) return `Season ${s[1]}`;
-  const p = title.match(/part\s*(\d+)/i);
-  if (p) return `Part ${p[1]}`;
-  return "Season 1";
+  const extracted = extractSeasonLabel(title);
+  if (extracted) return extracted;
+  // Use the actual title — never fabricate a season number
+  return title.length > 22 ? title.slice(0, 20) + "…" : title;
 }
 
 interface SeasonsPanelProps {

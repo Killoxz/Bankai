@@ -6,6 +6,7 @@ const COMMENT_SELECT = {
   id: true,
   body: true,
   parentId: true,
+  episode: true,
   createdAt: true,
   User: { select: { username: true } },
 } as const;
@@ -17,17 +18,32 @@ export async function GET(
   const { id } = await params;
   const localId = `anilist:${id}`;
 
+  const url = new URL(req.url);
+  const episodeParam = url.searchParams.get("episode");
+  const mode = url.searchParams.get("mode");
+
+  // episode=N → episode-specific; mode=anime → episode IS NULL (general discussion)
+  const episodeFilter =
+    episodeParam !== null ? { episode: parseInt(episodeParam, 10) } :
+    mode === "anime"      ? { episode: null }                       :
+    {};
+
   const all = await prisma.comment.findMany({
-    where: { animeId: localId },
-    orderBy: { createdAt: "asc" },
-    select: COMMENT_SELECT,
+    where: { animeId: localId, parentId: null, ...episodeFilter },
+    orderBy: { createdAt: "desc" },
+    select: {
+      ...COMMENT_SELECT,
+      other_Comment: {
+        orderBy: { createdAt: "asc" },
+        select: COMMENT_SELECT,
+      },
+    },
   });
 
-  const topLevel = all.filter((c) => !c.parentId);
-  const replies = all.filter((c) => c.parentId);
-  const threaded = topLevel
-    .map((c) => ({ ...c, replies: replies.filter((r) => r.parentId === c.id) }))
-    .reverse(); // newest top-level comment first, replies stay chronological
+  const threaded = all.map((c) => ({
+    ...c,
+    replies: c.other_Comment,
+  }));
 
   return NextResponse.json({ comments: threaded });
 }
@@ -39,7 +55,7 @@ export async function POST(
   try {
     const { id } = await params;
     const anilistId = Number(id);
-    const { username, body, parentId } = await req.json();
+    const { username, body, parentId, episode } = await req.json();
 
     const un = (typeof username === "string" ? username : "").trim();
     if (!un) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -64,10 +80,11 @@ export async function POST(
 
     const comment = await prisma.comment.create({
       data: {
-        userId: user.id,
-        animeId: localId,
+        userId:   user.id,
+        animeId:  localId,
         parentId: parentId ?? null,
-        body: body.trim(),
+        episode:  typeof episode === "number" ? episode : null,
+        body:     body.trim(),
       },
       select: COMMENT_SELECT,
     });

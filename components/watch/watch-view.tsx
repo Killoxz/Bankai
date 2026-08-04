@@ -251,7 +251,7 @@ export function WatchView({
               isLoading={isLoadingSources}
             />
             <AnimeInfoCard detail={detail} animeId={animeId} />
-            {showComments && <CommentsSection animeId={animeId} />}
+            {showComments && <CommentsSection animeId={animeId} episode={episode} />}
           </motion.div>
 
           {/* Right: episode list → seasons → related */}

@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { cn } from "@/lib/utils";
 
 interface CommentNode {
   id: string;
   body: string;
   parentId: string | null;
+  episode: number | null;
   createdAt: string;
   User: { username: string | null };
   replies: CommentNode[];
@@ -23,26 +26,41 @@ function timeAgo(iso: string): string {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
-export function CommentsSection({ animeId }: { animeId: number }) {
+type Tab = "episode" | "anime";
+
+export function CommentsSection({
+  animeId,
+  episode,
+}: {
+  animeId: number;
+  episode: number;
+}) {
   const currentUser = useAuthStore((s) => s.currentUser);
+  const [tab, setTab]           = useState<Tab>("episode");
   const [comments, setComments] = useState<CommentNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [draft, setDraft]       = useState("");
+  const [posting, setPosting]   = useState(false);
+  const [mounted, setMounted]   = useState(false);
 
   useEffect(() => setMounted(true), []);
 
+  const fetchUrl =
+    tab === "episode"
+      ? `/api/anime/${animeId}/comments?episode=${episode}`
+      : `/api/anime/${animeId}/comments?mode=anime`;
+
   const load = () => {
     setLoading(true);
-    fetch(`/api/anime/${animeId}/comments`)
+    fetch(fetchUrl)
       .then((res) => res.json())
       .then((json) => setComments(json.comments ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [animeId]);
+  // Reload whenever tab or episode changes
+  useEffect(load, [tab, episode, animeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function post(body: string, parentId: string | null) {
     if (!currentUser) {
@@ -52,7 +70,12 @@ export function CommentsSection({ animeId }: { animeId: number }) {
     const res = await fetch(`/api/anime/${animeId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: currentUser, body, parentId }),
+      body: JSON.stringify({
+        username: currentUser,
+        body,
+        parentId,
+        episode: tab === "episode" ? episode : null,
+      }),
     });
     const json = await res.json();
     return res.ok ? json.comment : null;
@@ -90,14 +113,65 @@ export function CommentsSection({ animeId }: { animeId: number }) {
   const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
 
   return (
-    <div className="mt-8">
-      <h2 className="mb-4 text-lg font-bold text-white">Comments ({totalCount})</h2>
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
 
-      <div className="mb-6 flex gap-3">
+      {/* ── Header + tabs ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <div className="flex items-center gap-1 rounded-lg bg-white/[0.05] p-0.5">
+          <button
+            onClick={() => setTab("episode")}
+            className={cn(
+              "rounded-md px-3 py-1 text-[12px] font-semibold transition-colors",
+              tab === "episode"
+                ? "bg-primary text-black shadow"
+                : "text-white/50 hover:text-white",
+            )}
+          >
+            Episode {episode}
+          </button>
+          <button
+            onClick={() => setTab("anime")}
+            className={cn(
+              "rounded-md px-3 py-1 text-[12px] font-semibold transition-colors",
+              tab === "anime"
+                ? "bg-primary text-black shadow"
+                : "text-white/50 hover:text-white",
+            )}
+          >
+            Anime
+          </button>
+        </div>
+
+        <span className="text-[12px] text-white/30">
+          {totalCount} comment{totalCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* ── TAC community banner ──────────────────────────────────────────── */}
+      <a
+        href="https://theanimecommunity.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between border-b border-white/[0.04] bg-[#02a9ff]/[0.06] px-4 py-2 transition-colors hover:bg-[#02a9ff]/[0.1]"
+      >
+        <span className="text-[12px] font-semibold text-[#02a9ff]">
+          Join the discussion on The Anime Community
+        </span>
+        <ExternalLink className="size-3.5 shrink-0 text-[#02a9ff]" />
+      </a>
+
+      {/* ── Compose ───────────────────────────────────────────────────────── */}
+      <div className="flex gap-3 p-4">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={currentUser ? "Type your comment here." : "Log in to comment."}
+          placeholder={
+            currentUser
+              ? tab === "episode"
+                ? `Comment on Episode ${episode}…`
+                : "Share your thoughts on this anime…"
+              : "Log in to comment."
+          }
           disabled={!currentUser}
           rows={2}
           className="flex-1 resize-none rounded-lg border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-primary disabled:opacity-50"
@@ -111,27 +185,32 @@ export function CommentsSection({ animeId }: { animeId: number }) {
         </button>
       </div>
 
-      {loading ? (
-        <p className="py-6 text-center text-sm text-white/40">Loading comments…</p>
-      ) : comments.length === 0 ? (
-        <p className="py-6 text-center text-sm text-white/40">
-          No comments yet — be the first to say something.
-        </p>
-      ) : (
-        <div className="space-y-6">
-          {comments.map((c) => (
-            <CommentThread
-              key={c.id}
-              comment={c}
-              mounted={mounted}
-              currentUser={currentUser}
-              onReply={post}
-              onDelete={handleDelete}
-              onPosted={load}
-            />
-          ))}
-        </div>
-      )}
+      {/* ── Comment list ──────────────────────────────────────────────────── */}
+      <div className="px-4 pb-4">
+        {loading ? (
+          <p className="py-6 text-center text-sm text-white/40">Loading comments…</p>
+        ) : comments.length === 0 ? (
+          <p className="py-6 text-center text-sm text-white/40">
+            {tab === "episode"
+              ? `No comments yet for Episode ${episode}. Be the first!`
+              : "No general comments yet — share your thoughts on the anime!"}
+          </p>
+        ) : (
+          <div className="space-y-6">
+            {comments.map((c) => (
+              <CommentThread
+                key={c.id}
+                comment={c}
+                mounted={mounted}
+                currentUser={currentUser}
+                onReply={post}
+                onDelete={handleDelete}
+                onPosted={load}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -151,10 +230,10 @@ function CommentThread({
   onDelete: (id: string) => void;
   onPosted: () => void;
 }) {
-  const [replying, setReplying] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const [replying, setReplying]     = useState(false);
+  const [replyText, setReplyText]   = useState("");
   const [showReplies, setShowReplies] = useState(true);
-  const [posting, setPosting] = useState(false);
+  const [posting, setPosting]       = useState(false);
   const isOwn = mounted && currentUser?.toLowerCase() === comment.User.username?.toLowerCase();
 
   async function submitReply() {
