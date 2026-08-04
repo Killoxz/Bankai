@@ -6,6 +6,8 @@ import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   Loader2, AlertTriangle, RefreshCw, SkipBack, SkipForward,
   Captions, CaptionsOff, Gauge,
+  RotateCcw, RotateCw, Download, Camera, Cast, PictureInPicture2,
+  Settings, ExternalLink, MoreVertical, Tv2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { usePlayerPrefsStore } from "@/store/player-prefs-store";
@@ -66,6 +68,11 @@ function fmt(s: number): string {
   return h > 0
     ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
     : `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function fmtRemaining(current: number, total: number): string {
+  if (!isFinite(total) || total <= 0) return "-0:00";
+  return `-${fmt(Math.max(0, total - current))}`;
 }
 
 function Toggle({ label, active, accent, onClick }: {
@@ -185,9 +192,8 @@ export function DownPlayer({
   const [selectedTrack,    setSelectedTrack]    = useState(0);
   const [hlsLevels,        setHlsLevels]        = useState<HLSLevel[]>([]);
   const [selectedLevel,    setSelectedLevel]    = useState(-1); // -1 = Auto
-  const [captionPanelOpen, setCaptionPanelOpen] = useState(false);
-  const [speedPanelOpen,   setSpeedPanelOpen]   = useState(false);
-  const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
+  const [captionPanelOpen,  setCaptionPanelOpen]  = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
 
 
   // Ref kept in sync with the Zustand speed value for use inside stable callbacks
@@ -633,7 +639,7 @@ export function DownPlayer({
 
   function handleQualitySelect(levelIndex: number) {
     setSelectedLevel(levelIndex);
-    setQualityPanelOpen(false);
+    setSettingsPanelOpen(false);
     const hls = hlsRef.current;
     if (!hls) return;
     if (levelIndex === -1) {
@@ -647,6 +653,35 @@ export function DownPlayer({
     if (selectedLevel === -1) return "Auto";
     const l = hlsLevels.find((l) => l.index === selectedLevel);
     return l?.height ? `${l.height}p` : "Auto";
+  }
+
+  function handleScreenshot() {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `bankai-ep${episode}.png`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, "image/png");
+  }
+
+  function handlePiP() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(() => {});
+    } else if ((document as unknown as Record<string,unknown>).pictureInPictureEnabled) {
+      (video as unknown as { requestPictureInPicture: () => Promise<unknown> })
+        .requestPictureInPicture().catch(() => {});
+    }
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -770,291 +805,398 @@ export function DownPlayer({
         )}
 
         {/* ── Custom control overlay (HLS only) ───────────────────────────── */}
-        {!embedUrl && !error && (
-          <div
-            className={[
-              "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-16 transition-opacity duration-300",
-              showCtrl || !playing ? "opacity-100" : "opacity-0 pointer-events-none",
-            ].join(" ")}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Progress bar — touch-scrubbing enabled */}
-            <div
-              ref={progressRef}
-              className="group/bar relative mb-3 h-1 cursor-pointer rounded-full bg-white/20 transition-all duration-150 hover:h-2"
-              style={{ touchAction: "none" }}
-              onMouseDown={(e) => { scrubbingRef.current = true; seek(e.clientX); }}
-              onMouseMove={(e) => { if (scrubbingRef.current) seek(e.clientX); }}
-              onMouseUp={   () => { scrubbingRef.current = false; }}
-              onMouseLeave={ () => { scrubbingRef.current = false; }}
-              onTouchStart={(e) => { e.stopPropagation(); scrubbingRef.current = true; seekTouch(e); }}
-              onTouchMove={(e)  => { if (scrubbingRef.current) { e.preventDefault(); seekTouch(e); } }}
-              onTouchEnd={  () => { scrubbingRef.current = false; }}
-            >
-              <div className="absolute inset-y-0 left-0 rounded-full bg-white/20 transition-all"
-                style={{ width: `${bufferedPct}%` }} />
-              <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
-                style={{ width: `${progress}%` }} />
-
-              {/* Intro zone — primary color on timeline */}
-              {intro && duration > 0 && (
-                <div
-                  className="pointer-events-none absolute inset-y-0 bg-amber-800/70"
-                  style={{
-                    left:  `${(intro.start / duration) * 100}%`,
-                    width: `${((intro.end - intro.start) / duration) * 100}%`,
-                  }}
-                />
-              )}
-              {/* Outro zone — darker amber on timeline */}
-              {outro && duration > 0 && (
-                <div
-                  className="pointer-events-none absolute inset-y-0 bg-amber-800/70"
-                  style={{
-                    left:  `${(outro.start / duration) * 100}%`,
-                    width: `${((outro.end - outro.start) / duration) * 100}%`,
-                  }}
-                />
-              )}
-
-              <div
-                className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
-                style={{ left: `${progress}%` }}
-              />
-            </div>
-
-            {/* Controls row */}
-            <div className="flex items-center gap-2">
-              {/* Play/Pause */}
-              <button
-                onClick={togglePlay}
-                disabled={loading}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:opacity-40 [touch-action:manipulation]"
-              >
-                {playing
-                  ? <Pause className="size-4" fill="white" />
-                  : <Play  className="size-4 translate-x-px" fill="white" />}
-              </button>
-
-              {/* Rewind / Forward */}
-              <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
-                className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]" title="-10s">
-                <SkipBack className="size-4" />
-              </button>
-              <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
-                className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]" title="+10s">
-                <SkipForward className="size-4" />
-              </button>
-
-              {/* Time */}
-              <span className="shrink-0 text-xs tabular-nums text-white/60">
-                {fmt(currentTime)} / {fmt(duration)}
-              </span>
-
-              <div className="flex-1" />
-
-              {/* Quality picker — only shown when HLS levels are available */}
-              {hlsLevels.length > 0 && (
-                <div className="relative"
-                  onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setQualityPanelOpen(false); }}>
-                  <button
-                    onClick={() => { setQualityPanelOpen((o) => !o); setSpeedPanelOpen(false); setCaptionPanelOpen(false); }}
-                    className="rounded px-1.5 py-0.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
-                    title="Video quality"
-                  >
-                    {qualityLabel()}
-                  </button>
-                  {qualityPanelOpen && (
-                    <div className="absolute bottom-8 right-0 z-30 min-w-[100px] overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
-                      <p className="px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/30">Quality</p>
-                      {/* Auto option */}
-                      <button
-                        onClick={() => handleQualitySelect(-1)}
-                        className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                          selectedLevel === -1 ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                        Auto
-                        <span className="text-white/30">Recommended</span>
-                      </button>
-                      {/* Per-height level buttons */}
-                      {hlsLevels.map((l) => (
-                        <button key={l.index}
-                          onClick={() => handleQualitySelect(l.index)}
-                          className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                            selectedLevel === l.index ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                          {l.height ? `${l.height}p` : `Q${l.index + 1}`}
-                          <span className="text-white/25">{l.bitrate >= 1_000_000
-                            ? `${(l.bitrate / 1_000_000).toFixed(1)}Mb`
-                            : `${Math.round(l.bitrate / 1000)}Kb`}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Speed picker */}
-              <div className="relative"
-                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSpeedPanelOpen(false); }}>
-                <button
-                  onClick={() => { setSpeedPanelOpen((o) => !o); setCaptionPanelOpen(false); setQualityPanelOpen(false); }}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white [touch-action:manipulation]"
-                  title="Playback speed (< / >)"
-                >
-                  <Gauge className="size-3.5" />
-                  {speed}x
+        {!embedUrl && !error && (() => {
+          /* ── Shared: caption style panel ────────────────────────────────── */
+          const captionPanel = captionPanelOpen ? (
+            <div className="absolute bottom-10 right-0 z-30 w-64 rounded-xl border border-white/10 bg-[#1c1c1c] p-3 shadow-2xl">
+              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Captions</p>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs text-white/70">Show Captions</span>
+                <button onClick={() => setCaptionsOn(!captionsOn)}
+                  className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
+                    captionsOn ? "bg-primary" : "bg-white/15"].join(" ")}>
+                  <span className={["absolute size-3.5 rounded-full bg-white shadow transition-transform duration-200",
+                    captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
                 </button>
-                {speedPanelOpen && (
-                  <div className="absolute bottom-8 right-0 z-30 overflow-hidden rounded-lg border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
-                    {SPEEDS.map((s) => (
-                      <button key={s}
-                        onClick={() => { setSpeed(s); setSpeedPanelOpen(false); }}
-                        className={["flex w-full items-center justify-between gap-6 px-4 py-2 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
-                          s === speed ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
-                        {s}x
-                        {s === 1 && <span className="text-white/30">Normal</span>}
+              </div>
+              {subtitles.length === 0 && (
+                <p className="mb-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/40">No subtitles available.</p>
+              )}
+              {subtitles.length > 1 && (
+                <>
+                  <p className="mb-1 text-[10px] font-medium text-white/35">TRACK</p>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {subtitles.map((s, i) => (
+                      <button key={i} onClick={() => { setSelectedTrack(i); setCaptionsOn(true); }}
+                        className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                          selectedTrack === i && captionsOn ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
+                        {s.label || `Track ${i + 1}`}
                       </button>
                     ))}
                   </div>
-                )}
+                </>
+              )}
+              <p className="mb-1 text-[10px] font-medium text-white/35">SIZE</p>
+              <div className="mb-3 flex gap-1.5">
+                {[{ l: "S", v: "75" }, { l: "M", v: "100" }, { l: "L", v: "125" }, { l: "XL", v: "150" }].map(({ l, v }) => (
+                  <button key={v} onClick={() => setCaptionSize(v)}
+                    className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                      captionSize === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>{l}</button>
+                ))}
+              </div>
+              <p className="mb-1 text-[10px] font-medium text-white/35">TEXT COLOR</p>
+              <div className="mb-3 flex gap-2">
+                {CAPTION_COLORS.map((c) => (
+                  <button key={c} onClick={() => setCaptionColor(c)} title={c}
+                    className={["size-5 rounded-full border-2 transition-transform hover:scale-110 [touch-action:manipulation]",
+                      captionColor === c ? "border-white scale-110" : "border-transparent"].join(" ")}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <p className="mb-1 text-[10px] font-medium text-white/35">BACKGROUND</p>
+              <div className="mb-3 flex gap-1.5">
+                {CAPTION_BGS.map(({ l, v }) => (
+                  <button key={l} onClick={() => setCaptionBg(v)}
+                    className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                      captionBg === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>{l}</button>
+                ))}
+              </div>
+              <p className="mb-1 text-[10px] font-medium text-white/35">FONT</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CAPTION_FONTS.map(({ l, v }) => (
+                  <button key={l} onClick={() => setCaptionFont(v)}
+                    className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
+                      captionFont === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}
+                    style={{ fontFamily: v }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          ) : null;
+
+          /* ── Shared: combined quality + speed panel ──────────────────────── */
+          const settingsPanel = settingsPanelOpen ? (
+            <div className="absolute bottom-8 right-0 z-30 w-52 overflow-hidden rounded-xl border border-white/[0.05] bg-[#1a1a1a] shadow-2xl">
+              <p className="px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">Speed</p>
+              {SPEEDS.map((s) => (
+                <button key={s} onClick={() => { setSpeed(s); setSettingsPanelOpen(false); }}
+                  className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                    s === speed ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                  {s}x {s === 1 && <span className="text-white/30">Normal</span>}
+                </button>
+              ))}
+              {hlsLevels.length > 0 && (
+                <>
+                  <div className="my-1 border-t border-white/[0.06]" />
+                  <p className="px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">Quality</p>
+                  <button onClick={() => handleQualitySelect(-1)}
+                    className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                      selectedLevel === -1 ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                    Auto <span className="text-white/30">Recommended</span>
+                  </button>
+                  {hlsLevels.map((l) => (
+                    <button key={l.index} onClick={() => { handleQualitySelect(l.index); setSettingsPanelOpen(false); }}
+                      className={["flex w-full items-center justify-between gap-6 px-4 py-1.5 text-xs transition-colors hover:bg-white/5 [touch-action:manipulation]",
+                        selectedLevel === l.index ? "text-primary font-semibold" : "text-white/75"].join(" ")}>
+                      {l.height ? `${l.height}p` : `Q${l.index + 1}`}
+                      <span className="text-white/25">{l.bitrate >= 1_000_000 ? `${(l.bitrate / 1_000_000).toFixed(1)}Mb` : `${Math.round(l.bitrate / 1000)}Kb`}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          ) : null;
+
+          /* ── Shared: intro/outro cut markers ────────────────────────────── */
+          const cutMarkers = (
+            <>
+              {intro && duration > 0 && (
+                <>
+                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/35 rounded-sm"
+                    style={{ left: `${(intro.start / duration) * 100}%`, width: `${((intro.end - intro.start) / duration) * 100}%` }} />
+                  <div className="pointer-events-none absolute rounded-full bg-amber-400" style={{ top: "-3px", bottom: "-3px", width: "2px", left: `${(intro.start / duration) * 100}%` }} />
+                </>
+              )}
+              {outro && duration > 0 && (
+                <>
+                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/35 rounded-sm"
+                    style={{ left: `${(outro.start / duration) * 100}%`, width: `${((outro.end - outro.start) / duration) * 100}%` }} />
+                  <div className="pointer-events-none absolute rounded-full bg-amber-400" style={{ top: "-3px", bottom: "-3px", width: "2px", left: `${(outro.start / duration) * 100}%` }} />
+                </>
+              )}
+            </>
+          );
+
+          /* ── Shared: progress bar drag handlers ─────────────────────────── */
+          const barHandlers = {
+            style: { touchAction: "none" as const },
+            onMouseDown: (e: React.MouseEvent) => { scrubbingRef.current = true; seek(e.clientX); },
+            onMouseMove: (e: React.MouseEvent) => { if (scrubbingRef.current) seek(e.clientX); },
+            onMouseUp:   () => { scrubbingRef.current = false; },
+            onMouseLeave:() => { scrubbingRef.current = false; },
+            onTouchStart:(e: React.TouchEvent) => { e.stopPropagation(); scrubbingRef.current = true; seekTouch(e); },
+            onTouchMove: (e: React.TouchEvent) => { if (scrubbingRef.current) { e.preventDefault(); seekTouch(e); } },
+            onTouchEnd:  () => { scrubbingRef.current = false; },
+          };
+
+          const visible = showCtrl || !playing;
+
+          /* ── PLYR: Crunchyroll-style ─────────────────────────────────────── */
+          if (playerType === "plyr") return (
+            <div className={["absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-3 pt-14 transition-opacity duration-300",
+              visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
+              onClick={(e) => e.stopPropagation()}>
+
+              {/* ── Progress bar with intro/outro cut markers ────────────────── */}
+              <div ref={progressRef} {...barHandlers}
+                className="group/bar relative mb-2.5 h-1 cursor-pointer rounded-full bg-white/20 transition-all duration-150 hover:h-2">
+                <div className="absolute inset-y-0 left-0 rounded-full bg-white/25" style={{ width: `${bufferedPct}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-white" style={{ width: `${progress}%` }} />
+                {cutMarkers}
+                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
+                  style={{ left: `${progress}%` }} />
               </div>
 
-              {/* Caption toggle + style panel */}
-              <div className="relative"
-                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCaptionPanelOpen(false); }}>
-                <button
-                  onClick={() => { setCaptionPanelOpen((o) => !o); setSpeedPanelOpen(false); setQualityPanelOpen(false); }}
-                  className={[
-                    "transition-colors [touch-action:manipulation]",
-                    captionPanelOpen ? "text-primary" : captionsOn ? "text-white/80 hover:text-white" : "text-white/30 hover:text-white/60",
-                  ].join(" ")}
-                  title="Captions (C)"
-                >
+              {/* ── Controls row ─────────────────────────────────────────────── */}
+              <div className="flex items-center gap-1">
+
+                {/* Play / Pause */}
+                <button onClick={togglePlay} disabled={loading}
+                  className="flex size-8 shrink-0 items-center justify-center text-white transition-opacity disabled:opacity-40 [touch-action:manipulation]">
+                  {playing ? <Pause className="size-[18px]" fill="white" /> : <Play className="size-[18px] translate-x-px" fill="white" />}
+                </button>
+
+                {/* Next episode */}
+                <button onClick={onNextEpisode} disabled={totalEpisodes > 0 && episode >= totalEpisodes}
+                  title="Next episode"
+                  className="flex size-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 [touch-action:manipulation]">
+                  <SkipForward className="size-[17px]" fill="currentColor" />
+                </button>
+
+                {/* Volume */}
+                <div className="flex items-center gap-1">
+                  <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
+                    className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                    {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                  </button>
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                    onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-14 cursor-pointer accent-white" />
+                </div>
+
+                {/* Time */}
+                <span className="ml-1 shrink-0 text-xs tabular-nums text-white/80">
+                  {fmt(currentTime)} / {fmt(duration)}
+                </span>
+
+                <div className="flex-1" />
+
+                {/* ↺ 10 */}
+                <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
+                  title="-10s" className="relative flex size-8 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <RotateCcw className="size-[18px]" />
+                  <span className="absolute text-[7px] font-bold leading-none" style={{ transform: "translateY(1px)" }}>10</span>
+                </button>
+
+                {/* ↻ 10 */}
+                <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
+                  title="+10s" className="relative flex size-8 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <RotateCw className="size-[18px]" />
+                  <span className="absolute text-[7px] font-bold leading-none" style={{ transform: "translateY(1px)" }}>10</span>
+                </button>
+
+                {/* CC */}
+                <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCaptionPanelOpen(false); }}>
+                  <button onClick={() => { setCaptionPanelOpen((o) => !o); setSettingsPanelOpen(false); }}
+                    title="Captions (C)"
+                    className={["transition-colors [touch-action:manipulation]",
+                      captionPanelOpen ? "text-primary" : captionsOn ? "text-white/80 hover:text-white" : "text-white/30 hover:text-white/60"].join(" ")}>
+                    {captionsOn ? <Captions className="size-4" /> : <CaptionsOff className="size-4" />}
+                  </button>
+                  {captionPanel}
+                </div>
+
+                {/* Download (placeholder) */}
+                <button title="Download" className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <Download className="size-4" />
+                </button>
+
+                {/* Screenshot */}
+                <button onClick={handleScreenshot} title="Screenshot"
+                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <Camera className="size-4" />
+                </button>
+
+                {/* Theater mode (lights off) */}
+                <button onClick={() => onLightsOffChange(!lightsOff)} title="Theater mode"
+                  className={["flex size-8 items-center justify-center transition-colors [touch-action:manipulation]",
+                    lightsOff ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
+                  <Tv2 className="size-4" />
+                </button>
+
+                {/* Settings (speed + quality) */}
+                <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
+                  <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
+                    title="Settings"
+                    className={["flex size-8 items-center justify-center transition-colors [touch-action:manipulation]",
+                      settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
+                    <Settings className="size-4" />
+                  </button>
+                  {settingsPanel}
+                </div>
+
+                {/* Cast (placeholder) */}
+                <button title="Cast" className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <Cast className="size-4" />
+                </button>
+
+                {/* PiP */}
+                <button onClick={handlePiP} title="Picture in Picture"
+                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <PictureInPicture2 className="size-4" />
+                </button>
+
+                {/* Fullscreen */}
+                <button onClick={toggleFullscreen} title="Fullscreen (F)"
+                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                </button>
+              </div>
+            </div>
+          );
+
+          /* ── NATV: Plyr-style (inline progress, time remaining) ─────────── */
+          if (playerType === "natv") return (
+            <div className={["absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-10 transition-opacity duration-300",
+              visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2">
+
+                {/* Play */}
+                <button onClick={togglePlay} disabled={loading}
+                  className="shrink-0 text-white disabled:opacity-40 [touch-action:manipulation]">
+                  {playing ? <Pause className="size-[18px]" fill="white" /> : <Play className="size-[18px] translate-x-px" fill="white" />}
+                </button>
+
+                {/* Inline progress bar (takes all remaining width) */}
+                <div ref={progressRef} {...barHandlers}
+                  className="group/bar relative h-1 flex-1 cursor-pointer rounded-full bg-white/25 transition-all duration-150 hover:h-2">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${bufferedPct}%` }} />
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${progress}%` }} />
+                  {cutMarkers}
+                  {/* Always-visible scrubber dot in natv */}
+                  <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg transition-all group-hover/bar:size-4"
+                    style={{ left: `${progress}%` }} />
+                </div>
+
+                {/* Time remaining */}
+                <span className="shrink-0 text-xs tabular-nums text-white/80">
+                  {fmtRemaining(currentTime, duration)}
+                </span>
+
+                {/* Volume */}
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
+                    className="shrink-0 text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                    {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                  </button>
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                    onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-14 cursor-pointer accent-primary" />
+                </div>
+
+                {/* CC toggle */}
+                <button onClick={() => setCaptionsOn(!captionsOn)} title="Captions"
+                  className={[captionsOn ? "text-primary" : "text-white/40 hover:text-white/70", "transition-colors [touch-action:manipulation]"].join(" ")}>
                   {captionsOn ? <Captions className="size-4" /> : <CaptionsOff className="size-4" />}
                 </button>
 
-                {/* Caption style panel */}
-                {captionPanelOpen && (
-                  <div className="absolute bottom-10 right-0 z-30 w-64 rounded-xl border border-white/10 bg-[#1c1c1c] p-3 shadow-2xl">
-                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Captions</p>
+                {/* Settings */}
+                <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
+                  <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
+                    className={[settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white", "transition-colors [touch-action:manipulation]"].join(" ")}
+                    title="Settings">
+                    <Settings className="size-4" />
+                  </button>
+                  {settingsPanel}
+                </div>
 
-                    {/* On/Off toggle */}
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs text-white/70">Show Captions</span>
-                      <button
-                        onClick={() => setCaptionsOn(!captionsOn)}
-                        className={["relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 [touch-action:manipulation]",
-                          captionsOn ? "bg-primary" : "bg-white/15"].join(" ")}
-                      >
-                        <span className={["absolute size-3.5 rounded-full bg-white shadow transition-transform duration-200",
-                          captionsOn ? "translate-x-[19px]" : "translate-x-[2px]"].join(" ")} />
-                      </button>
-                    </div>
-
-                    {/* No subtitles notice */}
-                    {subtitles.length === 0 && (
-                      <p className="mb-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/40">
-                        No subtitles available for this stream.
-                      </p>
-                    )}
-
-                    {/* Subtitle track selector — only shown when >1 track available */}
-                    {subtitles.length > 1 && (
-                      <>
-                        <p className="mb-1 text-[10px] font-medium text-white/35">TRACK</p>
-                        <div className="mb-3 flex flex-wrap gap-1.5">
-                          {subtitles.map((s, i) => (
-                            <button key={i} onClick={() => { setSelectedTrack(i); setCaptionsOn(true); }}
-                              className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
-                                selectedTrack === i && captionsOn ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
-                              {s.label || `Track ${i + 1}`}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {/* Size */}
-                    <p className="mb-1 text-[10px] font-medium text-white/35">SIZE</p>
-                    <div className="mb-3 flex gap-1.5">
-                      {[{ l: "S", v: "75" }, { l: "M", v: "100" }, { l: "L", v: "125" }, { l: "XL", v: "150" }].map(({ l, v }) => (
-                        <button key={v} onClick={() => setCaptionSize(v)}
-                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
-                            captionSize === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Text color */}
-                    <p className="mb-1 text-[10px] font-medium text-white/35">TEXT COLOR</p>
-                    <div className="mb-3 flex gap-2">
-                      {CAPTION_COLORS.map((c) => (
-                        <button key={c} onClick={() => setCaptionColor(c)} title={c}
-                          className={["size-5 rounded-full border-2 transition-transform hover:scale-110 [touch-action:manipulation]",
-                            captionColor === c ? "border-white scale-110" : "border-transparent"].join(" ")}
-                          style={{ backgroundColor: c }} />
-                      ))}
-                    </div>
-
-                    {/* Background */}
-                    <p className="mb-1 text-[10px] font-medium text-white/35">BACKGROUND</p>
-                    <div className="mb-3 flex gap-1.5">
-                      {CAPTION_BGS.map(({ l, v }) => (
-                        <button key={l} onClick={() => setCaptionBg(v)}
-                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
-                            captionBg === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}>
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Font */}
-                    <p className="mb-1 text-[10px] font-medium text-white/35">FONT</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {CAPTION_FONTS.map(({ l, v }) => (
-                        <button key={l} onClick={() => setCaptionFont(v)}
-                          className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
-                            captionFont === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}
-                          style={{ fontFamily: v }}>
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Volume */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                  className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]"
-                >
-                  {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                {/* External link (placeholder) */}
+                <button title="Open externally" className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <ExternalLink className="size-4" />
                 </button>
-                <input
-                  type="range" min={0} max={1} step={0.05}
-                  value={muted ? 0 : volume}
-                  onChange={(e) => {
-                    const v = videoRef.current;
-                    if (!v) return;
-                    const val = parseFloat(e.target.value);
-                    v.volume = val;
-                    v.muted  = val === 0;
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-16 cursor-pointer accent-primary"
-                />
+
+                {/* Fullscreen */}
+                <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                </button>
+              </div>
+            </div>
+          );
+
+          /* ── VIDK: YouTube-minimal (thin bottom bar) ─────────────────────── */
+          return (
+            <div className={["absolute inset-x-0 bottom-0 transition-opacity duration-300",
+              visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
+              onClick={(e) => e.stopPropagation()}>
+
+              {/* Controls bar */}
+              <div className="flex items-center gap-2.5 bg-gradient-to-t from-black/80 to-transparent px-3 pb-1.5 pt-8">
+                {/* Play */}
+                <button onClick={togglePlay} disabled={loading}
+                  className="text-white disabled:opacity-40 [touch-action:manipulation]">
+                  {playing ? <Pause className="size-5" fill="white" /> : <Play className="size-5 translate-x-px" fill="white" />}
+                </button>
+
+                {/* Time */}
+                <span className="text-[13px] tabular-nums text-white/90">
+                  {fmt(currentTime)} / {fmt(duration)}
+                </span>
+
+                <div className="flex-1" />
+
+                {/* Volume */}
+                <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
+                  className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
+                  {muted || volume === 0 ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+                </button>
+
+                {/* Fullscreen */}
+                <button onClick={toggleFullscreen}
+                  className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
+                  {fullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+                </button>
+
+                {/* ⋮ More */}
+                <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
+                  <button onClick={() => setSettingsPanelOpen((o) => !o)}
+                    className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
+                    <MoreVertical className="size-5" />
+                  </button>
+                  {settingsPanel}
+                </div>
               </div>
 
-              {/* Fullscreen */}
-              <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-              </button>
+              {/* Thin progress bar at absolute bottom edge */}
+              <div ref={progressRef} {...barHandlers}
+                className="group/bar relative h-[3px] w-full cursor-pointer bg-white/25 hover:h-1 transition-all duration-150">
+                <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufferedPct}%` }} />
+                <div className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${progress}%` }} />
+                {intro && duration > 0 && (
+                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/60"
+                    style={{ left: `${(intro.start / duration) * 100}%`, width: `${((intro.end - intro.start) / duration) * 100}%` }} />
+                )}
+                {outro && duration > 0 && (
+                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/60"
+                    style={{ left: `${(outro.start / duration) * 100}%`, width: `${((outro.end - outro.start) / duration) * 100}%` }} />
+                )}
+                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow group-hover/bar:scale-100 transition-transform"
+                  style={{ left: `${progress}%` }} />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* ── Settings bar below video ──────────────────────────────────────── */}
