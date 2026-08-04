@@ -105,6 +105,19 @@ a, button, [role="button"], input[type="range"] {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Applied briefly during theme switches to animate the color change */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 0.3s ease,
+    color            0.25s ease,
+    border-color     0.25s ease,
+    box-shadow       0.25s ease !important;
+  transition-delay: 0s !important;
+}
+
 @keyframes card-float {
   0%, 100% {
     transform: translateY(0px) scale3d(1.04, 1.04, 1.04);

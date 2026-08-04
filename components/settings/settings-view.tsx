@@ -132,6 +132,13 @@ export function SettingsView() {
   const { resolvedTheme, setTheme } = useTheme();
   const { cardAnimation, setCardAnimation } = useCardAnimationStore();
 
+  function handleThemeChange(theme: string) {
+    const html = document.documentElement;
+    html.classList.add("theme-transition");
+    setTheme(theme);
+    setTimeout(() => html.classList.remove("theme-transition"), 350);
+  }
+
   // ── Settings store ────────────────────────────────────────────────────────
   const showWatchHistory    = useSettingsStore((s) => s.showWatchHistory);
   const setShowWatchHistory = useSettingsStore((s) => s.setShowWatchHistory);
@@ -364,7 +371,7 @@ export function SettingsView() {
                       return (
                         <button
                           key={value}
-                          onClick={() => setTheme(value)}
+                          onClick={() => handleThemeChange(value)}
                           className={cn(
                             "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-all",
                             active
