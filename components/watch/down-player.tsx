@@ -2,13 +2,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
-import {
-  Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  Loader2, AlertTriangle, RefreshCw, SkipBack, SkipForward,
-  Captions, CaptionsOff, Gauge,
-  RotateCcw, RotateCw, Download, Camera, Cast, PictureInPicture2,
-  Settings, ExternalLink, MoreVertical, Tv2,
-} from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { usePlayerPrefsStore } from "@/store/player-prefs-store";
 import { firstAvailableProvider, providerLabel, type EpisodesMap } from "./episode-utils";
@@ -94,6 +87,20 @@ function Toggle({ label, active, accent, onClick }: {
       </span>
       {label}
     </button>
+  );
+}
+
+function MI({ name, className, size = 20, filled = true }: {
+  name: string; className?: string; size?: number; filled?: boolean;
+}) {
+  return (
+    <span
+      className={["material-symbols-rounded select-none leading-none", className].filter(Boolean).join(" ")}
+      aria-hidden
+      style={{ fontSize: size, fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24` }}
+    >
+      {name}
+    </span>
   );
 }
 
@@ -747,7 +754,7 @@ export function DownPlayer({
         {/* Loading (HLS only) */}
         {loading && !embedUrl && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="size-12 animate-spin text-white/80" />
+            <MI name="progress_activity" size={48} className="animate-spin text-white/80" />
             <p className="text-sm font-medium text-white/50">Loading episode {episode}…</p>
           </div>
         )}
@@ -756,7 +763,7 @@ export function DownPlayer({
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/95 px-6 text-center">
             <div className="rounded-full bg-red-500/10 p-4">
-              <AlertTriangle className="size-8 text-red-400" />
+              <MI name="warning" size={32} className="text-red-400" />
             </div>
             <div>
               <p className="font-semibold text-white">{error}</p>
@@ -766,7 +773,7 @@ export function DownPlayer({
               onClick={(e) => { e.stopPropagation(); setError(null); setRetryKey((k) => k + 1); }}
               className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors [touch-action:manipulation]"
             >
-              <RefreshCw className="size-4" /> Retry
+              <MI name="refresh" size={16} /> Retry
             </button>
           </div>
         )}
@@ -775,7 +782,7 @@ export function DownPlayer({
         {!embedUrl && !loading && !error && !playing && duration > 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
-              <Play className="size-7 translate-x-0.5 text-white" fill="white" />
+              <MI name="play_arrow" size={28} className="translate-x-0.5 text-white" />
             </div>
           </div>
         )}
@@ -788,7 +795,7 @@ export function DownPlayer({
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = intro.end; }}
                 className="flex items-center gap-2 rounded-lg border border-amber-700/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-amber-500 shadow-lg backdrop-blur-sm transition-all hover:bg-amber-700/20 active:scale-95 [touch-action:manipulation]"
               >
-                <SkipForward className="size-4" />
+                <MI name="skip_next" size={16} />
                 Skip Intro
               </button>
             )}
@@ -797,7 +804,7 @@ export function DownPlayer({
                 onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime = outro.end; }}
                 className="flex items-center gap-2 rounded-lg border border-amber-700/50 bg-black/85 px-4 py-2.5 text-sm font-bold text-amber-500 shadow-lg backdrop-blur-sm transition-all hover:bg-amber-700/20 active:scale-95 [touch-action:manipulation]"
               >
-                <SkipForward className="size-4" />
+                <MI name="skip_next" size={16} />
                 Skip Outro
               </button>
             )}
@@ -954,13 +961,46 @@ export function DownPlayer({
               visible ? "opacity-100" : "opacity-0 pointer-events-none"].join(" ")}
               onClick={(e) => e.stopPropagation()}>
 
-              {/* ── Progress bar with intro/outro cut markers ────────────────── */}
+              {/* ── Segmented progress bar: gaps between segments = chapter cuts ─ */}
               <div ref={progressRef} {...barHandlers}
-                className="group/bar relative mb-2.5 h-1 cursor-pointer rounded-full bg-white/20 transition-all duration-150 hover:h-2">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-white/25" style={{ width: `${bufferedPct}%` }} />
-                <div className="absolute inset-y-0 left-0 rounded-full bg-white" style={{ width: `${progress}%` }} />
-                {cutMarkers}
-                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
+                className="group/bar relative mb-2.5 h-3 cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3.5">
+                {duration > 0 ? (() => {
+                  const pts = [...new Set([
+                    0,
+                    ...(intro ? [intro.start, intro.end] : []),
+                    ...(outro ? [outro.start, outro.end] : []),
+                    duration,
+                  ].filter((p) => p >= 0 && p <= duration))].sort((a, b) => a - b);
+                  const bufTime = (bufferedPct / 100) * duration;
+                  return pts.slice(0, -1).map((s, idx) => {
+                    const e    = pts[idx + 1];
+                    const dur  = e - s;
+                    const skip = (!!intro && s >= intro.start - 0.05 && e <= intro.end + 0.05) ||
+                                 (!!outro && s >= outro.start - 0.05 && e <= outro.end + 0.05);
+                    const lPct    = (s / duration) * 100;
+                    const wPct    = (dur / duration) * 100;
+                    const watchPct = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(currentTime, e) - s) / dur) * 100)) : 0;
+                    const bufPct   = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(bufTime, e) - s) / dur) * 100)) : 0;
+                    return (
+                      <div key={idx}
+                        className="absolute inset-y-0 overflow-hidden rounded-[2px]"
+                        style={{ left: `calc(${lPct}% + 1.5px)`, width: `calc(${wPct}% - 3px)` }}>
+                        <div className={["absolute inset-0", skip ? "bg-white/[0.16]" : "bg-white/[0.32]"].join(" ")} />
+                        {bufPct > watchPct && (
+                          <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: `${bufPct}%` }} />
+                        )}
+                        {watchPct > 0 && (
+                          <div className={["absolute inset-y-0 left-0", skip ? "bg-white/70" : "bg-white"].join(" ")}
+                            style={{ width: `${watchPct}%` }} />
+                        )}
+                      </div>
+                    );
+                  });
+                })() : (
+                  <div className="absolute inset-y-0 left-0 w-full rounded-[2px] bg-white/20" />
+                )}
+                {/* Scrubber dot */}
+                <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover/bar:scale-100"
                   style={{ left: `${progress}%` }} />
               </div>
 
@@ -969,22 +1009,22 @@ export function DownPlayer({
 
                 {/* Play / Pause */}
                 <button onClick={togglePlay} disabled={loading}
-                  className="flex size-8 shrink-0 items-center justify-center text-white transition-opacity disabled:opacity-40 [touch-action:manipulation]">
-                  {playing ? <Pause className="size-[18px]" fill="white" /> : <Play className="size-[18px] translate-x-px" fill="white" />}
+                  className="flex size-9 shrink-0 items-center justify-center text-white transition-opacity disabled:opacity-40 [touch-action:manipulation]">
+                  {playing ? <MI name="pause" size={22} /> : <MI name="play_arrow" size={22} />}
                 </button>
 
                 {/* Next episode */}
                 <button onClick={onNextEpisode} disabled={totalEpisodes > 0 && episode >= totalEpisodes}
                   title="Next episode"
-                  className="flex size-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 [touch-action:manipulation]">
-                  <SkipForward className="size-[17px]" fill="currentColor" />
+                  className="flex size-9 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 [touch-action:manipulation]">
+                  <MI name="skip_next" size={20} />
                 </button>
 
                 {/* Volume */}
                 <div className="flex items-center gap-1">
                   <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
                     className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                    {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                    {muted || volume === 0 ? <MI name="volume_off" size={20} /> : <MI name="volume_up" size={20} />}
                   </button>
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
                     onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
@@ -1001,73 +1041,71 @@ export function DownPlayer({
 
                 {/* ↺ 10 */}
                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
-                  title="-10s" className="relative flex size-8 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <RotateCcw className="size-[18px]" />
-                  <span className="absolute text-[7px] font-bold leading-none" style={{ transform: "translateY(1px)" }}>10</span>
+                  title="-10s" className="flex size-9 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="replay_10" size={22} />
                 </button>
 
                 {/* ↻ 10 */}
                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
-                  title="+10s" className="relative flex size-8 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <RotateCw className="size-[18px]" />
-                  <span className="absolute text-[7px] font-bold leading-none" style={{ transform: "translateY(1px)" }}>10</span>
+                  title="+10s" className="flex size-9 shrink-0 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="forward_10" size={22} />
                 </button>
 
                 {/* CC */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCaptionPanelOpen(false); }}>
                   <button onClick={() => { setCaptionPanelOpen((o) => !o); setSettingsPanelOpen(false); }}
                     title="Captions (C)"
-                    className={["transition-colors [touch-action:manipulation]",
+                    className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                       captionPanelOpen ? "text-primary" : captionsOn ? "text-white/80 hover:text-white" : "text-white/30 hover:text-white/60"].join(" ")}>
-                    {captionsOn ? <Captions className="size-4" /> : <CaptionsOff className="size-4" />}
+                    {captionsOn ? <MI name="closed_caption" size={20} /> : <MI name="closed_caption_disabled" size={20} />}
                   </button>
                   {captionPanel}
                 </div>
 
                 {/* Download (placeholder) */}
-                <button title="Download" className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <Download className="size-4" />
+                <button title="Download" className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="download" size={20} />
                 </button>
 
                 {/* Screenshot */}
                 <button onClick={handleScreenshot} title="Screenshot"
-                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <Camera className="size-4" />
+                  className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="photo_camera" size={20} />
                 </button>
 
                 {/* Theater mode (lights off) */}
                 <button onClick={() => onLightsOffChange(!lightsOff)} title="Theater mode"
-                  className={["flex size-8 items-center justify-center transition-colors [touch-action:manipulation]",
+                  className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                     lightsOff ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
-                  <Tv2 className="size-4" />
+                  <MI name="tv" size={20} />
                 </button>
 
                 {/* Settings (speed + quality) */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
                   <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
                     title="Settings"
-                    className={["flex size-8 items-center justify-center transition-colors [touch-action:manipulation]",
+                    className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                       settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
-                    <Settings className="size-4" />
+                    <MI name="settings" size={20} />
                   </button>
                   {settingsPanel}
                 </div>
 
                 {/* Cast (placeholder) */}
-                <button title="Cast" className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <Cast className="size-4" />
+                <button title="Cast" className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="cast" size={20} />
                 </button>
 
                 {/* PiP */}
                 <button onClick={handlePiP} title="Picture in Picture"
-                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <PictureInPicture2 className="size-4" />
+                  className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  <MI name="picture_in_picture_alt" size={20} />
                 </button>
 
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen} title="Fullscreen (F)"
-                  className="flex size-8 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                  className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                  {fullscreen ? <MI name="fullscreen_exit" size={20} /> : <MI name="fullscreen" size={20} />}
                 </button>
               </div>
             </div>
@@ -1083,7 +1121,7 @@ export function DownPlayer({
                 {/* Play */}
                 <button onClick={togglePlay} disabled={loading}
                   className="shrink-0 text-white disabled:opacity-40 [touch-action:manipulation]">
-                  {playing ? <Pause className="size-[18px]" fill="white" /> : <Play className="size-[18px] translate-x-px" fill="white" />}
+                  {playing ? <MI name="pause" size={18} /> : <MI name="play_arrow" size={18} />}
                 </button>
 
                 {/* Inline progress bar (takes all remaining width) */}
@@ -1106,7 +1144,7 @@ export function DownPlayer({
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
                     className="shrink-0 text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                    {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                    {muted || volume === 0 ? <MI name="volume_off" size={18} /> : <MI name="volume_up" size={18} />}
                   </button>
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
                     onChange={(e) => { const v = videoRef.current; if (!v) return; const val = parseFloat(e.target.value); v.volume = val; v.muted = val === 0; }}
@@ -1117,7 +1155,7 @@ export function DownPlayer({
                 {/* CC toggle */}
                 <button onClick={() => setCaptionsOn(!captionsOn)} title="Captions"
                   className={[captionsOn ? "text-primary" : "text-white/40 hover:text-white/70", "transition-colors [touch-action:manipulation]"].join(" ")}>
-                  {captionsOn ? <Captions className="size-4" /> : <CaptionsOff className="size-4" />}
+                  {captionsOn ? <MI name="closed_caption" size={18} /> : <MI name="closed_caption_disabled" size={18} />}
                 </button>
 
                 {/* Settings */}
@@ -1125,19 +1163,19 @@ export function DownPlayer({
                   <button onClick={() => { setSettingsPanelOpen((o) => !o); setCaptionPanelOpen(false); }}
                     className={[settingsPanelOpen ? "text-primary" : "text-white/70 hover:text-white", "transition-colors [touch-action:manipulation]"].join(" ")}
                     title="Settings">
-                    <Settings className="size-4" />
+                    <MI name="settings" size={18} />
                   </button>
                   {settingsPanel}
                 </div>
 
                 {/* External link (placeholder) */}
                 <button title="Open externally" className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  <ExternalLink className="size-4" />
+                  <MI name="open_in_new" size={18} />
                 </button>
 
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
-                  {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                  {fullscreen ? <MI name="fullscreen_exit" size={18} /> : <MI name="fullscreen" size={18} />}
                 </button>
               </div>
             </div>
@@ -1154,7 +1192,7 @@ export function DownPlayer({
                 {/* Play */}
                 <button onClick={togglePlay} disabled={loading}
                   className="text-white disabled:opacity-40 [touch-action:manipulation]">
-                  {playing ? <Pause className="size-5" fill="white" /> : <Play className="size-5 translate-x-px" fill="white" />}
+                  {playing ? <MI name="pause" size={20} /> : <MI name="play_arrow" size={20} />}
                 </button>
 
                 {/* Time */}
@@ -1167,20 +1205,20 @@ export function DownPlayer({
                 {/* Volume */}
                 <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
                   className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
-                  {muted || volume === 0 ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+                  {muted || volume === 0 ? <MI name="volume_off" size={20} /> : <MI name="volume_up" size={20} />}
                 </button>
 
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen}
                   className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
-                  {fullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+                  {fullscreen ? <MI name="fullscreen_exit" size={20} /> : <MI name="fullscreen" size={20} />}
                 </button>
 
                 {/* ⋮ More */}
                 <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSettingsPanelOpen(false); }}>
                   <button onClick={() => setSettingsPanelOpen((o) => !o)}
                     className="text-white/80 hover:text-white transition-colors [touch-action:manipulation]">
-                    <MoreVertical className="size-5" />
+                    <MI name="more_vert" size={20} />
                   </button>
                   {settingsPanel}
                 </div>
@@ -1234,7 +1272,7 @@ export function DownPlayer({
             title="Switch player type"
             className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white/70 transition-colors hover:bg-white/15 hover:text-white [touch-action:manipulation]"
           >
-            <Play className="size-2.5 fill-white/70" />
+            <MI name="play_arrow" size={10} className="text-white/70" />
             {playerType}
           </button>
         </div>
@@ -1243,13 +1281,13 @@ export function DownPlayer({
         <div className="flex items-center gap-3 text-xs font-medium">
           <button onClick={onPrevEpisode} disabled={episode <= 1}
             className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25 [touch-action:manipulation]">
-            <SkipBack className="size-3.5" /> Prev
+            <MI name="skip_previous" size={14} /> Prev
           </button>
           <span className="text-white/25">|</span>
           <button onClick={onNextEpisode}
             disabled={totalEpisodes > 0 && episode >= totalEpisodes}
             className="flex items-center gap-1 text-white/50 transition-colors hover:text-white disabled:opacity-25 [touch-action:manipulation]">
-            Ep {episode + 1} <SkipForward className="size-3.5" />
+            Ep {episode + 1} <MI name="skip_next" size={14} />
           </button>
         </div>
       </div>
