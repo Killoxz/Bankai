@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
@@ -907,24 +907,32 @@ export function DownPlayer({
           ) : null;
 
           /* ── Shared: intro/outro cut markers ────────────────────────────── */
-          const cutMarkers = (
+          // Each cut = dark gap across the bar + white tick marks above & below it.
+          // Collect all cut-point timestamps, then render one set of marks per point.
+          const cutPoints: number[] = [];
+          if (intro  && duration > 0) { cutPoints.push(intro.start,  intro.end);  }
+          if (outro  && duration > 0) { cutPoints.push(outro.start,  outro.end);  }
+
+          const cutMarkers = cutPoints.length > 0 ? (
             <>
-              {intro && duration > 0 && (
-                <>
-                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/35 rounded-sm"
-                    style={{ left: `${(intro.start / duration) * 100}%`, width: `${((intro.end - intro.start) / duration) * 100}%` }} />
-                  <div className="pointer-events-none absolute rounded-full bg-amber-400" style={{ top: "-3px", bottom: "-3px", width: "2px", left: `${(intro.start / duration) * 100}%` }} />
-                </>
-              )}
-              {outro && duration > 0 && (
-                <>
-                  <div className="pointer-events-none absolute inset-y-0 bg-amber-400/35 rounded-sm"
-                    style={{ left: `${(outro.start / duration) * 100}%`, width: `${((outro.end - outro.start) / duration) * 100}%` }} />
-                  <div className="pointer-events-none absolute rounded-full bg-amber-400" style={{ top: "-3px", bottom: "-3px", width: "2px", left: `${(outro.start / duration) * 100}%` }} />
-                </>
-              )}
+              {cutPoints.map((t, i) => {
+                const pct = `${(t / duration) * 100}%`;
+                return (
+                  <React.Fragment key={i}>
+                    {/* White tick above the bar */}
+                    <div className="pointer-events-none absolute z-20"
+                      style={{ left: pct, bottom: "100%", width: "2px", height: "6px", transform: "translateX(-50%)", background: "rgba(255,255,255,0.95)", borderRadius: "1px 1px 0 0" }} />
+                    {/* Dark gap through the bar (the actual "cut") */}
+                    <div className="pointer-events-none absolute inset-y-0 z-20"
+                      style={{ left: pct, width: "3px", transform: "translateX(-50%)", background: "rgba(0,0,0,0.75)" }} />
+                    {/* White tick below the bar */}
+                    <div className="pointer-events-none absolute z-20"
+                      style={{ left: pct, top: "100%", width: "2px", height: "6px", transform: "translateX(-50%)", background: "rgba(255,255,255,0.95)", borderRadius: "0 0 1px 1px" }} />
+                  </React.Fragment>
+                );
+              })}
             </>
-          );
+          ) : null;
 
           /* ── Shared: progress bar drag handlers ─────────────────────────── */
           const barHandlers = {
