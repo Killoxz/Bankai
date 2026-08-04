@@ -9,7 +9,8 @@ import { motion } from "framer-motion";
 import {
   User, Globe, Bell, Shield, LogOut, ChevronRight, Check,
   Moon, Sun, Monitor, Trash2, Layers, MousePointer2, Sparkles,
-  Clapperboard, MessageSquare, Download,
+  Clapperboard, MessageSquare, Download, Link2, RefreshCw, Unlink,
+  Loader2,
 } from "lucide-react";
 import { useCardAnimationStore, type CardAnimation } from "@/store/card-animation-store";
 import { useAuthStore }      from "@/store/auth-store";
@@ -24,7 +25,7 @@ import { Footer }  from "@/components/layout/footer";
 import { cn }      from "@/lib/utils";
 import { SelectMenu } from "@/components/ui/select-menu";
 
-type Section = "account" | "appearance" | "language" | "media" | "notifications" | "comments" | "privacy";
+type Section = "account" | "appearance" | "language" | "media" | "notifications" | "comments" | "privacy" | "connections";
 
 const SECTIONS: { key: Section; label: string; icon: typeof User }[] = [
   { key: "account",       label: "Account",        icon: User          },
@@ -34,6 +35,7 @@ const SECTIONS: { key: Section; label: string; icon: typeof User }[] = [
   { key: "notifications", label: "Notifications",  icon: Bell          },
   { key: "comments",      label: "Comments",       icon: MessageSquare },
   { key: "privacy",       label: "Privacy & Data", icon: Shield        },
+  { key: "connections",   label: "Connections",    icon: Link2         },
 ];
 
 const TITLE_LANGUAGES: { value: TitleLanguage; label: string; hint: string }[] = [
@@ -160,8 +162,40 @@ export function SettingsView() {
   const [clearingHistory, setClearingHistory] = useState(false);
   const [clearDone, setClearDone]         = useState(false);
 
+  // AniList connection state
+  const [anilistStatus, setAnilistStatus] = useState<{ connected: boolean; username: string | null } | null>(null);
+  const [syncingAnilist, setSyncingAnilist]   = useState(false);
+  const [syncCount, setSyncCount]             = useState<number | null>(null);
+  const [disconnecting, setDisconnecting]     = useState(false);
+  const [anilistError, setAnilistError]       = useState<string | null>(null);
+
   useEffect(() => setMounted(true), []);
+
+  // Read ?tab= and ?success= from URL on mount
+  useEffect(() => {
+    if (!mounted) return;
+    const params  = new URLSearchParams(window.location.search);
+    const tab     = params.get("tab");
+    const success = params.get("success");
+    if (tab && ["account","appearance","language","media","notifications","comments","privacy","connections"].includes(tab)) {
+      setActiveSection(tab as Section);
+    }
+    if (success === "anilist") setSyncCount(null);
+  }, [mounted]);
+
   useEffect(() => { if (mounted && !currentUser) router.replace("/login"); }, [mounted, currentUser, router]);
+
+  // Fetch AniList status when Connections tab is active
+  useEffect(() => {
+    if (activeSection !== "connections" || !currentUser) return;
+    setAnilistError(null);
+    fetch(`/api/anilist/status?username=${encodeURIComponent(currentUser)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setAnilistStatus({ connected: data.connected, username: data.anilistUsername });
+      })
+      .catch(() => {});
+  }, [activeSection, currentUser]);
 
   if (!mounted) {
     return (
@@ -203,6 +237,46 @@ export function SettingsView() {
       alert("Failed to clear history.");
     } finally {
       setClearingHistory(false);
+    }
+  }
+
+  async function handleAnilistSync() {
+    if (!currentUser) return;
+    setSyncingAnilist(true);
+    setAnilistError(null);
+    setSyncCount(null);
+    try {
+      const res = await fetch("/api/anilist/sync", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ username: currentUser }),
+      });
+      const data = await res.json() as { synced?: number; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
+      setSyncCount(data.synced ?? 0);
+    } catch (err) {
+      setAnilistError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncingAnilist(false);
+    }
+  }
+
+  async function handleAnilistDisconnect() {
+    if (!currentUser) return;
+    setDisconnecting(true);
+    setAnilistError(null);
+    try {
+      await fetch("/api/anilist/disconnect", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ username: currentUser }),
+      });
+      setAnilistStatus({ connected: false, username: null });
+      setSyncCount(null);
+    } catch {
+      setAnilistError("Failed to disconnect");
+    } finally {
+      setDisconnecting(false);
     }
   }
 
@@ -507,6 +581,124 @@ export function SettingsView() {
                 </SettingRow>
                 <p className="mt-6 text-xs text-muted-foreground">
                   Your own comments and reviews are not deleted when this is off — they are simply hidden from your view.
+                </p>
+              </div>
+            )}
+
+            {/* ── Connections ───────────────────────────────────────────── */}
+            {activeSection === "connections" && (
+              <div>
+                <SectionHeading>Connected Accounts</SectionHeading>
+                <p className="mb-5 text-sm text-muted-foreground">
+                  Link your external anime tracking accounts to sync your list automatically.
+                </p>
+
+                {/* AniList card */}
+                <div className="rounded-xl border border-border p-5">
+                  <div className="flex items-start gap-4">
+                    {/* AniList icon */}
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#02a9ff]/10">
+                      <span
+                        className="inline-block size-6 shrink-0"
+                        style={{
+                          backgroundColor: "#02a9ff",
+                          WebkitMaskImage: "url(/anilist-icon.svg)",
+                          WebkitMaskSize: "contain",
+                          WebkitMaskRepeat: "no-repeat",
+                          WebkitMaskPosition: "center",
+                          maskImage: "url(/anilist-icon.svg)",
+                          maskSize: "contain",
+                          maskRepeat: "no-repeat",
+                          maskPosition: "center",
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-card-foreground">AniList</p>
+                      {anilistStatus === null ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
+                          <Loader2 className="size-3 animate-spin" /> Checking status…
+                        </p>
+                      ) : anilistStatus.connected ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Connected as{" "}
+                          <span className="font-medium text-card-foreground">
+                            @{anilistStatus.username}
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Sync your AniList watching list to Bankai
+                        </p>
+                      )}
+
+                      {syncCount !== null && (
+                        <p className="mt-1 text-xs text-emerald-500">
+                          ✓ Synced {syncCount} anime entries
+                        </p>
+                      )}
+                      {anilistError && (
+                        <p className="mt-1 text-xs text-red-400">{anilistError}</p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {anilistStatus?.connected ? (
+                        <>
+                          <button
+                            onClick={handleAnilistSync}
+                            disabled={syncingAnilist}
+                            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-card-foreground disabled:opacity-50"
+                          >
+                            {syncingAnilist
+                              ? <Loader2 className="size-3 animate-spin" />
+                              : <RefreshCw className="size-3" />
+                            }
+                            {syncingAnilist ? "Syncing…" : "Sync Now"}
+                          </button>
+                          <button
+                            onClick={handleAnilistDisconnect}
+                            disabled={disconnecting}
+                            className="flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-500 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/[0.08] disabled:opacity-50"
+                          >
+                            <Unlink className="size-3" />
+                            {disconnecting ? "Disconnecting…" : "Disconnect"}
+                          </button>
+                        </>
+                      ) : (
+                        <a
+                          href={`/api/auth/anilist?username=${encodeURIComponent(currentUser ?? "")}`}
+                          className="flex items-center gap-1.5 rounded-lg bg-[#02a9ff]/10 px-3 py-1.5 text-xs font-semibold text-[#02a9ff] transition-colors hover:bg-[#02a9ff]/20"
+                        >
+                          <Link2 className="size-3" /> Connect
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MAL placeholder */}
+                <div className="mt-3 rounded-xl border border-border p-5 opacity-50">
+                  <div className="flex items-center gap-4">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#2e51a2]/10">
+                      <span className="text-[10px] font-black tracking-tight text-[#2e51a2]">MAL</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-card-foreground">MyAnimeList</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Coming soon</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-5 text-xs text-muted-foreground">
+                  To enable AniList, add{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono">ANILIST_CLIENT_ID</code> and{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono">ANILIST_CLIENT_SECRET</code>{" "}
+                  to your environment variables, and set the redirect URI to{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono">/api/auth/anilist/callback</code>{" "}
+                  in your AniList developer settings.
                 </p>
               </div>
             )}

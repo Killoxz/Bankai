@@ -150,9 +150,12 @@ model User {
   role          Role           @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  passwordHash  String?
-  username      String?        @unique
-  settings      Json?
+  passwordHash     String?
+  username         String?        @unique
+  settings         Json?
+  anilistId        Int?
+  anilistUsername  String?
+  anilistToken     String?
   Account       Account[]
   Comment       Comment[]
   EpisodeSource EpisodeSource[]
