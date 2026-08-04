@@ -113,7 +113,7 @@ export function CommentsSection({
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="rounded-xl border border-white/[0.06] bg-[#111]">
 
       {/* ── Episode / Anime tab switcher ─────────────────────────────────── */}
       <div className="flex items-center border-b border-white/[0.06] px-4 py-3">
