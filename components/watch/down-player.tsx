@@ -95,9 +95,15 @@ function MI({ name, className, size = 20, filled = true }: {
 }) {
   return (
     <span
-      className={["material-symbols-rounded select-none leading-none", className].filter(Boolean).join(" ")}
+      className={["material-symbols-rounded select-none", className].filter(Boolean).join(" ")}
       aria-hidden
-      style={{ fontSize: size, fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24` }}
+      style={{
+        fontSize: size,
+        lineHeight: 1,
+        display: "inline-block",
+        verticalAlign: "middle",
+        fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+      }}
     >
       {name}
     </span>
@@ -1023,7 +1029,7 @@ export function DownPlayer({
                 {/* Volume */}
                 <div className="flex items-center gap-1">
                   <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                    className="text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                    className="flex items-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                     {muted || volume === 0 ? <MI name="volume_off" size={20} /> : <MI name="volume_up" size={20} />}
                   </button>
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
@@ -1175,7 +1181,7 @@ export function DownPlayer({
                 {/* Volume */}
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => { const v = videoRef.current; if (v) v.muted = !v.muted; }}
-                    className="shrink-0 text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                    className="flex shrink-0 items-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                     {muted || volume === 0 ? <MI name="volume_off" size={18} /> : <MI name="volume_up" size={18} />}
                   </button>
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
