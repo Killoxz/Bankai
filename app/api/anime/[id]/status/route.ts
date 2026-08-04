@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { ensureAnimeCached } from "@/lib/ensure-anime";
+import { prisma }               from "@/lib/prisma";
+import { ensureAnimeCached }    from "@/lib/ensure-anime";
+import { pushStatusToAniList }  from "@/lib/anilist-push";
 import type { ListStatus } from "@prisma/client";
 
 const VALID_STATUSES: ListStatus[] = ["WATCHING", "PLAN_TO_WATCH", "COMPLETED", "DROPPED", "ON_HOLD"];
@@ -39,7 +40,7 @@ export async function POST(
 
     const user = await prisma.user.findFirst({
       where: { username: { equals: un, mode: "insensitive" } },
-      select: { id: true },
+      select: { id: true, anilistId: true, anilistToken: true },
     });
     if (!user) return NextResponse.json({ error: "Account not found." }, { status: 401 });
 
@@ -47,17 +48,25 @@ export async function POST(
 
     if (status === null) {
       await prisma.listEntry.deleteMany({ where: { userId: user.id, animeId: localId } });
+      if (user.anilistToken && user.anilistId) {
+        pushStatusToAniList(user.anilistToken, user.anilistId, anilistId, null).catch(console.error);
+      }
       return NextResponse.json({ status: null });
     }
 
     if (!VALID_STATUSES.includes(status))
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
 
-    await prisma.listEntry.upsert({
-      where: { userId_animeId: { userId: user.id, animeId: localId } },
+    const entry = await prisma.listEntry.upsert({
+      where:  { userId_animeId: { userId: user.id, animeId: localId } },
       create: { userId: user.id, animeId: localId, status },
       update: { status },
+      select: { score: true },
     });
+
+    if (user.anilistToken && user.anilistId) {
+      pushStatusToAniList(user.anilistToken, user.anilistId, anilistId, status, entry.score).catch(console.error);
+    }
 
     return NextResponse.json({ status });
   } catch (e) {
