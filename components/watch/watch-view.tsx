@@ -98,6 +98,16 @@ export function WatchView({
   const [autoSkip,  setAutoSkip]  = useState(storeAutoSkip);
   const [lightsOff, setLightsOff] = useState(false);
 
+  // null = not yet measured (suppress comments until we know); avoids layout flash
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const [isLoadingSources, setIsLoadingSources] = useState(!initialEpisodesRaw);
   const [failedProviders, setFailedProviders]   = useState<Set<string>>(new Set());
   const handleProviderError = useCallback((provider: string) => {
@@ -265,6 +275,14 @@ export function WatchView({
               isLoading={isLoadingSources}
             />
             <AnimeInfoCard detail={detail} animeId={animeId} />
+            {/* Desktop only: comments directly below the info card */}
+            {showComments && isDesktop === true && (
+              <CommentsSection
+                animeId={animeId}
+                malId={detail.idMal ?? null}
+                episode={episode}
+              />
+            )}
           </motion.div>
 
           {/* Right: episode list → seasons → related */}
@@ -296,17 +314,13 @@ export function WatchView({
             <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
           </motion.div>
 
-          {/* Comments — third grid item so it sits after both columns on mobile
-              (naturally last in the stack), and on desktop snaps back into the
-              left column via explicit grid placement. */}
-          {showComments && (
-            <div className="lg:col-start-1 lg:row-start-2">
-              <CommentsSection
-                animeId={animeId}
-                malId={detail.idMal ?? null}
-                episode={episode}
-              />
-            </div>
+          {/* Mobile only: comments after both columns so they sit at the bottom */}
+          {showComments && isDesktop === false && (
+            <CommentsSection
+              animeId={animeId}
+              malId={detail.idMal ?? null}
+              episode={episode}
+            />
           )}
         </div>
     </>
