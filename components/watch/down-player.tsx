@@ -963,7 +963,7 @@ export function DownPlayer({
 
               {/* ── Segmented progress bar: gaps between segments = chapter cuts ─ */}
               <div ref={progressRef} {...barHandlers}
-                className="group/bar relative mb-2.5 h-3 cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3.5">
+                className="group/bar relative mb-2.5 h-[9px] cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3">
                 {duration > 0 ? (() => {
                   const pts = [...new Set([
                     0,
@@ -1124,14 +1124,46 @@ export function DownPlayer({
                   {playing ? <MI name="pause" size={18} /> : <MI name="play_arrow" size={18} />}
                 </button>
 
-                {/* Inline progress bar (takes all remaining width) */}
+                {/* Inline segmented progress bar — same chapter cuts as plyr */}
                 <div ref={progressRef} {...barHandlers}
-                  className="group/bar relative h-1 flex-1 cursor-pointer rounded-full bg-white/25 transition-all duration-150 hover:h-2">
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${bufferedPct}%` }} />
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${progress}%` }} />
-                  {cutMarkers}
-                  {/* Always-visible scrubber dot in natv */}
-                  <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg transition-all group-hover/bar:size-4"
+                  className="group/bar relative h-[9px] flex-1 cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3">
+                  {duration > 0 ? (() => {
+                    const pts = [...new Set([
+                      0,
+                      ...(intro ? [intro.start, intro.end] : []),
+                      ...(outro ? [outro.start, outro.end] : []),
+                      duration,
+                    ].filter((p) => p >= 0 && p <= duration))].sort((a, b) => a - b);
+                    const bufTime = (bufferedPct / 100) * duration;
+                    return pts.slice(0, -1).map((s, idx) => {
+                      const e    = pts[idx + 1];
+                      const dur  = e - s;
+                      const skip = (!!intro && s >= intro.start - 0.05 && e <= intro.end + 0.05) ||
+                                   (!!outro && s >= outro.start - 0.05 && e <= outro.end + 0.05);
+                      const lPct    = (s / duration) * 100;
+                      const wPct    = (dur / duration) * 100;
+                      const watchPct = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(currentTime, e) - s) / dur) * 100)) : 0;
+                      const bufPct   = dur > 0 ? Math.max(0, Math.min(100, ((Math.min(bufTime, e) - s) / dur) * 100)) : 0;
+                      return (
+                        <div key={idx}
+                          className="absolute inset-y-0 overflow-hidden rounded-[2px]"
+                          style={{ left: `calc(${lPct}% + 1.5px)`, width: `calc(${wPct}% - 3px)` }}>
+                          <div className={["absolute inset-0", skip ? "bg-white/[0.16]" : "bg-white/[0.32]"].join(" ")} />
+                          {bufPct > watchPct && (
+                            <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: `${bufPct}%` }} />
+                          )}
+                          {watchPct > 0 && (
+                            <div className={["absolute inset-y-0 left-0", skip ? "bg-primary/70" : "bg-primary"].join(" ")}
+                              style={{ width: `${watchPct}%` }} />
+                          )}
+                        </div>
+                      );
+                    });
+                  })() : (
+                    <div className="absolute inset-y-0 left-0 w-full rounded-[2px] bg-white/25" />
+                  )}
+                  {/* Always-visible scrubber dot */}
+                  <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg transition-all group-hover/bar:size-3.5"
                     style={{ left: `${progress}%` }} />
                 </div>
 
