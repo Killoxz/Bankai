@@ -14,6 +14,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Bankai — Watch Anime Online",
   description: "Stream anime in HD — sub and dub.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/bankai-icon-512.png", sizes: "192x192", type: "image/png" },
+      { url: "/bankai-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/bankai-icon-512.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -27,6 +37,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/bankai-icon-512.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/bankai-icon-512.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/bankai-icon-512.png" />
       </head>
       <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
         <Providers>
