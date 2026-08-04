@@ -180,7 +180,7 @@ export function AnimeInfoCard({ detail, animeId }: AnimeInfoCardProps) {
     : null;
 
   return (
-    <div className="mb-6 overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
 
       {/* ── Cover + title/genres/description ─────────────────────────────── */}
       <div className="flex gap-4 p-4">

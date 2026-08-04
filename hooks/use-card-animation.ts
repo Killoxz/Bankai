@@ -25,43 +25,39 @@ export function useCardAnimation() {
       }
 
       if (cardAnimation === "glow") {
-        // Holographic prism: 3D tilt + shifting rainbow spectrum + specular highlight
+        // Aura: no rotation — a shifting color glow bleeds out from behind the card
         const wrap = wrapRef.current;
         if (!wrap) return;
         const { left, top, width, height } = wrap.getBoundingClientRect();
         const x = (e.clientX - left) / width;
         const y = (e.clientY - top) / height;
 
-        // 3D tilt (same feel as tilt mode)
-        const rY = (x - 0.5) * TILT_Y * 1.6;
-        const rX = -(y - 0.5) * TILT_X * 1.6;
-        card.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.07,1.07,1.07)`;
-        card.style.boxShadow = `${-rY * 1.5}px ${rX * 1.5}px 48px rgba(0,0,0,0.6)`;
+        // Hue sweeps 200–320 (cyan → blue → purple → magenta) as cursor moves
+        const hue  = Math.round(200 + x * 120);
+        const hue2 = (hue + 40) % 360;
+        const hue3 = (hue + 80) % 360;
 
+        // Flat — no tilt at all
+        card.style.transform = "scale3d(1.06,1.06,1.06)";
+        card.style.boxShadow = [
+          // Tight inner border glow
+          `0 0 0 1px hsla(${hue},85%,65%,0.35)`,
+          // Mid aura
+          `0 0 20px 5px hsla(${hue},90%,60%,0.50)`,
+          // Wide outer bleed — two-tone so it looks dimensional
+          `0 0 55px 18px hsla(${hue2},85%,55%,0.35)`,
+          `0 0 90px 30px hsla(${hue3},80%,50%,0.18)`,
+          // Depth shadow so card still lifts off the page
+          `0 24px 48px rgba(0,0,0,0.55)`,
+        ].join(", ");
+
+        // Subtle inner bright spot at cursor — keeps it feeling interactive
         if (glare) {
-          // Hue shifts across the full spectrum as you move the mouse
-          const hue   = Math.round((x * 0.65 + y * 0.35) * 360);
-          // Stripe angle tilts slightly with horizontal mouse position
-          const angle = 112 + (x - 0.5) * 45;
-
-          glare.style.opacity    = "1";
-          glare.style.mixBlendMode = "screen";
-          glare.style.background = [
-            // Full-spectrum rainbow stripes
-            `linear-gradient(${angle}deg,` +
-              `hsla(${(hue      ) % 360},100%,62%,0.55) 0%,` +
-              `hsla(${(hue +  55) % 360},100%,68%,0.50) 17%,` +
-              `hsla(${(hue + 110) % 360},100%,62%,0.55) 33%,` +
-              `hsla(${(hue + 165) % 360},100%,68%,0.50) 50%,` +
-              `hsla(${(hue + 220) % 360},100%,62%,0.55) 66%,` +
-              `hsla(${(hue + 280) % 360},100%,68%,0.50) 83%,` +
-              `hsla(${(hue + 335) % 360},100%,62%,0.55) 100%)`,
-            // Bright specular highlight that follows the cursor
-            `radial-gradient(ellipse 48% 52% at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,` +
-              `rgba(255,255,255,0.55) 0%,` +
-              `rgba(255,255,255,0.18) 38%,` +
-              `transparent 72%)`,
-          ].join(", ");
+          glare.style.opacity      = "1";
+          glare.style.mixBlendMode = "";
+          glare.style.background   =
+            `radial-gradient(circle 55% at ${Math.round(x * 100)}% ${Math.round(y * 100)}%,` +
+            `rgba(255,255,255,0.14) 0%, transparent 70%)`;
         }
         return;
       }

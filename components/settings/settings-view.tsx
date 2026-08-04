@@ -406,7 +406,7 @@ export function SettingsView() {
                     options={[
                       { value: "tilt",  label: "3D Tilt", icon: Layers        },
                       { value: "hover", label: "Plain",   icon: MousePointer2 },
-                      { value: "glow",  label: "Holo",    icon: Sparkles      },
+                      { value: "glow",  label: "Aura",    icon: Sparkles      },
                     ]}
                   />
                 </SettingRow>

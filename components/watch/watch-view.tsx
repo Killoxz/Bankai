@@ -202,10 +202,8 @@ export function WatchView({
         <div className="fixed inset-0 z-10 bg-black/85 pointer-events-none" aria-hidden />
       )}
 
-      <div className="space-y-6">
-        {/* Two-column: player | episode list */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left: player + server selector */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+          {/* Left: player + server selector + info card + comments */}
           <motion.div
             className="relative z-20 min-w-0 space-y-4"
             initial={{ opacity: 0, y: 12 }}
@@ -252,6 +250,8 @@ export function WatchView({
               failedProviders={failedProviders}
               isLoading={isLoadingSources}
             />
+            <AnimeInfoCard detail={detail} animeId={animeId} />
+            {showComments && <CommentsSection animeId={animeId} />}
           </motion.div>
 
           {/* Right: episode list → seasons → related */}
@@ -283,18 +283,6 @@ export function WatchView({
             <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
           </motion.div>
         </div>
-
-        {/* Full-width: info card → comments */}
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <AnimeInfoCard detail={detail} animeId={animeId} />
-          {showComments && <CommentsSection animeId={animeId} />}
-        </motion.div>
-      </div>
     </>
   );
 }
