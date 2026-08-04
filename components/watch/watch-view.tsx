@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { DownPlayer } from "./down-player";
+import { DownPlayer }      from "./down-player";
 import { CommentsSection } from "./comments-section";
-import { SeriesSidebar } from "./series-sidebar";
-import { EpisodeList } from "./episode-list";
-import { SeasonsPanel } from "./seasons-panel";
-import { ServerSelector } from "./server-selector";
+import { SeriesSidebar }   from "./series-sidebar";
+import { EpisodeList }     from "./episode-list";
+import { SeasonsPanel }    from "./seasons-panel";
+import { ServerSelector }  from "./server-selector";
+import { AnimeInfoCard }   from "./anime-info-card";
 import type { AnimeDetail } from "@/lib/anilist";
 import {
   parseProviders,
@@ -201,84 +202,97 @@ export function WatchView({
         <div className="fixed inset-0 z-10 bg-black/85 pointer-events-none" aria-hidden />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Left: player + server selector + comments */}
-        <motion.div
-          className="relative z-20 min-w-0 space-y-4"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <DownPlayer
-            poster={detail.bannerImage ?? detail.coverImage.large}
-            animeId={animeId}
-            malId={detail.idMal}
-            animeTitle={detail.title.english ?? detail.title.romaji ?? undefined}
-            animeCover={detail.coverImage.large ?? undefined}
-            episode={episode}
-            providersData={providersData}
-            selectedProvider={selectedProvider}
-            audio={audio}
-            onProviderChange={setSelectedProvider}
-            onAudioChange={handleAudioChange}
-            autoplay={autoplay}
-            autoNext={autoNext}
-            autoSkip={autoSkip}
-            lightsOff={lightsOff}
-            onAutoplayChange={(v) => { setAutoplay(v);  setStoreAutoPlay(v);  }}
-            onAutoNextChange={(v) => { setAutoNext(v);  setStoreAutoNext(v);  }}
-            onAutoSkipChange={(v) => { setAutoSkip(v);  setStoreAutoSkip(v);  }}
-            onLightsOffChange={setLightsOff}
-            onPrevEpisode={handlePrevEp}
-            onNextEpisode={handleNextEp}
-            onEpisodeEnd={autoNext ? handleNextEp : undefined}
-            currentEpisode={episode}
-            totalEpisodes={totalEpisodes}
-            onError={handleProviderError}
-          />
-          <ServerSelector
-            episode={episode}
-            episodeMeta={epListData.find((e) => e.number === episode) ?? null}
-            audio={audio}
-            hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
-            hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
-            onAudioChange={handleAudioChange}
-            providersData={providersData}
-            selectedProvider={selectedProvider}
-            onProviderChange={setSelectedProvider}
-            failedProviders={failedProviders}
-            isLoading={isLoadingSources}
-          />
-          {showComments && <CommentsSection animeId={animeId} />}
-        </motion.div>
+      <div className="space-y-6">
+        {/* Two-column: player | episode list */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+          {/* Left: player + server selector */}
+          <motion.div
+            className="relative z-20 min-w-0 space-y-4"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <DownPlayer
+              poster={detail.bannerImage ?? detail.coverImage.large}
+              animeId={animeId}
+              malId={detail.idMal}
+              animeTitle={detail.title.english ?? detail.title.romaji ?? undefined}
+              animeCover={detail.coverImage.large ?? undefined}
+              episode={episode}
+              providersData={providersData}
+              selectedProvider={selectedProvider}
+              audio={audio}
+              onProviderChange={setSelectedProvider}
+              onAudioChange={handleAudioChange}
+              autoplay={autoplay}
+              autoNext={autoNext}
+              autoSkip={autoSkip}
+              lightsOff={lightsOff}
+              onAutoplayChange={(v) => { setAutoplay(v);  setStoreAutoPlay(v);  }}
+              onAutoNextChange={(v) => { setAutoNext(v);  setStoreAutoNext(v);  }}
+              onAutoSkipChange={(v) => { setAutoSkip(v);  setStoreAutoSkip(v);  }}
+              onLightsOffChange={setLightsOff}
+              onPrevEpisode={handlePrevEp}
+              onNextEpisode={handleNextEp}
+              onEpisodeEnd={autoNext ? handleNextEp : undefined}
+              currentEpisode={episode}
+              totalEpisodes={totalEpisodes}
+              onError={handleProviderError}
+            />
+            <ServerSelector
+              episode={episode}
+              episodeMeta={epListData.find((e) => e.number === episode) ?? null}
+              audio={audio}
+              hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
+              hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
+              onAudioChange={handleAudioChange}
+              providersData={providersData}
+              selectedProvider={selectedProvider}
+              onProviderChange={setSelectedProvider}
+              failedProviders={failedProviders}
+              isLoading={isLoadingSources}
+            />
+          </motion.div>
 
-        {/* Right: episode list → seasons → related */}
+          {/* Right: episode list → seasons → related */}
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+          >
+            <EpisodeList
+              totalEpisodes={totalEpisodes}
+              currentEpisode={episode}
+              onSelectEpisode={handleSelectEpisode}
+              episodeData={epListData}
+              hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
+              hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
+              currentAudio={audio}
+              providersData={providersData}
+              selectedProvider={selectedProvider}
+              onProviderChange={setSelectedProvider}
+              onAudioChange={handleAudioChange}
+            />
+            <SeasonsPanel
+              relations={detail.relations.edges}
+              currentAnimeId={animeId}
+              currentCover={currentCover}
+              currentTitle={detail.title.english ?? detail.title.romaji}
+            />
+            <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
+          </motion.div>
+        </div>
+
+        {/* Full-width: info card → comments */}
         <motion.div
           className="space-y-4"
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.05 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <EpisodeList
-            totalEpisodes={totalEpisodes}
-            currentEpisode={episode}
-            onSelectEpisode={handleSelectEpisode}
-            episodeData={epListData}
-            hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
-            hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
-            currentAudio={audio}
-            providersData={providersData}
-            selectedProvider={selectedProvider}
-            onProviderChange={setSelectedProvider}
-            onAudioChange={handleAudioChange}
-          />
-          <SeasonsPanel
-            relations={detail.relations.edges}
-            currentAnimeId={animeId}
-            currentCover={currentCover}
-            currentTitle={detail.title.english ?? detail.title.romaji}
-          />
-          <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
+          <AnimeInfoCard detail={detail} animeId={animeId} />
+          {showComments && <CommentsSection animeId={animeId} />}
         </motion.div>
       </div>
     </>

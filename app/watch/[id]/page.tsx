@@ -3,10 +3,9 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { fetchEpisodesRaw } from "@/lib/streaming";
-import { Navbar }         from "@/components/layout/navbar";
-import { Footer }         from "@/components/layout/footer";
-import { WatchView }      from "@/components/watch/watch-view";
-import { AnimeInfoCard }  from "@/components/watch/anime-info-card";
+import { Navbar }    from "@/components/layout/navbar";
+import { Footer }    from "@/components/layout/footer";
+import { WatchView } from "@/components/watch/watch-view";
 
 export const revalidate = 3600;
 
@@ -32,9 +31,6 @@ export default async function WatchPage({
   const anilistId = Number(id);
   if (!Number.isInteger(anilistId)) notFound();
 
-  // Fetch AniList detail + streaming episodes in parallel server-side.
-  // Episodes are cached for 5 min (revalidate: 300 in fetchEpisodesRaw),
-  // so subsequent page loads are instant — no client-side waterfall.
   const [detail, episodesRaw] = await Promise.all([
     getAnimeDetail(anilistId).catch(() => null),
     fetchEpisodesRaw(anilistId),
@@ -44,11 +40,11 @@ export default async function WatchPage({
 
   const initialEpisode = Math.max(1, Number(sp.ep ?? 1) || 1);
   const initialAudio: "sub" | "dub" = sp.audio === "dub" ? "dub" : "sub";
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10">
-        <AnimeInfoCard detail={detail} animeId={anilistId} />
         <Suspense>
           <WatchView
             detail={detail}

@@ -1,16 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { Layers } from "lucide-react";
+import { Tv2 } from "lucide-react";
 import type { RelationEntry } from "@/lib/anilist";
+import { cn } from "@/lib/utils";
 
 const SEASON_TYPES = new Set(["PREQUEL", "SEQUEL", "SIDE_STORY", "SPIN_OFF", "PARENT", "ALTERNATIVE"]);
 
+function shortLabel(title: string, relationType: string): string {
+  const s = title.match(/season\s*(\d+)/i);
+  if (s) return `Season ${s[1]}`;
+  const p = title.match(/part\s*(\d+)/i);
+  if (p) return `Part ${p[1]}`;
+  switch (relationType) {
+    case "SIDE_STORY":   return "Specials";
+    case "SPIN_OFF":     return "Spin-off";
+    case "ALTERNATIVE":  return "Alternative";
+    case "PARENT":       return "Main Series";
+    case "PREQUEL":      return "Prequel";
+    default:             return title.length > 22 ? title.slice(0, 20) + "…" : title;
+  }
+}
+
+function currentLabel(title: string): string {
+  const s = title.match(/season\s*(\d+)/i);
+  if (s) return `Season ${s[1]}`;
+  const p = title.match(/part\s*(\d+)/i);
+  if (p) return `Part ${p[1]}`;
+  return "Season 1";
+}
+
 interface SeasonsPanelProps {
-  relations: RelationEntry[];
+  relations:      RelationEntry[];
   currentAnimeId: number;
-  currentCover?: string;
-  currentTitle?: string;
+  currentCover?:  string;
+  currentTitle?:  string;
 }
 
 export function SeasonsPanel({
@@ -20,59 +44,49 @@ export function SeasonsPanel({
   currentTitle,
 }: SeasonsPanelProps) {
   const seasons = relations.filter(
-    (r) => r.node.type === "ANIME" && SEASON_TYPES.has(r.relationType)
+    (r) => r.node.type === "ANIME" && SEASON_TYPES.has(r.relationType),
   );
 
   if (seasons.length === 0) return null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/[0.05] bg-[#111]">
+      {/* Header */}
       <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
-        <Layers className="size-4 text-white/50" />
-        <h3 className="text-sm font-bold uppercase tracking-wider text-white">Seasons</h3>
+        <Tv2 className="size-4 text-primary" />
+        <h3 className="text-sm font-bold uppercase tracking-widest text-white">Seasons</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 p-3 sm:grid-cols-3">
+      {/* Grid */}
+      <div className="grid grid-cols-2 gap-2 p-2.5">
         {/* Current anime — always first */}
-        <div className="relative aspect-[2/3] overflow-hidden rounded-lg ring-2 ring-primary/60">
+        <div className="group relative aspect-video overflow-hidden rounded-lg ring-2 ring-primary shadow-[0_0_12px_rgba(var(--primary-rgb,139,92,246),0.4)]">
           {currentCover ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={currentCover}
-              alt=""
-              className="size-full object-cover"
-            />
+            <img src={currentCover} alt="" className="size-full object-cover" />
           ) : (
             <div className="size-full bg-primary/10" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
-            Watching
-          </span>
-          <div className="absolute inset-x-0 bottom-0 p-2">
-            <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white">
-              {currentTitle ?? "Current"}
-            </p>
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <p className="absolute inset-x-0 bottom-0 px-2.5 pb-2 text-[13px] font-semibold leading-tight text-primary drop-shadow-md">
+            {currentTitle ? currentLabel(currentTitle) : "Season 1"}
+          </p>
         </div>
 
         {seasons.map(({ node, relationType }) => {
           const isActive = node.id === currentAnimeId;
-          const label = relationType
-            .toLowerCase()
-            .replace(/_/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase());
+          const label    = shortLabel(node.title.english ?? node.title.romaji, relationType);
 
           return (
             <Link
               key={node.id}
               href={`/watch/${node.id}`}
-              className={[
-                "group relative aspect-[2/3] overflow-hidden rounded-lg ring-1 transition-all duration-200",
+              className={cn(
+                "group relative aspect-video overflow-hidden rounded-lg transition-all duration-200",
                 isActive
-                  ? "ring-primary/60"
-                  : "ring-white/0 hover:ring-white/20",
-              ].join(" ")}
+                  ? "ring-2 ring-primary shadow-[0_0_12px_rgba(var(--primary-rgb,139,92,246),0.4)]"
+                  : "ring-1 ring-white/0 hover:ring-white/20",
+              )}
             >
               {node.coverImage.large ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -85,18 +99,13 @@ export function SeasonsPanel({
               ) : (
                 <div className="size-full bg-white/5" />
               )}
-
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
-              <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <p className={cn(
+                "absolute inset-x-0 bottom-0 px-2.5 pb-2 text-[13px] font-semibold leading-tight drop-shadow-md",
+                isActive ? "text-primary" : "text-white",
+              )}>
                 {label}
-              </span>
-
-              <div className="absolute inset-x-0 bottom-0 p-2">
-                <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white">
-                  {node.title.english ?? node.title.romaji}
-                </p>
-              </div>
+              </p>
             </Link>
           );
         })}
