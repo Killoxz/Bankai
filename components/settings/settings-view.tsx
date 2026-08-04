@@ -398,18 +398,20 @@ export function SettingsView() {
                   </div>
                 </SettingRow>
 
-                {/* Card animation */}
-                <SettingRow label="Card animation" hint="How anime cards react when you hover over them">
-                  <ChipGroup<CardAnimation>
-                    value={cardAnimation}
-                    onChange={setCardAnimation}
-                    options={[
-                      { value: "tilt",  label: "3D Tilt", icon: Layers        },
-                      { value: "hover", label: "Plain",   icon: MousePointer2 },
-                      { value: "float", label: "Float",   icon: Sparkles      },
-                    ]}
-                  />
-                </SettingRow>
+                {/* Card animation — hidden on mobile (touch devices have no hover) */}
+                <div className="hidden md:block">
+                  <SettingRow label="Card animation" hint="How anime cards react when you hover over them">
+                    <ChipGroup<CardAnimation>
+                      value={cardAnimation}
+                      onChange={setCardAnimation}
+                      options={[
+                        { value: "tilt",  label: "3D Tilt", icon: Layers        },
+                        { value: "hover", label: "Plain",   icon: MousePointer2 },
+                        { value: "float", label: "Float",   icon: Sparkles      },
+                      ]}
+                    />
+                  </SettingRow>
+                </div>
 
                 {/* Watch history on home */}
                 <SettingRow label="Watch history on home" hint="Show or hide the Continue Watching row on the home page">
