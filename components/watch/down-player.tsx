@@ -969,7 +969,7 @@ export function DownPlayer({
 
               {/* ── Segmented progress bar: gaps between segments = chapter cuts ─ */}
               <div ref={progressRef} {...barHandlers}
-                className="group/bar relative mb-2.5 h-[9px] cursor-pointer overflow-visible transition-[height] duration-150 hover:h-3">
+                className="group/bar relative mb-2.5 h-[5px] cursor-pointer overflow-visible transition-[height] duration-150 hover:h-[9px]">
                 {duration > 0 ? (() => {
                   const pts = [...new Set([
                     0,
