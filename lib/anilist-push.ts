@@ -51,12 +51,13 @@ export async function pushStatusToAniList(
   const anilistStatus = STATUS_MAP[status];
   if (!anilistStatus) return;
 
-  const vars: Record<string, unknown> = { mediaId: anilistMediaId, status: anilistStatus };
-  if (typeof score === "number") vars.scoreRaw = Math.round(score * 10); // 0–10 → 0–100
-
-  await gql(token, `
-    mutation ($mediaId: Int, $status: MediaListStatus, $scoreRaw: Int) {
-      SaveMediaListEntry(mediaId: $mediaId, status: $status, scoreRaw: $scoreRaw) { id status }
+  const res = await gql(token, `
+    mutation ($mediaId: Int, $status: MediaListStatus) {
+      SaveMediaListEntry(mediaId: $mediaId, status: $status) { id status }
     }
-  `, vars);
+  `, { mediaId: anilistMediaId, status: anilistStatus });
+
+  if (res.errors?.length) {
+    throw new Error(`AniList mutation error: ${res.errors.map((e) => e.message).join(", ")}`);
+  }
 }

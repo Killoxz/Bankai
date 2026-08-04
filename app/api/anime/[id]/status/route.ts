@@ -64,11 +64,17 @@ export async function POST(
       select: { score: true },
     });
 
+    let anilistError: string | null = null;
     if (user.anilistToken && user.anilistId) {
-      pushStatusToAniList(user.anilistToken, user.anilistId, anilistId, status, entry.score).catch(console.error);
+      try {
+        await pushStatusToAniList(user.anilistToken, user.anilistId, anilistId, status, entry.score);
+      } catch (err) {
+        anilistError = String(err);
+        console.error("[anilist-push]", err);
+      }
     }
 
-    return NextResponse.json({ status });
+    return NextResponse.json({ status, anilistSynced: !anilistError, anilistError });
   } catch (e) {
     console.error("status post error", e);
     return NextResponse.json({ error: "Couldn't update your list. Please try again." }, { status: 500 });
