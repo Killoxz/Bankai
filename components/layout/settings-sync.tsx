@@ -3,40 +3,45 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme }                     from "next-themes";
 import { useAuthStore }                 from "@/store/auth-store";
-import { useLanguageStore }             from "@/store/language-store";
+import { useLanguageStore, type TitleLanguage, type DefaultAudio } from "@/store/language-store";
 import { usePlayerPrefsStore }          from "@/store/player-prefs-store";
 import { useSettingsStore }             from "@/store/settings-store";
+import { useCardAnimationStore, type CardAnimation } from "@/store/card-animation-store";
 
-const VALID_THEMES = new Set(["dark", "light", "anilist"]);
+const VALID_THEMES          = new Set(["dark", "light", "anilist"]);
+const VALID_CARD_ANIMATIONS = new Set(["tilt", "hover", "float"]);
 
-function applyTheme(value: string, setTheme: (t: string) => void) {
+function withThemeTransition(fn: () => void) {
   document.documentElement.classList.add("theme-transition");
-  setTheme(value);
+  fn();
   setTimeout(() => document.documentElement.classList.remove("theme-transition"), 350);
 }
 
 /**
  * Invisible component mounted once at the root.
- * Syncs ALL user preferences (language, player, appearance, media, etc.)
- * to and from the database so settings follow the user across devices.
  *
- * - On login: pulls the remote settings blob and applies it to every store.
- * - On any preference change (3 s debounce): pushes the full blob to the API.
- * - Theme changes are pushed with a faster 500 ms debounce and polled every
- *   5 s so theme switches propagate to other signed-in devices in near-realtime.
- * - Logged-out users keep their preferences only in localStorage.
+ * Sync strategy:
+ *  1. On login  — pull DB blob, apply every setting with smooth transitions.
+ *  2. On change — 150 ms micro-debounce, then:
+ *       a. BroadcastChannel → zero-latency same-browser cross-tab apply.
+ *       b. PUT /api/settings → persists to DB for cross-device sync.
+ *  3. Poll      — every 2 s compare DB `updatedAt`; apply if changed.
+ *                 `applyingRemote` flag prevents echo-saves back to DB.
+ *
+ * Every setting across all stores (theme, cardAnimation, language, player,
+ * appearance, media, notifications) is covered.
  */
 export function SettingsSync() {
-  const currentUser = useAuthStore((s) => s.currentUser);
+  const currentUser  = useAuthStore((s) => s.currentUser);
   const { theme, setTheme } = useTheme();
 
-  /* ── Language store ──────────────────────────────────────────────── */
+  /* ── Language ──────────────────────────────────────────────────── */
   const titleLanguage    = useLanguageStore((s) => s.titleLanguage);
   const defaultAudio     = useLanguageStore((s) => s.defaultAudio);
   const setTitleLanguage = useLanguageStore((s) => s.setTitleLanguage);
   const setDefaultAudio  = useLanguageStore((s) => s.setDefaultAudio);
 
-  /* ── Player prefs store ──────────────────────────────────────────── */
+  /* ── Player prefs ──────────────────────────────────────────────── */
   const captionsOn   = usePlayerPrefsStore((s) => s.captionsOn);
   const captionSize  = usePlayerPrefsStore((s) => s.captionSize);
   const captionColor = usePlayerPrefsStore((s) => s.captionColor);
@@ -44,7 +49,7 @@ export function SettingsSync() {
   const captionFont  = usePlayerPrefsStore((s) => s.captionFont);
   const speed        = usePlayerPrefsStore((s) => s.speed);
 
-  /* ── Settings store ──────────────────────────────────────────────── */
+  /* ── Appearance / media settings ──────────────────────────────── */
   const showWatchHistory   = useSettingsStore((s) => s.showWatchHistory);
   const cardLayout         = useSettingsStore((s) => s.cardLayout);
   const cardSize           = useSettingsStore((s) => s.cardSize);
@@ -57,20 +62,99 @@ export function SettingsSync() {
   const notifNewEp         = useSettingsStore((s) => s.notifNewEp);
   const notifTrending      = useSettingsStore((s) => s.notifTrending);
 
-  const loaded          = useRef(false);
-  const saveTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const themeSaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevUser        = useRef<string | null>(null);
+  /* ── Card animation ────────────────────────────────────────────── */
+  const cardAnimation    = useCardAnimationStore((s) => s.cardAnimation);
+  const setCardAnimation = useCardAnimationStore((s) => s.setCardAnimation);
 
-  // Becomes true after the first DB load completes — prevents pre-load saves
-  // from overwriting the server's authoritative theme value.
-  const [synced, setSynced] = useState(false);
+  const [synced, setSynced]  = useState(false);
+  const loaded               = useRef(false);
+  const prevUser             = useRef<string | null>(null);
+  const saveTimer            = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemote       = useRef(false);
+  const lastUpdatedAt        = useRef<string | null>(null);
+  const bcRef                = useRef<BroadcastChannel | null>(null);
 
-  /* ── Load from DB on login ───────────────────────────────────────── */
+  /* ── applyBlobRef ──────────────────────────────────────────────────
+   * Re-assigned every render so BC and poll callbacks always close over
+   * the freshest comparator values (theme, cardAnimation, etc.).
+   * Only calls store setters when a value actually differs — prevents
+   * unnecessary re-renders and breaks any potential update loop.
+   * ---------------------------------------------------------------- */
+  const applyBlobRef = useRef<(raw: Record<string, unknown>) => void>(() => {});
+  applyBlobRef.current = (raw) => {
+    const lang = useLanguageStore.getState();
+    const pp   = usePlayerPrefsStore.getState();
+    const st   = useSettingsStore.getState();
+    const ca   = useCardAnimationStore.getState();
+
+    applyingRemote.current = true;
+
+    /* Theme */
+    if (typeof raw.theme === "string" && VALID_THEMES.has(raw.theme) && raw.theme !== theme) {
+      withThemeTransition(() => setTheme(raw.theme as string));
+    }
+
+    /* Card animation */
+    if (
+      typeof raw.cardAnimation === "string" &&
+      VALID_CARD_ANIMATIONS.has(raw.cardAnimation) &&
+      raw.cardAnimation !== ca.cardAnimation
+    ) {
+      ca.setCardAnimation(raw.cardAnimation as CardAnimation);
+    }
+
+    /* Language */
+    if (typeof raw.titleLanguage === "string" && raw.titleLanguage !== lang.titleLanguage) {
+      lang.setTitleLanguage(raw.titleLanguage as TitleLanguage);
+    }
+    if (typeof raw.defaultAudio === "string" && raw.defaultAudio !== lang.defaultAudio) {
+      lang.setDefaultAudio(raw.defaultAudio as DefaultAudio);
+    }
+
+    /* Player prefs */
+    if (typeof raw.captionsOn   === "boolean" && raw.captionsOn   !== pp.captionsOn)   pp.setCaptionsOn(raw.captionsOn);
+    if (typeof raw.captionSize  === "string"  && raw.captionSize  !== pp.captionSize)  pp.setCaptionSize(raw.captionSize);
+    if (typeof raw.captionColor === "string"  && raw.captionColor !== pp.captionColor) pp.setCaptionColor(raw.captionColor);
+    if (typeof raw.captionBg    === "string"  && raw.captionBg    !== pp.captionBg)    pp.setCaptionBg(raw.captionBg);
+    if (typeof raw.captionFont  === "string"  && raw.captionFont  !== pp.captionFont)  pp.setCaptionFont(raw.captionFont);
+    if (typeof raw.speed        === "number"  && raw.speed        !== pp.speed)        pp.setSpeed(raw.speed);
+
+    /* Settings store — bulk apply in one setState */
+    const updates: Parameters<typeof st._applyRemote>[0] = {};
+    if (typeof raw.showWatchHistory   === "boolean" && raw.showWatchHistory   !== st.showWatchHistory)   updates.showWatchHistory   = raw.showWatchHistory;
+    if ((raw.cardLayout   === "default" || raw.cardLayout   === "anichart" || raw.cardLayout   === "row")   && raw.cardLayout   !== st.cardLayout)   updates.cardLayout   = raw.cardLayout;
+    if ((raw.cardSize     === "small"   || raw.cardSize     === "medium"   || raw.cardSize     === "large")  && raw.cardSize     !== st.cardSize)     updates.cardSize     = raw.cardSize;
+    if ((raw.episodeLayout === "list"   || raw.episodeLayout === "grid"    || raw.episodeLayout === "image") && raw.episodeLayout !== st.episodeLayout) updates.episodeLayout = raw.episodeLayout;
+    if (typeof raw.defaultProvider    === "string"  && raw.defaultProvider    !== st.defaultProvider)    updates.defaultProvider    = raw.defaultProvider;
+    if (typeof raw.autoPlay           === "boolean" && raw.autoPlay           !== st.autoPlay)           updates.autoPlay           = raw.autoPlay;
+    if (typeof raw.autoSkipIntroOutro === "boolean" && raw.autoSkipIntroOutro !== st.autoSkipIntroOutro) updates.autoSkipIntroOutro = raw.autoSkipIntroOutro;
+    if (typeof raw.autoNextEpisode    === "boolean" && raw.autoNextEpisode    !== st.autoNextEpisode)    updates.autoNextEpisode    = raw.autoNextEpisode;
+    if (typeof raw.showComments       === "boolean" && raw.showComments       !== st.showComments)       updates.showComments       = raw.showComments;
+    if (typeof raw.notifNewEp         === "boolean" && raw.notifNewEp         !== st.notifNewEp)         updates.notifNewEp         = raw.notifNewEp;
+    if (typeof raw.notifTrending      === "boolean" && raw.notifTrending      !== st.notifTrending)      updates.notifTrending      = raw.notifTrending;
+    if (Object.keys(updates).length > 0) st._applyRemote(updates);
+
+    // Reset after React has committed updates and effects have run
+    setTimeout(() => { applyingRemote.current = false; }, 0);
+  };
+
+  /* ── BroadcastChannel: zero-latency same-browser tab sync ──────── */
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const bc = new BroadcastChannel("bankai-settings");
+    bc.onmessage = (e: MessageEvent) => {
+      if (e.data?.settings) applyBlobRef.current(e.data.settings as Record<string, unknown>);
+    };
+    bcRef.current = bc;
+    return () => { bc.close(); bcRef.current = null; };
+  }, []);
+
+  /* ── Load from DB on login ──────────────────────────────────────── */
   useEffect(() => {
     if (!currentUser) {
-      loaded.current   = false;
-      prevUser.current = null;
+      loaded.current        = false;
+      prevUser.current      = null;
+      lastUpdatedAt.current = null;
       setSynced(false);
       return;
     }
@@ -81,131 +165,69 @@ export function SettingsSync() {
     fetch(`/api/settings?username=${encodeURIComponent(currentUser)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (data?.updatedAt) lastUpdatedAt.current = String(data.updatedAt);
         const s = data?.settings;
-        if (!s || typeof s !== "object") { setSynced(true); return; }
-
-        /* Theme — applied with smooth transition */
-        if (typeof s.theme === "string" && VALID_THEMES.has(s.theme)) {
-          applyTheme(s.theme, setTheme);
-        }
-
-        /* Language */
-        if (s.titleLanguage) setTitleLanguage(s.titleLanguage as Parameters<typeof setTitleLanguage>[0]);
-        if (s.defaultAudio)  setDefaultAudio(s.defaultAudio as "sub" | "dub");
-
-        /* Player prefs */
-        const pp = usePlayerPrefsStore.getState();
-        if (typeof s.captionsOn   === "boolean") pp.setCaptionsOn(s.captionsOn);
-        if (typeof s.captionSize  === "string")  pp.setCaptionSize(s.captionSize);
-        if (typeof s.captionColor === "string")  pp.setCaptionColor(s.captionColor);
-        if (typeof s.captionBg    === "string")  pp.setCaptionBg(s.captionBg);
-        if (typeof s.captionFont  === "string")  pp.setCaptionFont(s.captionFont);
-        if (typeof s.speed        === "number")  pp.setSpeed(s.speed);
-
-        /* Settings store — bulk apply */
-        const updates: Parameters<ReturnType<typeof useSettingsStore.getState>["_applyRemote"]>[0] = {};
-        if (typeof s.showWatchHistory   === "boolean") updates.showWatchHistory   = s.showWatchHistory;
-        if (s.cardLayout   === "default" || s.cardLayout   === "anichart" || s.cardLayout   === "row")    updates.cardLayout   = s.cardLayout;
-        if (s.cardSize     === "small"   || s.cardSize     === "medium"   || s.cardSize     === "large")   updates.cardSize     = s.cardSize;
-        if (s.episodeLayout === "list"   || s.episodeLayout === "grid"    || s.episodeLayout === "image")  updates.episodeLayout = s.episodeLayout;
-        if (typeof s.defaultProvider    === "string")  updates.defaultProvider    = s.defaultProvider;
-        if (typeof s.autoPlay           === "boolean") updates.autoPlay           = s.autoPlay;
-        if (typeof s.autoSkipIntroOutro === "boolean") updates.autoSkipIntroOutro = s.autoSkipIntroOutro;
-        if (typeof s.autoNextEpisode    === "boolean") updates.autoNextEpisode    = s.autoNextEpisode;
-        if (typeof s.showComments       === "boolean") updates.showComments       = s.showComments;
-        if (typeof s.notifNewEp         === "boolean") updates.notifNewEp         = s.notifNewEp;
-        if (typeof s.notifTrending      === "boolean") updates.notifTrending      = s.notifTrending;
-        if (Object.keys(updates).length > 0) {
-          useSettingsStore.getState()._applyRemote(updates);
-        }
-
+        if (s && typeof s === "object") applyBlobRef.current(s as Record<string, unknown>);
         setSynced(true);
       })
       .catch(() => { setSynced(true); });
-  }, [currentUser, setTitleLanguage, setDefaultAudio, setTheme]);
+  }, [currentUser]);
 
-  /* ── Fast theme save: 500ms debounce (for cross-device speed) ────── */
+  /* ── Save to DB + broadcast on any setting change ───────────────────
+   * 150 ms micro-debounce — fast enough to feel instant, prevents
+   * duplicate writes from React's batched state updates.
+   * ----------------------------------------------------------------- */
   useEffect(() => {
-    if (!currentUser || !synced || !theme) return;
-    if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current);
-    themeSaveTimer.current = setTimeout(() => {
-      // Use getState() so we never capture stale closure values
-      const lang = useLanguageStore.getState();
-      const pp   = usePlayerPrefsStore.getState();
-      const st   = useSettingsStore.getState();
-      fetch("/api/settings", {
-        method:  "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: currentUser,
-          settings: {
-            theme,
-            titleLanguage:      lang.titleLanguage,
-            defaultAudio:       lang.defaultAudio,
-            captionsOn:         pp.captionsOn,
-            captionSize:        pp.captionSize,
-            captionColor:       pp.captionColor,
-            captionBg:          pp.captionBg,
-            captionFont:        pp.captionFont,
-            speed:              pp.speed,
-            showWatchHistory:   st.showWatchHistory,
-            cardLayout:         st.cardLayout,
-            cardSize:           st.cardSize,
-            episodeLayout:      st.episodeLayout,
-            defaultProvider:    st.defaultProvider,
-            autoPlay:           st.autoPlay,
-            autoSkipIntroOutro: st.autoSkipIntroOutro,
-            autoNextEpisode:    st.autoNextEpisode,
-            showComments:       st.showComments,
-            notifNewEp:         st.notifNewEp,
-            notifTrending:      st.notifTrending,
-          },
-        }),
-      }).catch(() => {});
-    }, 500);
-    return () => { if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current); };
-  }, [theme, currentUser, synced]);
-
-  /* ── Push all settings to DB on any change (3s debounce) ────────── */
-  useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !synced || applyingRemote.current) return;
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      // Read fresh state inside the timer — avoids stale closure values
+      const lang = useLanguageStore.getState();
+      const pp   = usePlayerPrefsStore.getState();
+      const st   = useSettingsStore.getState();
+      const ca   = useCardAnimationStore.getState();
+      const blob = {
+        theme:              theme ?? "dark",
+        cardAnimation:      ca.cardAnimation,
+        titleLanguage:      lang.titleLanguage,
+        defaultAudio:       lang.defaultAudio,
+        captionsOn:         pp.captionsOn,
+        captionSize:        pp.captionSize,
+        captionColor:       pp.captionColor,
+        captionBg:          pp.captionBg,
+        captionFont:        pp.captionFont,
+        speed:              pp.speed,
+        showWatchHistory:   st.showWatchHistory,
+        cardLayout:         st.cardLayout,
+        cardSize:           st.cardSize,
+        episodeLayout:      st.episodeLayout,
+        defaultProvider:    st.defaultProvider,
+        autoPlay:           st.autoPlay,
+        autoSkipIntroOutro: st.autoSkipIntroOutro,
+        autoNextEpisode:    st.autoNextEpisode,
+        showComments:       st.showComments,
+        notifNewEp:         st.notifNewEp,
+        notifTrending:      st.notifTrending,
+      };
+
+      // Instant same-browser sync
+      bcRef.current?.postMessage({ settings: blob });
+
+      // Persist for cross-device sync
       fetch("/api/settings", {
-        method: "PUT",
+        method:  "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: currentUser,
-          settings: {
-            theme,
-            titleLanguage,
-            defaultAudio,
-            captionsOn,
-            captionSize,
-            captionColor,
-            captionBg,
-            captionFont,
-            speed,
-            showWatchHistory,
-            cardLayout,
-            cardSize,
-            episodeLayout,
-            defaultProvider,
-            autoPlay,
-            autoSkipIntroOutro,
-            autoNextEpisode,
-            showComments,
-            notifNewEp,
-            notifTrending,
-          },
-        }),
-      }).catch(() => {});
-    }, 3000);
+        body:    JSON.stringify({ username: currentUser, settings: blob }),
+      })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data?.updatedAt) lastUpdatedAt.current = String(data.updatedAt); })
+        .catch(() => {});
+    }, 150);
 
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [
-    currentUser, theme,
+    currentUser, synced, theme, cardAnimation,
     titleLanguage, defaultAudio,
     captionsOn, captionSize, captionColor, captionBg, captionFont, speed,
     showWatchHistory, cardLayout, cardSize, episodeLayout, defaultProvider,
@@ -213,7 +235,7 @@ export function SettingsSync() {
     notifNewEp, notifTrending,
   ]);
 
-  /* ── Poll every 5s for theme changes made on other devices ──────── */
+  /* ── Poll every 2 s for cross-device sync ───────────────────────── */
   useEffect(() => {
     if (!currentUser || !synced) return;
     const poll = setInterval(async () => {
@@ -221,14 +243,16 @@ export function SettingsSync() {
         const r    = await fetch(`/api/settings?username=${encodeURIComponent(currentUser)}`);
         if (!r.ok) return;
         const data = await r.json();
-        const remote = data?.settings?.theme;
-        if (remote && VALID_THEMES.has(remote) && remote !== theme) {
-          applyTheme(remote, setTheme);
-        }
+        // Skip if the DB hasn't been updated since we last saw it
+        const serverUpdatedAt = data?.updatedAt ? String(data.updatedAt) : null;
+        if (serverUpdatedAt && serverUpdatedAt === lastUpdatedAt.current) return;
+        lastUpdatedAt.current = serverUpdatedAt;
+        const s = data?.settings;
+        if (s && typeof s === "object") applyBlobRef.current(s as Record<string, unknown>);
       } catch {}
-    }, 5000);
+    }, 2000);
     return () => clearInterval(poll);
-  }, [currentUser, synced, theme, setTheme]);
+  }, [currentUser, synced]);
 
   return null;
 }

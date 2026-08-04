@@ -7,10 +7,13 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findFirst({
     where: { username: { equals: username, mode: "insensitive" } },
-    select: { settings: true },
+    select: { settings: true, updatedAt: true },
   });
 
-  return NextResponse.json({ settings: user?.settings ?? null });
+  return NextResponse.json({
+    settings:  user?.settings  ?? null,
+    updatedAt: user?.updatedAt ?? null,
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -27,12 +30,13 @@ export async function PUT(req: NextRequest) {
     });
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { settings },
+      data:  { settings },
+      select: { updatedAt: true },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, updatedAt: updated.updatedAt });
   } catch (e) {
     console.error("settings PUT error", e);
     return NextResponse.json({ error: "Failed to save settings." }, { status: 500 });
