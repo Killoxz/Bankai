@@ -165,6 +165,7 @@ export function DownPlayer({
   // Web Audio API for volume boost
   const audioCtxRef        = useRef<AudioContext | null>(null);
   const gainNodeRef        = useRef<GainNode | null>(null);
+  const streamDestRef      = useRef<MediaStreamAudioDestinationNode | null>(null);
   const audioConnectedRef  = useRef(false);
 
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -213,6 +214,10 @@ export function DownPlayer({
   const [showCtrl,    setShowCtrl]    = useState(true);
   const [hoverX,      setHoverX]      = useState<number | null>(null);
   const [animeLogo,   setAnimeLogo]   = useState<string | null>(null);
+
+  // ── AI CC (dub only) ──────────────────────────────────────────────────────
+  const [aiCcEnabled, setAiCcEnabled] = useState(false);
+  const [aiCcText,    setAiCcText]    = useState("");
 
   // ── Fetch anime logo from TMDB ────────────────────────────────────────────
   useEffect(() => {
@@ -270,12 +275,15 @@ export function DownPlayer({
     try {
       const ctx = new (window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const source = ctx.createMediaElementSource(video);
-      const gain   = ctx.createGain();
+      const source     = ctx.createMediaElementSource(video);
+      const gain       = ctx.createGain();
+      const streamDest = ctx.createMediaStreamDestination();
       source.connect(gain);
       gain.connect(ctx.destination);
+      gain.connect(streamDest); // for AI CC recording
       audioCtxRef.current       = ctx;
       gainNodeRef.current       = gain;
+      streamDestRef.current     = streamDest;
       audioConnectedRef.current = true;
       gain.gain.value = 1 + usePlayerPrefsStore.getState().volumeBoost / 100;
     } catch {
@@ -287,6 +295,51 @@ export function DownPlayer({
     if (!gainNodeRef.current) return;
     gainNodeRef.current.gain.value = 1 + volumeBoost / 100;
   }, [volumeBoost]);
+
+  // ── AI CC recording (dub captions via Groq Whisper) ───────────────────────
+  useEffect(() => {
+    if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); return; }
+
+    if (!audioConnectedRef.current) initAudioBoost();
+    const streamDest = streamDestRef.current;
+    if (!streamDest) return;
+
+    let active = true;
+
+    function startBatch() {
+      if (!active || !streamDest) return;
+      const chunks: Blob[] = [];
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      const recorder = new MediaRecorder(streamDest.stream, { mimeType });
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = async () => {
+        if (!active || chunks.length === 0) return;
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < 1000) { if (active) setTimeout(startBatch, 200); return; }
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "chunk.webm");
+          const res = await fetch("/api/ai-captions", { method: "POST", body: form });
+          if (res.ok) {
+            const data = await res.json() as { text?: string };
+            if (data.text && active) setAiCcText(data.text);
+          }
+        } catch { /* network error — next chunk will retry */ }
+        if (active) setTimeout(startBatch, 200);
+      };
+
+      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume().catch(() => {});
+      recorder.start();
+      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 10_000);
+    }
+
+    startBatch();
+    return () => { active = false; setAiCcText(""); };
+  }, [aiCcEnabled, audio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Always HD ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -332,6 +385,7 @@ export function DownPlayer({
     setIntro(null); setOutro(null); setSkipZone(null); setSubtitles([]);
     setCurrentTime(0); setDuration(0); setPlaying(false);
     setSelectedTrack(0); setHlsLevels([]); setSelectedLevel(-1); setHoverX(null);
+    setAiCcText("");
 
     try {
       const epId = providersDataRef.current?.[selectedProvider]?.episodes?.[audio]
@@ -738,6 +792,23 @@ export function DownPlayer({
           </div>
         )}
 
+        {/* AI CC overlay (dub captions) */}
+        {aiCcEnabled && aiCcText && captionsOn && !embedUrl && !error && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center">
+            <span
+              className="rounded px-2 py-0.5 leading-relaxed"
+              style={{
+                fontSize: `${parseFloat(captionSize) / 100}em`,
+                color: captionColor,
+                backgroundColor: captionBg === "transparent" ? "rgba(0,0,0,0.75)" : captionBg,
+                fontFamily: captionFont === "inherit" ? "inherit" : captionFont,
+              }}
+            >
+              {aiCcText}
+            </span>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/95 px-6 text-center">
@@ -828,9 +899,11 @@ export function DownPlayer({
                     <MI name="closed_caption" size={18} className="shrink-0 text-white/50" />
                     <span className="flex-1 text-sm text-white/90">Captions</span>
                     <span className="text-sm text-white/35">
-                      {captionsOn && subtitles.length > 0
-                        ? subtitles[selectedTrack]?.label ?? "On"
-                        : captionsOn ? "On" : "Off"}
+                      {captionsOn && aiCcEnabled
+                        ? "AI CC"
+                        : captionsOn && subtitles.length > 0
+                          ? subtitles[selectedTrack]?.label ?? "On"
+                          : captionsOn ? "On" : "Off"}
                     </span>
                     <MI name="chevron_right" size={16} className="shrink-0 text-white/25" filled={false} />
                   </button>
@@ -968,22 +1041,39 @@ export function DownPlayer({
                   <SubHeader label="Captions" backTo="main" />
                   <div className="py-1">
                     {/* Off */}
-                    <button onClick={() => setCaptionsOn(false)}
+                    <button onClick={() => { setCaptionsOn(false); setAiCcEnabled(false); }}
                       className="flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]">
                       <span className={!captionsOn ? "font-medium text-white" : "text-white/70"}>Off</span>
                       {!captionsOn && <MI name="check" size={16} className="text-white" />}
                     </button>
-                    {/* Tracks */}
+                    {/* AI CC for dub */}
+                    {audio === "dub" && (
+                      <button
+                        onClick={() => { setAiCcEnabled(true); setSelectedTrack(-1); setCaptionsOn(true); }}
+                        className="flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={aiCcEnabled && captionsOn ? "font-medium text-white" : "text-white/70"}>
+                            AI CC (English)
+                          </span>
+                          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+                            Dubtitles
+                          </span>
+                        </span>
+                        {aiCcEnabled && captionsOn && <MI name="check" size={16} className="text-white" />}
+                      </button>
+                    )}
+                    {/* Native tracks */}
                     {subtitles.map((s, i) => (
-                      <button key={i} onClick={() => { setSelectedTrack(i); setCaptionsOn(true); }}
+                      <button key={i} onClick={() => { setSelectedTrack(i); setAiCcEnabled(false); setCaptionsOn(true); }}
                         className="flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]">
-                        <span className={captionsOn && selectedTrack === i ? "font-medium text-white" : "text-white/70"}>
+                        <span className={captionsOn && !aiCcEnabled && selectedTrack === i ? "font-medium text-white" : "text-white/70"}>
                           {s.label || "Subtitles"}
                         </span>
-                        {captionsOn && selectedTrack === i && <MI name="check" size={16} className="text-white" />}
+                        {captionsOn && !aiCcEnabled && selectedTrack === i && <MI name="check" size={16} className="text-white" />}
                       </button>
                     ))}
-                    {subtitles.length === 0 && (
+                    {audio !== "dub" && subtitles.length === 0 && (
                       <p className="px-5 py-3 text-xs text-white/35">No captions for this episode.</p>
                     )}
                   </div>
