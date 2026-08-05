@@ -6,7 +6,7 @@ export async function fetchEpisodesRaw(anilistId: number): Promise<Record<string
   try {
     const res = await fetch(`${STREAMING_BASE}/episodes/${anilistId}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 300 },
+      next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
     return res.json() as Promise<Record<string, unknown>>;

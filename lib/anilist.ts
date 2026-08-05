@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { useLanguageStore } from "@/store/language-store";
 import { readCache, writeCache } from "./api-cache";
 
@@ -363,7 +364,7 @@ export function usePreferredTitle(anime: AnimeMedia): string {
   return anime.title.english || anime.title.romaji;
 }
 
-export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
+export const getAnimeDetail = cache(async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
   try {
     const data = await gql<DetailData>(DETAIL_QUERY, { id });
     const detail = toDetail(data.Media);
@@ -373,7 +374,7 @@ export async function getAnimeDetail(id: number): Promise<AnimeDetail | null> {
     console.error(`[getAnimeDetail] AniList unavailable for ${id}, serving cached data:`, err);
     return readCache<AnimeDetail>(`anime:${id}`);
   }
-}
+});
 
 export async function getWeeklySchedule(): Promise<AiringEntry[]> {
   try {

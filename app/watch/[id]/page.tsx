@@ -16,8 +16,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const detail = await getAnimeDetail(Number(id)).catch(() => null);
-  if (!detail) return { title: "Not found — Bankai" };
-  return { title: `Watch ${preferredTitle(detail)} — Bankai` };
+  if (!detail) return { title: "Not found • Bankai" };
+  return { title: `Watch ${preferredTitle(detail)} • Bankai` };
 }
 
 export default async function WatchPage({
@@ -31,9 +31,13 @@ export default async function WatchPage({
   const anilistId = Number(id);
   if (!Number.isInteger(anilistId)) notFound();
 
+  const episodesTimeout = new Promise<null>((resolve) =>
+    setTimeout(() => resolve(null), 800),
+  );
+
   const [detail, episodesRaw] = await Promise.all([
     getAnimeDetail(anilistId).catch(() => null),
-    fetchEpisodesRaw(anilistId),
+    Promise.race([fetchEpisodesRaw(anilistId), episodesTimeout]),
   ]);
 
   if (!detail) notFound();
