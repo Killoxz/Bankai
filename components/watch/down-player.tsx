@@ -334,7 +334,6 @@ export function DownPlayer({
         } catch {}
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
       const silentGain = audioCtx.createGain();
       silentGain.gain.value = 0;
