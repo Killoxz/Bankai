@@ -303,36 +303,26 @@ export function DownPlayer({
     if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); return; }
 
     if (!audioConnectedRef.current) initAudioBoost();
+    const audioCtx  = audioCtxRef.current;
+    const gainNode  = gainNodeRef.current;
     const streamDest = streamDestRef.current;
-    if (!streamDest) return;
 
-    if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume().catch(() => {});
+    if (audioCtx?.state === "suspended") audioCtx.resume().catch(() => {});
 
     let active = true;
     const dgKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
 
-    if (dgKey) {
-      // ── Real-time path: Deepgram WebSocket (~200 ms delay) ────────────────
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
-
+    if (dgKey && audioCtx && gainNode) {
+      // ── Real-time path: raw PCM via ScriptProcessorNode → Deepgram ────────
+      // ScriptProcessorNode taps the gain node and sends Int16 PCM directly
+      // to Deepgram every ~85 ms — no container overhead, lowest possible lag.
+      const sampleRate = audioCtx.sampleRate;
       const ws = new WebSocket(
-        "wss://api.deepgram.com/v1/listen?model=nova-2&language=en" +
-        "&punctuate=true&smart_format=true&interim_results=true",
+        `wss://api.deepgram.com/v1/listen?` +
+        `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
+        `&model=nova-2&language=en&punctuate=true&smart_format=true&interim_results=true`,
         ["token", dgKey],
       );
-
-      let recorder: MediaRecorder | null = null;
-
-      ws.onopen = () => {
-        if (!active) return;
-        recorder = new MediaRecorder(streamDest.stream, { mimeType });
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data);
-        };
-        recorder.start(100); // 100 ms chunks → essentially real-time
-      };
 
       ws.onmessage = (e) => {
         try {
@@ -344,15 +334,36 @@ export function DownPlayer({
         } catch {}
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      gainNode.connect(scriptNode);
+      scriptNode.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
+
+      scriptNode.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const f32 = e.inputBuffer.getChannelData(0);
+        const i16 = new Int16Array(f32.length);
+        for (let i = 0; i < f32.length; i++)
+          i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
+        ws.send(i16.buffer);
+      };
+
       return () => {
         active = false;
-        recorder?.stop();
+        scriptNode.onaudioprocess = null as unknown as (e: AudioProcessingEvent) => void;
+        try { gainNode.disconnect(scriptNode); } catch {}
+        scriptNode.disconnect();
+        silentGain.disconnect();
         if (ws.readyState < WebSocket.CLOSING) ws.close();
         setAiCcText("");
       };
     }
 
     // ── Batch fallback: Groq Whisper (~5 s delay) ─────────────────────────
+    if (!streamDest) return;
     function startBatch() {
       if (!active || !streamDest) return;
       const chunks: Blob[] = [];
