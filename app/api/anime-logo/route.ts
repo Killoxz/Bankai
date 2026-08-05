@@ -2,38 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 
 const WIKI_API = "https://commons.wikimedia.org/w/api.php";
 
-interface WikiPage { missing?: string; imageinfo?: Array<{ url: string; thumburl?: string }> }
-
-// Fetch the URL for a specific Wikimedia Commons file.
-// For SVG files we request a 600px PNG thumbnail (more reliable as <img> src).
+// Check if a Wikimedia Commons file exists; if so return a Special:FilePath URL.
+// Special:FilePath lets the browser follow the redirect to the actual file / PNG
+// thumbnail — avoids the thumburl API call that silently returns null for many SVGs.
 async function wikiFileUrl(fileName: string): Promise<string | null> {
   try {
     const res = await fetch(
-      `${WIKI_API}?action=query&titles=${encodeURIComponent(fileName)}&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=600&format=json&origin=*`,
+      `${WIKI_API}?action=query&titles=${encodeURIComponent(fileName)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
       { next: { revalidate: 86400 } },
     );
     if (!res.ok) return null;
-    const data  = (await res.json()) as { query?: { pages?: Record<string, WikiPage> } };
+    const data  = (await res.json()) as { query?: { pages?: Record<string, { missing?: string }> } };
     const pages = data.query?.pages ?? {};
-    const page  = Object.values(pages)[0] as WikiPage | undefined;
+    const page  = Object.values(pages)[0];
     if (!page || "missing" in page) return null;
-    const info = page.imageinfo?.[0];
-    if (!info?.url) return null;
-    // SVG → return the pre-rendered PNG thumbnail; PNG/WebP/JPG → direct URL
-    return info.url.toLowerCase().endsWith(".svg") ? (info.thumburl ?? null) : info.url;
+
+    // File confirmed to exist — use Special:FilePath so the browser gets the image
+    // via redirect (works for both SVG and PNG, no thumburl dependency).
+    const name = fileName.replace(/^File:/i, "").replace(/\s+/g, "_");
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=600`;
   } catch {
     return null;
   }
 }
 
 async function logoFromWikimedia(title: string): Promise<string | null> {
-  // Build name variants: "Attack on Titan" → "Attack_on_Titan" and vice-versa
-  const us = title.replace(/\s+/g, "_");       // underscored
-  const sp = title.replace(/_/g, " ");          // spaced
-  // Also a version without punctuation that might cause mismatches
+  const us    = title.replace(/\s+/g, "_");
+  const sp    = title.replace(/_/g, " ");
   const clean = title.replace(/[:'!?]/g, "").replace(/\s+/g, "_");
 
-  // Try the most common Wikimedia logo filename patterns first (no search round-trip)
+  // Try common filename patterns first (no search round-trip needed)
   const directPatterns = [
     `File:${us}_logo.svg`,
     `File:${sp}_logo.svg`,
@@ -42,9 +40,9 @@ async function logoFromWikimedia(title: string): Promise<string | null> {
     `File:${us}_logo.png`,
     `File:${sp}_logo.png`,
     `File:${clean}_logo.png`,
-    `File:${us}_logo.webp`,
     `File:${us}_wordmark.svg`,
     `File:${us}_wordmark.png`,
+    `File:${clean}_wordmark.svg`,
   ];
 
   for (const fileName of directPatterns) {
@@ -52,9 +50,8 @@ async function logoFromWikimedia(title: string): Promise<string | null> {
     if (url) return url;
   }
 
-  // Fallback: full-text search in File namespace
-  const queries = [`${title} logo`, `${title} anime logo`];
-  for (const q of queries) {
+  // Search fallback
+  for (const q of [`${title} logo`, `${title} anime logo`]) {
     try {
       const res = await fetch(
         `${WIKI_API}?action=query&list=search&srsearch=${encodeURIComponent(q)}&srnamespace=6&srlimit=10&format=json&origin=*`,
@@ -65,20 +62,16 @@ async function logoFromWikimedia(title: string): Promise<string | null> {
       const hits = (query?.search ?? []).filter(
         (r) => /logo|wordmark/i.test(r.title) && !/chapter|volume|episode|character|manga|infobox/i.test(r.title),
       );
-
       for (const hit of hits.slice(0, 4)) {
         const url = await wikiFileUrl(hit.title);
         if (url) return url;
       }
-    } catch {
-      continue;
-    }
+    } catch { continue; }
   }
 
   return null;
 }
 
-// TMDB fallback — only used when TMDB_API_KEY is set
 async function logoFromTmdb(title: string): Promise<string | null> {
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
@@ -105,19 +98,13 @@ async function logoFromTmdb(title: string): Promise<string | null> {
       logos.find((l) => l.iso_639_1 === "en") ??
       logos.sort((a, b) => b.vote_average - a.vote_average)[0];
     return `https://image.tmdb.org/t/p/original${pick.file_path}`;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function GET(req: NextRequest) {
   const title = req.nextUrl.searchParams.get("title");
   if (!title) return NextResponse.json({ logo: null });
 
-  const [tmdb, wikimedia] = await Promise.all([
-    logoFromTmdb(title),
-    logoFromWikimedia(title),
-  ]);
-
-  return NextResponse.json({ logo: tmdb ?? wikimedia ?? null });
+  const [tmdb, wiki] = await Promise.all([logoFromTmdb(title), logoFromWikimedia(title)]);
+  return NextResponse.json({ logo: tmdb ?? wiki ?? null });
 }

@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
-export const metadata: Metadata = { title: "Terms & Privacy — Bankai" };
+export const metadata: Metadata = { title: "Terms & Privacy • Bankai" };
 
 const SECTIONS: { heading: string; body: string[] }[] = [
   {
     heading: "About Bankai",
     body: [
-      "Bankai is a free anime streaming and tracking platform. You can browse titles, build a personal watchlist, track watch history, write reviews, and interact with a community of fans. Video streams are sourced through third-party providers — Bankai itself does not host, own, or distribute any video content.",
+      "Bankai is a free anime streaming and tracking platform. You can browse titles, build a personal watchlist, track watch history, write reviews, and interact with a community of fans. Video streams are sourced through third-party providers • Bankai itself does not host, own, or distribute any video content.",
       "Anime metadata including titles, cover art, banners, descriptions, and genre tags is fetched from AniList's public GraphQL API under their terms of use.",
     ],
   },

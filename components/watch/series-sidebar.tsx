@@ -123,7 +123,7 @@ export function SeriesSidebar({
           <div className="mb-3 flex items-center justify-between px-0.5">
             <h3 className="text-sm font-bold text-foreground">Related Series</h3>
             <Link
-              href={`/anime/${animeId}`}
+              href={`/anime/${animeId}/related`}
               className="text-xs font-medium text-primary transition-opacity hover:opacity-70"
             >
               VIEW ALL
@@ -150,7 +150,7 @@ export function SeriesSidebar({
           <div className="mb-3 flex items-center justify-between px-0.5">
             <h3 className="text-sm font-bold text-foreground">Suggested Series</h3>
             <Link
-              href={`/anime/${animeId}`}
+              href={`/anime/${animeId}/recommended`}
               className="text-xs font-medium text-primary transition-opacity hover:opacity-70"
             >
               VIEW ALL

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ProfileView } from "@/components/profile/profile-view";
 
-export const metadata: Metadata = { title: "Profile — Bankai" };
+export const metadata: Metadata = { title: "Profile • Bankai" };
 
 export default function ProfilePage() {
   return <ProfileView />;
