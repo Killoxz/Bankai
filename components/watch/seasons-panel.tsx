@@ -74,8 +74,8 @@ export function SeasonsPanel({
           ) : (
             <div className="size-full bg-primary/10" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <p className="absolute inset-x-0 bottom-0 px-2.5 pb-2 text-[13px] font-semibold leading-tight text-primary drop-shadow-md">
+          <div className="absolute inset-0 bg-black/50" />
+          <p className="absolute inset-0 flex items-center justify-center px-2 text-center text-[13px] font-semibold leading-tight text-primary drop-shadow-md">
             {currentTitle ? currentLabel(currentTitle) : "Season 1"}
           </p>
         </div>
@@ -106,9 +106,9 @@ export function SeasonsPanel({
               ) : (
                 <div className="size-full bg-white/5" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-black/50" />
               <p className={cn(
-                "absolute inset-x-0 bottom-0 px-2.5 pb-2 text-[13px] font-semibold leading-tight drop-shadow-md",
+                "absolute inset-0 flex items-center justify-center px-2 text-center text-[13px] font-semibold leading-tight drop-shadow-md",
                 isActive ? "text-primary" : "text-white",
               )}>
                 {label}

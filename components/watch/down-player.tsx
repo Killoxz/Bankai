@@ -701,13 +701,25 @@ export function DownPlayer({
             allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowFullScreen />
         )}
 
-        {/* Loading: pulsing title */}
+        {/* Loading: pulsing cover art */}
         {loading && !embedUrl && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-            <p className="animate-pulse text-xl font-bold tracking-tight text-white/80 md:text-2xl">
-              {animeTitle ?? "Loading…"}
-            </p>
-            <p className="animate-pulse text-sm font-medium text-white/35" style={{ animationDelay: "150ms" }}>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
+            {animeCover ? (
+              <div className="animate-pulse rounded-xl overflow-hidden shadow-2xl"
+                style={{ animationDuration: "1.2s" }}>
+                <img
+                  src={animeCover}
+                  alt={animeTitle ?? ""}
+                  className="h-36 w-auto object-cover md:h-44"
+                  draggable={false}
+                />
+              </div>
+            ) : (
+              <p className="animate-pulse text-xl font-bold tracking-tight text-white/80 md:text-2xl px-6 text-center">
+                {animeTitle ?? "Loading…"}
+              </p>
+            )}
+            <p className="animate-pulse text-sm font-medium text-white/40" style={{ animationDelay: "200ms", animationDuration: "1.2s" }}>
               Episode {episode}
             </p>
           </div>
