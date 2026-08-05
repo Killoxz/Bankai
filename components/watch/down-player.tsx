@@ -215,9 +215,11 @@ export function DownPlayer({
   const [hoverX,      setHoverX]      = useState<number | null>(null);
   const [animeLogo,   setAnimeLogo]   = useState<string | null>(null);
 
-  // ── AI CC (dub only) ──────────────────────────────────────────────────────
+  // ── CC (dub only) ─────────────────────────────────────────────────────────
   const [aiCcEnabled, setAiCcEnabled] = useState(false);
   const [aiCcText,    setAiCcText]    = useState("");
+  const [aiCcVisible, setAiCcVisible] = useState(false);
+  const aiCcClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch anime logo from TMDB ────────────────────────────────────────────
   useEffect(() => {
@@ -320,7 +322,8 @@ export function DownPlayer({
       const ws = new WebSocket(
         `wss://api.deepgram.com/v1/listen?` +
         `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
-        `&model=nova-2&language=en&punctuate=true&smart_format=true&interim_results=true`,
+        `&model=nova-2&language=en&punctuate=true&smart_format=true` +
+        `&interim_results=false&utterance_end_ms=1000`,
         ["token", dgKey],
       );
 
@@ -328,9 +331,20 @@ export function DownPlayer({
         try {
           const d = JSON.parse(e.data as string) as {
             channel?: { alternatives?: Array<{ transcript: string }> };
+            is_final?: boolean;
           };
+          if (!d.is_final) return;
           const text = d.channel?.alternatives?.[0]?.transcript?.trim();
-          if (text && active) setAiCcText(text);
+          if (!text || !active) return;
+          // Fade out old caption first, then pop in the new one
+          setAiCcVisible(false);
+          if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
+          setTimeout(() => {
+            if (!active) return;
+            setAiCcText(text);
+            setAiCcVisible(true);
+            aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 3500);
+          }, 120);
         } catch {}
       };
 
@@ -843,8 +857,17 @@ export function DownPlayer({
         )}
 
         {/* AI CC overlay (dub captions) */}
-        {aiCcEnabled && aiCcText && captionsOn && !embedUrl && !error && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center">
+        {aiCcEnabled && captionsOn && !embedUrl && !error && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
+            style={{
+              opacity: aiCcVisible ? 1 : 0,
+              transform: aiCcVisible ? "translateY(0)" : "translateY(6px)",
+              transition: aiCcVisible
+                ? "opacity 0.15s ease, transform 0.15s ease"
+                : "opacity 0.35s ease, transform 0.35s ease",
+            }}
+          >
             <span
               className="rounded px-2 py-0.5 leading-relaxed"
               style={{
