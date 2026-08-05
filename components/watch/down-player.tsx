@@ -348,9 +348,13 @@ export function DownPlayer({
       const sampleRate = Math.round(audioCtx.sampleRate);
 
       fetch("/api/assemblyai-token")
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`token ${r.status}`);
+          return r.json();
+        })
         .then(({ token }: { token?: string }) => {
-          if (!token || !active) return;
+          if (!token) throw new Error("no token");
+          if (!active) return;
           const ws = new WebSocket(
             `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${sampleRate}&token=${token}`,
           );
