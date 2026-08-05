@@ -323,7 +323,7 @@ export function DownPlayer({
         `wss://api.deepgram.com/v1/listen?` +
         `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
         `&model=nova-2-video&language=en&punctuate=true&smart_format=true` +
-        `&interim_results=false`,
+        `&interim_results=true`,
         ["token", dgKey],
       );
 
@@ -337,15 +337,12 @@ export function DownPlayer({
           if (!d.channel) return;
           const text = d.channel?.alternatives?.[0]?.transcript?.trim();
           if (!text || !active) return;
-          // Fade out old caption first, then pop in the new one
-          setAiCcVisible(false);
+          // Update caption text live (word by word as Deepgram streams it)
+          setAiCcText(text);
+          setAiCcVisible(true);
+          // Auto-hide after silence — reset timer on every new word
           if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
-          setTimeout(() => {
-            if (!active) return;
-            setAiCcText(text);
-            setAiCcVisible(true);
-            aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 3500);
-          }, 120);
+          aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 2000);
         } catch {}
       };
 
