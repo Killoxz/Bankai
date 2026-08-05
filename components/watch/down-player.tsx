@@ -380,9 +380,9 @@ export function DownPlayer({
                 transcript?: string;
                 end_of_turn?: boolean;
               };
-              if (d.type !== "Turn" || !d.transcript?.trim() || !active) return;
-              // partial turn: short display; finalized turn: longer display
-              showCaption(d.transcript.trim(), d.end_of_turn ? 3500 : 2000);
+              // Only show finalized turns — partials grow word-by-word into long sentences
+              if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
+              showCaption(d.transcript.trim(), 3500);
             } catch {}
           };
 
