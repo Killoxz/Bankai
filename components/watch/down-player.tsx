@@ -298,7 +298,7 @@ export function DownPlayer({
     gainNodeRef.current.gain.value = 1 + volumeBoost / 100;
   }, [volumeBoost]);
 
-  // ── AI CC recording (dub captions via Groq Whisper) ───────────────────────
+  // ── CC recording — real-time via Deepgram WS, or batch via Groq ──────────
   useEffect(() => {
     if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); return; }
 
@@ -306,17 +306,60 @@ export function DownPlayer({
     const streamDest = streamDestRef.current;
     if (!streamDest) return;
 
-    let active = true;
+    if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume().catch(() => {});
 
+    let active = true;
+    const dgKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
+
+    if (dgKey) {
+      // ── Real-time path: Deepgram WebSocket (~200 ms delay) ────────────────
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      const ws = new WebSocket(
+        "wss://api.deepgram.com/v1/listen?model=nova-2&language=en" +
+        "&punctuate=true&smart_format=true&interim_results=true",
+        ["token", dgKey],
+      );
+
+      let recorder: MediaRecorder | null = null;
+
+      ws.onopen = () => {
+        if (!active) return;
+        recorder = new MediaRecorder(streamDest.stream, { mimeType });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data);
+        };
+        recorder.start(100); // 100 ms chunks → essentially real-time
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const d = JSON.parse(e.data as string) as {
+            channel?: { alternatives?: Array<{ transcript: string }> };
+          };
+          const text = d.channel?.alternatives?.[0]?.transcript?.trim();
+          if (text && active) setAiCcText(text);
+        } catch {}
+      };
+
+      return () => {
+        active = false;
+        recorder?.stop();
+        if (ws.readyState < WebSocket.CLOSING) ws.close();
+        setAiCcText("");
+      };
+    }
+
+    // ── Batch fallback: Groq Whisper (~5 s delay) ─────────────────────────
     function startBatch() {
       if (!active || !streamDest) return;
       const chunks: Blob[] = [];
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : "audio/webm";
-
       const recorder = new MediaRecorder(streamDest.stream, { mimeType });
-
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = async () => {
         if (!active || chunks.length === 0) return;
@@ -330,11 +373,9 @@ export function DownPlayer({
             const data = await res.json() as { text?: string };
             if (data.text && active) setAiCcText(data.text);
           }
-        } catch { /* network error — next chunk will retry */ }
+        } catch {}
         if (active) setTimeout(startBatch, 200);
       };
-
-      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume().catch(() => {});
       recorder.start();
       setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 5_000);
     }
@@ -902,7 +943,7 @@ export function DownPlayer({
                     <span className="flex-1 text-sm text-white/90">Captions</span>
                     <span className="text-sm text-white/35">
                       {captionsOn && aiCcEnabled
-                        ? "AI CC"
+                        ? "CC"
                         : captionsOn && subtitles.length > 0
                           ? subtitles[selectedTrack]?.label ?? "On"
                           : captionsOn ? "On" : "Off"}
@@ -1059,11 +1100,8 @@ export function DownPlayer({
                         className="flex w-full items-center justify-between px-5 py-2.5 text-sm transition-colors hover:bg-white/5 [touch-action:manipulation]"
                       >
                         <span className="flex items-center gap-2">
-                          <span className={aiCcEnabled && captionsOn ? "font-medium text-white" : "text-white/70"}>
-                            AI CC (English)
-                          </span>
-                          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-                            Dubtitles
+                            <span className={aiCcEnabled && captionsOn ? "font-medium text-white" : "text-white/70"}>
+                            CC (English)
                           </span>
                         </span>
                         {aiCcEnabled && captionsOn && <MI name="check" size={16} className="text-white" />}
