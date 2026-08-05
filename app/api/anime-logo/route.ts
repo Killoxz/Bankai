@@ -2,67 +2,100 @@ import { NextRequest, NextResponse } from "next/server";
 
 const WIKI_API = "https://commons.wikimedia.org/w/api.php";
 
-// Check if a Wikimedia Commons file exists; if so return a Special:FilePath URL.
-// Special:FilePath lets the browser follow the redirect to the actual file / PNG
-// thumbnail — avoids the thumburl API call that silently returns null for many SVGs.
+interface WikiPage {
+  missing?: string;
+  imageinfo?: Array<{ url: string; thumburl?: string }>;
+}
+
+// Given a Wikimedia Commons filename, return a working image URL.
+// Uses the real CDN path from the API response so there are no redirect or
+// CORS issues — the client can use it directly as an <img src>.
 async function wikiFileUrl(fileName: string): Promise<string | null> {
   try {
     const res = await fetch(
-      `${WIKI_API}?action=query&titles=${encodeURIComponent(fileName)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
+      `${WIKI_API}?action=query&titles=${encodeURIComponent(fileName)}` +
+        `&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=600&format=json&origin=*`,
       { next: { revalidate: 86400 } },
     );
     if (!res.ok) return null;
-    const data  = (await res.json()) as { query?: { pages?: Record<string, { missing?: string }> } };
-    const pages = data.query?.pages ?? {};
-    const page  = Object.values(pages)[0];
+
+    const data  = (await res.json()) as { query?: { pages?: Record<string, WikiPage> } };
+    const page  = Object.values(data.query?.pages ?? {})[0] as WikiPage | undefined;
     if (!page || "missing" in page) return null;
 
-    // File confirmed to exist — use Special:FilePath so the browser gets the image
-    // via redirect (works for both SVG and PNG, no thumburl dependency).
-    const name = fileName.replace(/^File:/i, "").replace(/\s+/g, "_");
-    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=600`;
+    const info = page.imageinfo?.[0];
+    if (!info?.url) return null;
+
+    // If Wikimedia already gave us a rendered thumb URL, use it directly.
+    if (info.thumburl) return info.thumburl;
+
+    // For SVG files the thumburl is often absent — construct the PNG CDN path manually.
+    // Wikimedia thumbnail URL format:
+    //   https://upload.wikimedia.org/wikipedia/commons/thumb/{a}/{ab}/{file}/{w}px-{file}.png
+    // The direct URL already contains the /a/ab/ hash, so we just insert /thumb/ and append.
+    if (info.url.toLowerCase().endsWith(".svg")) {
+      const baseName = fileName.replace(/^File:/i, "");
+      return (
+        info.url.replace("/wikipedia/commons/", "/wikipedia/commons/thumb/") +
+        `/600px-${baseName}.png`
+      );
+    }
+
+    return info.url;
   } catch {
     return null;
   }
 }
 
 async function logoFromWikimedia(title: string): Promise<string | null> {
+  // Build multiple slug variants to maximise hit rate across anime titles
   const us    = title.replace(/\s+/g, "_");
   const sp    = title.replace(/_/g, " ");
-  const clean = title.replace(/[:'!?]/g, "").replace(/\s+/g, "_");
+  // Strip colons, exclamation marks, apostrophes that may differ from the file name
+  const clean = title.replace(/[:'!?]/g, "").trim().replace(/\s+/g, "_");
+  // Short form: everything before the first ": " or " - " (sub-title strip)
+  const short = us.replace(/_*[:\-].*$/, "");
 
-  // Try common filename patterns first (no search round-trip needed)
-  const directPatterns = [
-    `File:${us}_logo.svg`,
-    `File:${sp}_logo.svg`,
-    `File:${clean}_logo.svg`,
-    `File:${us}_Logo.svg`,
-    `File:${us}_logo.png`,
-    `File:${sp}_logo.png`,
-    `File:${clean}_logo.png`,
-    `File:${us}_wordmark.svg`,
-    `File:${us}_wordmark.png`,
-    `File:${clean}_wordmark.svg`,
-  ];
+  const directPatterns: string[] = [];
+  for (const base of [...new Set([us, sp, clean, short])]) {
+    directPatterns.push(
+      `File:${base}_logo.svg`,
+      `File:${base}_Logo.svg`,
+      `File:${base}_logo.png`,
+      `File:${base}_logo.PNG`,
+      `File:${base}_logo.jpg`,
+      `File:${base}_wordmark.svg`,
+      `File:${base}_wordmark.png`,
+      `File:${base}_title_logo.png`,
+      `File:${base}_anime_logo.png`,
+    );
+  }
 
   for (const fileName of directPatterns) {
     const url = await wikiFileUrl(fileName);
     if (url) return url;
   }
 
-  // Search fallback
-  for (const q of [`${title} logo`, `${title} anime logo`]) {
+  // Full-text search fallback in the File namespace
+  for (const q of [`${title} logo`, `${title} anime logo`, `${clean} logo`]) {
     try {
       const res = await fetch(
-        `${WIKI_API}?action=query&list=search&srsearch=${encodeURIComponent(q)}&srnamespace=6&srlimit=10&format=json&origin=*`,
+        `${WIKI_API}?action=query&list=search&srsearch=${encodeURIComponent(q)}` +
+          `&srnamespace=6&srlimit=10&format=json&origin=*`,
         { next: { revalidate: 86400 } },
       );
       if (!res.ok) continue;
-      const { query } = (await res.json()) as { query?: { search?: Array<{ title: string }> } };
+
+      const { query } = (await res.json()) as {
+        query?: { search?: Array<{ title: string }> };
+      };
       const hits = (query?.search ?? []).filter(
-        (r) => /logo|wordmark/i.test(r.title) && !/chapter|volume|episode|character|manga|infobox/i.test(r.title),
+        (r) =>
+          /logo|wordmark/i.test(r.title) &&
+          !/chapter|volume|episode|character|manga|infobox|template/i.test(r.title),
       );
-      for (const hit of hits.slice(0, 4)) {
+
+      for (const hit of hits.slice(0, 5)) {
         const url = await wikiFileUrl(hit.title);
         if (url) return url;
       }
@@ -72,6 +105,38 @@ async function logoFromWikimedia(title: string): Promise<string | null> {
   return null;
 }
 
+// Wikipedia page summary — the infobox image for many anime IS the official logo.
+async function logoFromWikipedia(title: string): Promise<string | null> {
+  // Try a few title variants to find the right Wikipedia article
+  const variants = [
+    title,
+    title.replace(/[:\-].+$/, "").trim(),           // drop sub-title
+    `${title} (anime)`,
+    `${title} (manga)`,
+  ];
+
+  for (const v of variants) {
+    try {
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(v)}`,
+        { next: { revalidate: 86400 } },
+      );
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        originalimage?: { source: string };
+        thumbnail?: { source: string };
+      };
+
+      const src = data.originalimage?.source ?? data.thumbnail?.source;
+      if (src) return src;
+    } catch { continue; }
+  }
+
+  return null;
+}
+
+// TMDB — best quality logos, only works when TMDB_API_KEY is set.
 async function logoFromTmdb(title: string): Promise<string | null> {
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
@@ -105,6 +170,12 @@ export async function GET(req: NextRequest) {
   const title = req.nextUrl.searchParams.get("title");
   if (!title) return NextResponse.json({ logo: null });
 
-  const [tmdb, wiki] = await Promise.all([logoFromTmdb(title), logoFromWikimedia(title)]);
-  return NextResponse.json({ logo: tmdb ?? wiki ?? null });
+  // Run all sources in parallel; prefer TMDB > Wikimedia > Wikipedia
+  const [tmdb, wiki, wikipedia] = await Promise.all([
+    logoFromTmdb(title),
+    logoFromWikimedia(title),
+    logoFromWikipedia(title),
+  ]);
+
+  return NextResponse.json({ logo: tmdb ?? wiki ?? wikipedia ?? null });
 }
