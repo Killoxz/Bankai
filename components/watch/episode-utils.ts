@@ -23,6 +23,8 @@ export interface ProviderData {
 export type EpisodesMap = Record<string, ProviderData>;
 
 export const PROVIDER_LABELS: Record<string, string> = {
+  hianime:    "HiAnime",
+  animepahe:  "AnimePahe",
   // Miruro API providers
   kiwi: "Kiwi",
   arc:  "Arc",
@@ -92,7 +94,8 @@ export function findEpisode(
 }
 
 const PROVIDER_PREFERENCE = [
-  "anineko",
+  "hianime",
+  "anineko", "animepahe",
   "zoro", "kiwi", "hop", "arc",
   "kaa", "animegg", "anikoto", "animedunya",
   "animenosub", "2dhive", "anidbapp", "reanime", "senshi", "anibd", "anizone",
@@ -133,6 +136,7 @@ export function mergedEpisodeList(providers: EpisodesMap, audio: "sub" | "dub"):
   // Lowest-priority first; later entries overwrite with richer data.
   // zoro (hianime) has the best episode titles + images so it goes last.
   const PRIORITY = [
+    "hianime", "animepahe",
     "kiwi", "hop", "arc", "zoro",
     // legacy providers kept as fallback
     "kaa", "anineko", "animegg", "anikoto", "animedunya",

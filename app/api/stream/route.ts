@@ -122,12 +122,12 @@ export async function GET(request: Request) {
     const { picked, inner } = pickFromWatchResponse(data, audio);
 
     let streamUrl: string | null = null;
+    let isEmbed = false;
     if (picked) {
-      // Embed URLs (type="embed", or megaplay/vidwish hosts) go straight to the iframe player.
-      // HLS URLs are proxied through /api/hls to avoid CORS issues.
-      const isEmbed =
+      // Embed URLs go straight to the iframe player; HLS is proxied for CORS.
+      isEmbed =
         picked.type === "embed" ||
-        /megaplay\.buzz|vidwish\.live/i.test(picked.url);
+        /megaplay\.buzz|vidwish\.live|megacloud\.club|megacloud\.tv|megacloud\.store/i.test(picked.url);
 
       streamUrl = isEmbed
         ? picked.url
@@ -136,6 +136,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       stream_url: streamUrl,
+      embed:      isEmbed,
       subtitles:  inner.subtitles ?? [],
       intro:      inner.intro     ?? null,
       outro:      inner.outro     ?? null,

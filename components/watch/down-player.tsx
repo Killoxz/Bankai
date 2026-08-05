@@ -479,14 +479,14 @@ export function DownPlayer({
       const resumeAt = Math.max(localProgress, apiProgress);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json() as {
-        stream_url?: string | null; subtitles?: SubtitleTrack[];
+        stream_url?: string | null; embed?: boolean; subtitles?: SubtitleTrack[];
         intro?: Timestamp; outro?: Timestamp; error?: string;
       };
       if (data.error) throw new Error(data.error);
       const streamUrl = data.stream_url;
       if (!streamUrl) throw new Error("No stream URL — try another source.");
 
-      if (/^https?:\/\/megaplay\.buzz/i.test(streamUrl)) {
+      if (data.embed || /^https?:\/\/megaplay\.buzz/i.test(streamUrl)) {
         setEmbedUrl(streamUrl); setLoading(false);
         if (currentUserRef.current) {
           fetch("/api/history", { method: "POST", headers: { "Content-Type": "application/json" },
