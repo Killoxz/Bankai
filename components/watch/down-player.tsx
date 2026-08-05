@@ -384,10 +384,7 @@ export function DownPlayer({
               };
               // Only show finalized turns — partials grow word-by-word into long sentences
               if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
-              const text = d.transcript.trim();
-              // Scale display time with word count so silence clears captions fast
-              const ms = Math.min(2500, Math.max(1000, text.split(/\s+/).length * 280));
-              showCaption(text, ms);
+              showCaption(d.transcript.trim(), 400);
             } catch {}
           };
 
@@ -920,7 +917,7 @@ export function DownPlayer({
                 opacity: aiCcVisible ? 1 : 0,
                 transform: aiCcVisible ? "translateY(0)" : "translateY(8px)",
                 // entrance is handled by the span keyframe; only transition on exit
-                transition: aiCcVisible ? "none" : "opacity 0.4s ease, transform 0.4s ease",
+                transition: aiCcVisible ? "none" : "opacity 0.15s ease, transform 0.15s ease",
               }}
             >
               <span
