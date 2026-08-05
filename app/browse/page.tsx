@@ -4,7 +4,7 @@ import { Footer } from "@/components/layout/footer";
 import { BrowseView } from "@/components/browse/browse-view";
 import { getTagCollection, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 
-export const metadata: Metadata = { title: "Browse • Bankai" };
+export const metadata: Metadata = { title: "Browse â€¢ Bankai" };
 
 const TITLES: Record<string, string> = {
   MOVIE: "Movies",

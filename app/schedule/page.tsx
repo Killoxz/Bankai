@@ -5,8 +5,8 @@ import { ScheduleView } from "@/components/schedule/schedule-view";
 import { getWeeklySchedule } from "@/lib/anilist";
 
 export const metadata: Metadata = {
-  title: "Airing Schedule • Bankai",
-  description: "Track new episodes, release times, and upcoming anime — updated daily.",
+  title: "Airing Schedule â€¢ Bankai",
+  description: "Track new episodes, release times, and upcoming anime â€” updated daily.",
 };
 
 export const revalidate = 1800;
@@ -21,7 +21,7 @@ export default async function SchedulePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Airing Schedule</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-white/50">
-            New episodes airing this week — click any title to watch.
+            New episodes airing this week â€” click any title to watch.
           </p>
         </div>
         <ScheduleView entries={entries} />

@@ -4,7 +4,7 @@ import { Footer } from "@/components/layout/footer";
 import { BrowseView } from "@/components/browse/browse-view";
 import { getTagCollection, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 
-export const metadata: Metadata = { title: "Series • Bankai" };
+export const metadata: Metadata = { title: "Series â€¢ Bankai" };
 
 export default async function SeriesPage({
   searchParams,

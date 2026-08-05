@@ -5,7 +5,7 @@ import { BrowseView } from "@/components/browse/browse-view";
 import { getTagCollection, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 
 export const metadata: Metadata = {
-  title: "Trending Anime • Bankai",
+  title: "Trending Anime â€¢ Bankai",
   description: "Discover the most popular and trending anime right now.",
 };
 
