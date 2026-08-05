@@ -37,6 +37,8 @@ export interface RelationEntry {
     coverImage: { large: string };
     format: string | null;
     type: string;
+    episodes: number | null;
+    averageScore: number | null;
   };
 }
 
@@ -126,7 +128,7 @@ interface ALMedia {
   trailer?: { id: string; site: string; thumbnail?: string | null } | null;
   characters?: { edges: { role: string; node: { id: number; name: { full?: string }; image?: { large?: string | null } } }[] };
   staff?: { edges: { role: string; node: { id: number; name: { full?: string }; image?: { large?: string | null } } }[] };
-  relations?: { edges: { relationType: string; node: { id: number; type?: string | null; title: ALTitle; coverImage: ALCoverImage; format?: string | null } }[] };
+  relations?: { edges: { relationType: string; node: { id: number; type?: string | null; title: ALTitle; coverImage: ALCoverImage; format?: string | null; episodes?: number | null; averageScore?: number | null } }[] };
   recommendations?: { nodes: { rating?: number | null; mediaRecommendation: ALMedia | null }[] };
   externalLinks?: { url: string; site: string; type: string; color?: string | null; icon?: string | null; language?: string | null }[];
 }
@@ -175,7 +177,7 @@ const DETAIL_QUERY = `
         edges { role node { id name { full } image { large } } }
       }
       relations {
-        edges { relationType(version: 2) node { id type title { romaji english } coverImage { large } format } }
+        edges { relationType(version: 2) node { id type title { romaji english } coverImage { large } format episodes averageScore } }
       }
       recommendations(sort: RATING_DESC, perPage: 10) {
         nodes { rating mediaRecommendation { ...MF } }
@@ -258,6 +260,8 @@ function toDetail(m: ALMedia): AnimeDetail {
       coverImage: { large: e.node.coverImage.large ?? e.node.coverImage.extraLarge ?? "" },
       format: e.node.format ?? null,
       type: e.node.type ?? "ANIME",
+      episodes: e.node.episodes ?? null,
+      averageScore: e.node.averageScore ?? null,
     },
   }));
 
