@@ -88,30 +88,6 @@ async function logoFromWikimedia(title: string): Promise<string | null> {
   return null;
 }
 
-async function logoFromWikipedia(title: string): Promise<string | null> {
-  const variants = [
-    title,
-    title.replace(/[:\-].+$/, "").trim(),
-    `${title} (anime)`,
-    `${title} (manga)`,
-  ];
-  for (const v of variants) {
-    try {
-      const res = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(v)}`,
-        { next: { revalidate: 86400 } },
-      );
-      if (!res.ok) continue;
-      const data = (await res.json()) as {
-        originalimage?: { source: string };
-        thumbnail?: { source: string };
-      };
-      const src = data.originalimage?.source ?? data.thumbnail?.source;
-      if (src) return src;
-    } catch { continue; }
-  }
-  return null;
-}
 
 // Fanart.tv — best source for HD anime/TV title logos (transparent PNG).
 // Requires FANART_TV_API_KEY and the TVDB series ID for the show.
@@ -181,11 +157,7 @@ export async function GET(req: NextRequest) {
   }
   if (fanart) return NextResponse.json({ logo: fanart });
 
-  // Parallel fallback: Wikimedia Commons SVG/PNG + Wikipedia page image.
-  const [wiki, wikipedia] = await Promise.all([
-    logoFromWikimedia(title),
-    logoFromWikipedia(title),
-  ]);
-
-  return NextResponse.json({ logo: wiki ?? wikipedia ?? null });
+  // Fallback: Wikimedia Commons SVG/PNG logos only (no Wikipedia — it returns cover art).
+  const wiki = await logoFromWikimedia(title);
+  return NextResponse.json({ logo: wiki ?? null });
 }
