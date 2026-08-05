@@ -27,25 +27,24 @@ function SeriesCard({
   return (
     <Link
       href={`/watch/${id}`}
-      className="group relative flex items-center gap-3 overflow-hidden rounded-xl p-2 transition-colors duration-200 hover:brightness-110"
+      className="group relative flex items-center gap-3 overflow-hidden rounded-xl p-2 transition-all duration-200 hover:brightness-110"
       style={{ background: "rgba(255,255,255,0.04)" }}
     >
-      {/* Blurred cover background on right */}
+      {/* Blurred cover art on the right as background */}
       {coverImage && (
         <>
           <img
             src={coverImage}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute right-0 top-0 h-full w-3/5 object-cover object-right opacity-25 blur-[2px]"
+            className="pointer-events-none absolute right-0 top-0 h-full w-3/5 object-cover object-right opacity-20 blur-sm"
           />
-          {/* gradient wipe from left so thumbnail area stays clean */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#13141a] via-[#13141a]/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#13141a] via-[#13141a]/85 to-transparent" />
         </>
       )}
 
-      {/* Thumbnail */}
-      <div className="relative z-10 size-14 shrink-0 overflow-hidden rounded-lg bg-white/10">
+      {/* Portrait thumbnail */}
+      <div className="relative z-10 h-14 w-10 shrink-0 overflow-hidden rounded-md bg-white/10">
         {coverImage && (
           <img src={coverImage} alt="" className="size-full object-cover" />
         )}
@@ -53,17 +52,12 @@ function SeriesCard({
 
       {/* Info */}
       <div className="relative z-10 min-w-0 flex-1">
-        {/* Dot + title */}
-        <div className="flex items-center gap-1.5">
-          <span className="size-2 shrink-0 rounded-full bg-primary" />
-          <p className="line-clamp-1 text-[13px] font-semibold leading-snug text-white">
-            {title}
-          </p>
-        </div>
+        <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-white">
+          {title}
+        </p>
 
-        {/* Metadata row */}
         {(format || episodes || score) && (
-          <div className="mt-1 flex items-center gap-2.5 text-[11px] text-white/40">
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-white/40">
             {format && <span>{fmtFormat(format)}</span>}
             {episodes && (
               <span className="flex items-center gap-1">
@@ -113,9 +107,11 @@ function SuggestedCard({ anime }: { anime: AnimeMedia }) {
 export function SeriesSidebar({
   relations,
   recommendations,
+  animeId,
 }: {
   relations: RelationEntry[];
   recommendations: AnimeMedia[];
+  animeId: number;
 }) {
   const relatedAnime = relations.filter((r) => r.node.type === "ANIME").slice(0, 5);
   const suggested    = recommendations.slice(0, 5);
@@ -126,7 +122,12 @@ export function SeriesSidebar({
         <div>
           <div className="mb-3 flex items-center justify-between px-0.5">
             <h3 className="text-sm font-bold text-foreground">Related Series</h3>
-            <span className="text-xs font-medium text-muted-foreground">VIEW ALL</span>
+            <Link
+              href={`/anime/${animeId}`}
+              className="text-xs font-medium text-primary transition-opacity hover:opacity-70"
+            >
+              VIEW ALL
+            </Link>
           </div>
           <div className="space-y-1.5">
             {relatedAnime.map(({ node }) => (
@@ -148,7 +149,12 @@ export function SeriesSidebar({
         <div>
           <div className="mb-3 flex items-center justify-between px-0.5">
             <h3 className="text-sm font-bold text-foreground">Suggested Series</h3>
-            <span className="text-xs font-medium text-muted-foreground">VIEW ALL</span>
+            <Link
+              href={`/anime/${animeId}`}
+              className="text-xs font-medium text-primary transition-opacity hover:opacity-70"
+            >
+              VIEW ALL
+            </Link>
           </div>
           <div className="space-y-1.5">
             {suggested.map((anime) => (

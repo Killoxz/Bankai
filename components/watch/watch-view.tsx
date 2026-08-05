@@ -312,7 +312,7 @@ export function WatchView({
               currentCover={currentCover}
               currentTitle={detail.title.english ?? detail.title.romaji}
             />
-            <SeriesSidebar relations={detail.relations.edges} recommendations={recs} />
+            <SeriesSidebar relations={detail.relations.edges} recommendations={recs} animeId={animeId} />
           </motion.div>
 
           {/* Mobile only: comments after both columns so they sit at the bottom */}
