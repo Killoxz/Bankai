@@ -212,6 +212,19 @@ export function DownPlayer({
   const [fullscreen,  setFullscreen]  = useState(false);
   const [showCtrl,    setShowCtrl]    = useState(true);
   const [hoverX,      setHoverX]      = useState<number | null>(null);
+  const [animeLogo,   setAnimeLogo]   = useState<string | null>(null);
+
+  // ── Fetch anime logo from TMDB ────────────────────────────────────────────
+  useEffect(() => {
+    setAnimeLogo(null);
+    if (!animeTitle) return;
+    let cancelled = false;
+    fetch(`/api/anime-logo?title=${encodeURIComponent(animeTitle)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { logo: string | null } | null) => { if (!cancelled && d?.logo) setAnimeLogo(d.logo); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [animeTitle]);
 
   // ── Persisted prefs ───────────────────────────────────────────────────────
   const captionsOn         = usePlayerPrefsStore((s) => s.captionsOn);
@@ -701,25 +714,25 @@ export function DownPlayer({
             allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowFullScreen />
         )}
 
-        {/* Loading: pulsing cover art */}
+        {/* Loading: pulsing anime logo */}
         {loading && !embedUrl && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
-            {animeCover ? (
-              <div className="animate-pulse rounded-xl overflow-hidden shadow-2xl"
-                style={{ animationDuration: "1.2s" }}>
-                <img
-                  src={animeCover}
-                  alt={animeTitle ?? ""}
-                  className="h-36 w-auto object-cover md:h-44"
-                  draggable={false}
-                />
-              </div>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-5">
+            {animeLogo ? (
+              <img
+                src={animeLogo}
+                alt={animeTitle ?? ""}
+                draggable={false}
+                className="animate-pulse max-h-20 max-w-[65%] object-contain drop-shadow-[0_2px_16px_rgba(255,255,255,0.18)] md:max-h-28"
+                style={{ animationDuration: "1.4s" }}
+              />
             ) : (
-              <p className="animate-pulse text-xl font-bold tracking-tight text-white/80 md:text-2xl px-6 text-center">
+              <p className="animate-pulse text-2xl font-extrabold tracking-tight text-white/70 md:text-3xl px-6 text-center"
+                style={{ animationDuration: "1.4s" }}>
                 {animeTitle ?? "Loading…"}
               </p>
             )}
-            <p className="animate-pulse text-sm font-medium text-white/40" style={{ animationDelay: "200ms", animationDuration: "1.2s" }}>
+            <p className="animate-pulse text-xs font-medium tracking-widest uppercase text-white/30"
+              style={{ animationDelay: "250ms", animationDuration: "1.4s" }}>
               Episode {episode}
             </p>
           </div>

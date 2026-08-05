@@ -17,17 +17,11 @@ function extractSeasonLabel(title: string): string | null {
   return null;
 }
 
-function shortLabel(title: string, relationType: string): string {
+function shortLabel(title: string): string {
   const extracted = extractSeasonLabel(title);
   if (extracted) return extracted;
-  switch (relationType) {
-    case "SIDE_STORY":   return "Specials";
-    case "SPIN_OFF":     return "Spin-off";
-    case "ALTERNATIVE":  return "Alternative";
-    case "PARENT":       return "Main Series";
-    case "PREQUEL":      return "Prequel";
-    default:             return title.length > 22 ? title.slice(0, 20) + "…" : title;
-  }
+  // Always use the real title — never show relation-type words like "Prequel"
+  return title.length > 22 ? title.slice(0, 20) + "…" : title;
 }
 
 function currentLabel(title: string): string {
@@ -82,7 +76,7 @@ export function SeasonsPanel({
 
         {seasons.map(({ node, relationType }) => {
           const isActive = node.id === currentAnimeId;
-          const label    = shortLabel(node.title.english ?? node.title.romaji, relationType);
+          const label    = shortLabel(node.title.english ?? node.title.romaji);
 
           return (
             <Link
