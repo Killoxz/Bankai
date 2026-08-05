@@ -219,7 +219,6 @@ export function DownPlayer({
   const [aiCcEnabled, setAiCcEnabled] = useState(false);
   const [aiCcText,    setAiCcText]    = useState("");
   const [aiCcVisible, setAiCcVisible] = useState(false);
-  const [captionKey,  setCaptionKey]  = useState(0);
   const aiCcClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch anime logo from TMDB ────────────────────────────────────────────
@@ -327,7 +326,6 @@ export function DownPlayer({
       if (!active) return;
       setAiCcText(text);
       setAiCcVisible(true);
-      setCaptionKey((k) => k + 1);
       if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
       aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), hideAfter);
     }
@@ -464,13 +462,7 @@ export function DownPlayer({
     if (!el) { el = document.createElement("style"); el.id = styleId; document.head.appendChild(el); }
     const pct = parseFloat(captionSize) / 100;
     const shadow = captionShadow ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)" : "none";
-    el.textContent = `
-      video::cue { font-size:${pct}em; color:${captionColor}; background-color:${captionBg}; font-family:${captionFont}; text-shadow:${shadow}; }
-      @keyframes bankai-caption-in {
-        from { opacity:0; transform:translateY(10px) scale(0.9); filter:blur(3px); }
-        to   { opacity:1; transform:translateY(0) scale(1); filter:blur(0); }
-      }
-    `;
+    el.textContent = `video::cue { font-size:${pct}em; color:${captionColor}; background-color:${captionBg}; font-family:${captionFont}; text-shadow:${shadow}; }`;
   }, [captionSize, captionColor, captionBg, captionFont, captionShadow]);
 
   useEffect(() => {
@@ -915,13 +907,10 @@ export function DownPlayer({
               className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
               style={{
                 opacity: aiCcVisible ? 1 : 0,
-                transform: aiCcVisible ? "translateY(0)" : "translateY(8px)",
-                // entrance is handled by the span keyframe; only transition on exit
-                transition: aiCcVisible ? "none" : "opacity 0.15s ease, transform 0.15s ease",
+                transition: "opacity 0.15s ease",
               }}
             >
               <span
-                key={captionKey}
                 className="rounded px-2 py-0.5 leading-relaxed"
                 style={{
                   fontSize: `${parseFloat(captionSize) / 100}em`,
@@ -931,7 +920,6 @@ export function DownPlayer({
                   textShadow: captionShadow
                     ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)"
                     : "none",
-                  animation: "bankai-caption-in 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards",
                 }}
               >
                 {aiCcText}
