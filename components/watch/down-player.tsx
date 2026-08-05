@@ -323,7 +323,7 @@ export function DownPlayer({
         `wss://api.deepgram.com/v1/listen?` +
         `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
         `&model=nova-2-video&language=en&punctuate=true&smart_format=true` +
-        `&interim_results=false&utterance_end_ms=1000`,
+        `&interim_results=false`,
         ["token", dgKey],
       );
 
@@ -333,7 +333,8 @@ export function DownPlayer({
             channel?: { alternatives?: Array<{ transcript: string }> };
             is_final?: boolean;
           };
-          if (!d.is_final) return;
+          // Skip non-transcript messages (Metadata, SpeechStarted, etc. have no channel)
+          if (!d.channel) return;
           const text = d.channel?.alternatives?.[0]?.transcript?.trim();
           if (!text || !active) return;
           // Fade out old caption first, then pop in the new one
