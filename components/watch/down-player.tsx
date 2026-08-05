@@ -384,7 +384,10 @@ export function DownPlayer({
               };
               // Only show finalized turns — partials grow word-by-word into long sentences
               if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
-              showCaption(d.transcript.trim(), 3500);
+              const text = d.transcript.trim();
+              // Scale display time with word count so silence clears captions fast
+              const ms = Math.min(2500, Math.max(1000, text.split(/\s+/).length * 280));
+              showCaption(text, ms);
             } catch {}
           };
 
