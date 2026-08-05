@@ -300,24 +300,59 @@ export function DownPlayer({
     gainNodeRef.current.gain.value = 1 + volumeBoost / 100;
   }, [volumeBoost]);
 
-  // ── CC recording — real-time via Deepgram WS, or batch via Groq ──────────
+  // ── CC recording — Groq Whisper batch (primary), Deepgram fallback ────────
   useEffect(() => {
-    if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); return; }
+    if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); setAiCcVisible(false); return; }
 
     if (!audioConnectedRef.current) initAudioBoost();
-    const audioCtx  = audioCtxRef.current;
-    const gainNode  = gainNodeRef.current;
+    const audioCtx   = audioCtxRef.current;
+    const gainNode   = gainNodeRef.current;
     const streamDest = streamDestRef.current;
 
     if (audioCtx?.state === "suspended") audioCtx.resume().catch(() => {});
 
     let active = true;
-    const dgKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
 
+    // ── Primary: Groq Whisper batch (3 s chunks — more accurate on anime audio) ──
+    if (streamDest) {
+      const runBatch = () => {
+        if (!active || !streamDest) return;
+        const chunks: Blob[] = [];
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
+        const recorder = new MediaRecorder(streamDest.stream, { mimeType });
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          if (!active || chunks.length === 0) return;
+          const blob = new Blob(chunks, { type: mimeType });
+          if (blob.size < 1000) { if (active) runBatch(); return; }
+          try {
+            const form = new FormData();
+            form.append("audio", blob, "chunk.webm");
+            const res = await fetch("/api/ai-captions", { method: "POST", body: form });
+            if (res.ok) {
+              const data = await res.json() as { text?: string };
+              if (data.text && active) {
+                setAiCcText(data.text);
+                setAiCcVisible(true);
+                if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
+                aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 3000);
+              }
+            }
+          } catch {}
+          if (active) runBatch();
+        };
+        recorder.start();
+        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 3_000);
+      };
+      runBatch();
+      return () => { active = false; setAiCcText(""); setAiCcVisible(false); };
+    }
+
+    // ── Fallback: Deepgram real-time (when audio graph unavailable) ───────────
+    const dgKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
     if (dgKey && audioCtx && gainNode) {
-      // ── Real-time path: raw PCM via ScriptProcessorNode → Deepgram ────────
-      // ScriptProcessorNode taps the gain node and sends Int16 PCM directly
-      // to Deepgram every ~85 ms — no container overhead, lowest possible lag.
       const sampleRate = audioCtx.sampleRate;
       const ws = new WebSocket(
         `wss://api.deepgram.com/v1/listen?` +
@@ -326,33 +361,26 @@ export function DownPlayer({
         `&interim_results=true`,
         ["token", dgKey],
       );
-
       ws.onmessage = (e) => {
         try {
           const d = JSON.parse(e.data as string) as {
             channel?: { alternatives?: Array<{ transcript: string }> };
-            is_final?: boolean;
           };
-          // Skip non-transcript messages (Metadata, SpeechStarted, etc. have no channel)
           if (!d.channel) return;
           const text = d.channel?.alternatives?.[0]?.transcript?.trim();
           if (!text || !active) return;
-          // Update caption text live (word by word as Deepgram streams it)
           setAiCcText(text);
           setAiCcVisible(true);
-          // Auto-hide after silence — reset timer on every new word
           if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
           aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 2000);
         } catch {}
       };
-
       const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
       const silentGain = audioCtx.createGain();
       silentGain.gain.value = 0;
       gainNode.connect(scriptNode);
       scriptNode.connect(silentGain);
       silentGain.connect(audioCtx.destination);
-
       scriptNode.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
         const f32 = e.inputBuffer.getChannelData(0);
@@ -361,7 +389,6 @@ export function DownPlayer({
           i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
         ws.send(i16.buffer);
       };
-
       return () => {
         active = false;
         scriptNode.onaudioprocess = null as unknown as (e: AudioProcessingEvent) => void;
@@ -370,40 +397,11 @@ export function DownPlayer({
         silentGain.disconnect();
         if (ws.readyState < WebSocket.CLOSING) ws.close();
         setAiCcText("");
+        setAiCcVisible(false);
       };
     }
 
-    // ── Batch fallback: Groq Whisper (~5 s delay) ─────────────────────────
-    if (!streamDest) return;
-    function startBatch() {
-      if (!active || !streamDest) return;
-      const chunks: Blob[] = [];
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
-      const recorder = new MediaRecorder(streamDest.stream, { mimeType });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = async () => {
-        if (!active || chunks.length === 0) return;
-        const blob = new Blob(chunks, { type: mimeType });
-        if (blob.size < 1000) { if (active) setTimeout(startBatch, 200); return; }
-        try {
-          const form = new FormData();
-          form.append("audio", blob, "chunk.webm");
-          const res = await fetch("/api/ai-captions", { method: "POST", body: form });
-          if (res.ok) {
-            const data = await res.json() as { text?: string };
-            if (data.text && active) setAiCcText(data.text);
-          }
-        } catch {}
-        if (active) setTimeout(startBatch, 200);
-      };
-      recorder.start();
-      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 5_000);
-    }
-
-    startBatch();
-    return () => { active = false; setAiCcText(""); };
+    return () => { active = false; setAiCcText(""); setAiCcVisible(false); };
   }, [aiCcEnabled, audio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Always HD ────────────────────────────────────────────────────────────
