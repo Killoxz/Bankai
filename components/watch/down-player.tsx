@@ -224,7 +224,7 @@ export function DownPlayer({
     setAnimeLogo(null);
     if (!animeTitle) return;
     let cancelled = false;
-    fetch(`/api/anime-logo?title=${encodeURIComponent(animeTitle)}`)
+    fetch(`/api/anime-logo?title=${encodeURIComponent(animeTitle)}&animeId=${animeId}`)
       .then((r) => r.ok ? r.json() : null)
       .then((d: { logo: string | null } | null) => { if (!cancelled && d?.logo) setAnimeLogo(d.logo); })
       .catch(() => {});
@@ -237,6 +237,7 @@ export function DownPlayer({
   const captionColor       = usePlayerPrefsStore((s) => s.captionColor);
   const captionBg          = usePlayerPrefsStore((s) => s.captionBg);
   const captionFont        = usePlayerPrefsStore((s) => s.captionFont);
+  const captionShadow      = usePlayerPrefsStore((s) => s.captionShadow);
   const speed              = usePlayerPrefsStore((s) => s.speed);
   const alwaysHD           = usePlayerPrefsStore((s) => s.alwaysHD);
   const volumeBoost        = usePlayerPrefsStore((s) => s.volumeBoost);
@@ -247,6 +248,7 @@ export function DownPlayer({
   const setCaptionColor       = usePlayerPrefsStore((s) => s.setCaptionColor);
   const setCaptionBg          = usePlayerPrefsStore((s) => s.setCaptionBg);
   const setCaptionFont        = usePlayerPrefsStore((s) => s.setCaptionFont);
+  const setCaptionShadow      = usePlayerPrefsStore((s) => s.setCaptionShadow);
   const setSpeed              = usePlayerPrefsStore((s) => s.setSpeed);
   const setAlwaysHD           = usePlayerPrefsStore((s) => s.setAlwaysHD);
   const setVolumeBoost        = usePlayerPrefsStore((s) => s.setVolumeBoost);
@@ -334,7 +336,7 @@ export function DownPlayer({
 
       if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume().catch(() => {});
       recorder.start();
-      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 10_000);
+      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 5_000);
     }
 
     startBatch();
@@ -356,8 +358,9 @@ export function DownPlayer({
     let el = document.getElementById(styleId) as HTMLStyleElement | null;
     if (!el) { el = document.createElement("style"); el.id = styleId; document.head.appendChild(el); }
     const pct = parseFloat(captionSize) / 100;
-    el.textContent = `video::cue { font-size:${pct}em; color:${captionColor}; background-color:${captionBg}; font-family:${captionFont}; }`;
-  }, [captionSize, captionColor, captionBg, captionFont]);
+    const shadow = captionShadow ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)" : "none";
+    el.textContent = `video::cue { font-size:${pct}em; color:${captionColor}; background-color:${captionBg}; font-family:${captionFont}; text-shadow:${shadow}; }`;
+  }, [captionSize, captionColor, captionBg, captionFont, captionShadow]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -785,10 +788,6 @@ export function DownPlayer({
                 {animeTitle ?? "Loading…"}
               </p>
             )}
-            <p className="animate-pulse text-xs font-medium tracking-widest uppercase text-white/30"
-              style={{ animationDelay: "250ms", animationDuration: "1.4s" }}>
-              Episode {episode}
-            </p>
           </div>
         )}
 
@@ -800,8 +799,11 @@ export function DownPlayer({
               style={{
                 fontSize: `${parseFloat(captionSize) / 100}em`,
                 color: captionColor,
-                backgroundColor: captionBg === "transparent" ? "rgba(0,0,0,0.75)" : captionBg,
+                backgroundColor: captionBg,
                 fontFamily: captionFont === "inherit" ? "inherit" : captionFont,
+                textShadow: captionShadow
+                  ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)"
+                  : "none",
               }}
             >
               {aiCcText}
@@ -1023,13 +1025,17 @@ export function DownPlayer({
                       ))}
                     </div>
                     <p className="mb-1 text-[10px] font-medium text-white/35">FONT</p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="mb-3 flex flex-wrap gap-1.5">
                       {CAPTION_FONTS.map(({ l, v }) => (
                         <button key={l} onClick={() => setCaptionFont(v)}
                           className={["rounded px-2.5 py-1 text-xs font-medium transition-colors [touch-action:manipulation]",
                             captionFont === v ? "bg-primary text-black" : "bg-white/10 text-white/70 hover:bg-white/15"].join(" ")}
                           style={{ fontFamily: v }}>{l}</button>
                       ))}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-medium text-white/35">TEXT SHADOW</p>
+                      <PillToggle active={captionShadow} onClick={() => setCaptionShadow(!captionShadow)} />
                     </div>
                   </div>
                 </div>

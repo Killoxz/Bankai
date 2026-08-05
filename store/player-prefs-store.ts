@@ -9,6 +9,7 @@ interface PlayerPrefsState {
   captionColor: string;
   captionBg: string;
   captionFont: string;
+  captionShadow: boolean;
   speed: number;
   alwaysHD: boolean;
   volumeBoost: number;       // 0–200 (percent above 100%)
@@ -19,6 +20,7 @@ interface PlayerPrefsState {
   setCaptionColor: (v: string) => void;
   setCaptionBg: (v: string) => void;
   setCaptionFont: (v: string) => void;
+  setCaptionShadow: (v: boolean) => void;
   setSpeed: (v: number) => void;
   setAlwaysHD: (v: boolean) => void;
   setVolumeBoost: (v: number) => void;
@@ -34,6 +36,7 @@ export const usePlayerPrefsStore = create<PlayerPrefsState>()(
       captionColor: "#ffffff",
       captionBg: "rgba(0,0,0,0.75)",
       captionFont: "inherit",
+      captionShadow: false,
       speed: 1,
       alwaysHD: false,
       volumeBoost: 0,
@@ -44,6 +47,7 @@ export const usePlayerPrefsStore = create<PlayerPrefsState>()(
       setCaptionColor: (captionColor) => set({ captionColor }),
       setCaptionBg: (captionBg) => set({ captionBg }),
       setCaptionFont: (captionFont) => set({ captionFont }),
+      setCaptionShadow: (captionShadow) => set({ captionShadow }),
       setSpeed: (speed) => set({ speed }),
       setAlwaysHD: (alwaysHD) => set({ alwaysHD }),
       setVolumeBoost: (volumeBoost) => set({ volumeBoost }),
