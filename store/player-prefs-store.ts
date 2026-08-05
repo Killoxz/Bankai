@@ -11,6 +11,9 @@ interface PlayerPrefsState {
   captionFont: string;
   speed: number;
   alwaysHD: boolean;
+  volumeBoost: number;       // 0–200 (percent above 100%)
+  announcements: boolean;
+  keyboardAnimations: boolean;
   setCaptionsOn: (v: boolean) => void;
   setCaptionSize: (v: string) => void;
   setCaptionColor: (v: string) => void;
@@ -18,6 +21,9 @@ interface PlayerPrefsState {
   setCaptionFont: (v: string) => void;
   setSpeed: (v: number) => void;
   setAlwaysHD: (v: boolean) => void;
+  setVolumeBoost: (v: number) => void;
+  setAnnouncements: (v: boolean) => void;
+  setKeyboardAnimations: (v: boolean) => void;
 }
 
 export const usePlayerPrefsStore = create<PlayerPrefsState>()(
@@ -30,6 +36,9 @@ export const usePlayerPrefsStore = create<PlayerPrefsState>()(
       captionFont: "inherit",
       speed: 1,
       alwaysHD: false,
+      volumeBoost: 0,
+      announcements: true,
+      keyboardAnimations: true,
       setCaptionsOn: (captionsOn) => set({ captionsOn }),
       setCaptionSize: (captionSize) => set({ captionSize }),
       setCaptionColor: (captionColor) => set({ captionColor }),
@@ -37,6 +46,9 @@ export const usePlayerPrefsStore = create<PlayerPrefsState>()(
       setCaptionFont: (captionFont) => set({ captionFont }),
       setSpeed: (speed) => set({ speed }),
       setAlwaysHD: (alwaysHD) => set({ alwaysHD }),
+      setVolumeBoost: (volumeBoost) => set({ volumeBoost }),
+      setAnnouncements: (announcements) => set({ announcements }),
+      setKeyboardAnimations: (keyboardAnimations) => set({ keyboardAnimations }),
     }),
     { name: "bankai-player-prefs" }
   )
