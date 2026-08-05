@@ -276,22 +276,30 @@ export function DownPlayer({
   function initAudioBoost() {
     const video = videoRef.current;
     if (!video || audioConnectedRef.current) return;
-    try {
-      const ctx = new (window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const source     = ctx.createMediaElementSource(video);
+    const ACtx = window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const wire = (source: AudioNode, ctx: AudioContext) => {
       const gain       = ctx.createGain();
       const streamDest = ctx.createMediaStreamDestination();
       source.connect(gain);
       gain.connect(ctx.destination);
-      gain.connect(streamDest); // for AI CC recording
+      gain.connect(streamDest);
       audioCtxRef.current       = ctx;
       gainNodeRef.current       = gain;
       streamDestRef.current     = streamDest;
       audioConnectedRef.current = true;
       gain.gain.value = 1 + usePlayerPrefsStore.getState().volumeBoost / 100;
+    };
+    try {
+      const ctx = new ACtx();
+      wire(ctx.createMediaElementSource(video), ctx);
     } catch {
-      // Web Audio not available (e.g. iOS restriction) — silently ignore
+      // createMediaElementSource failed (CORS) — try captureStream() which has no CORS restrictions
+      try {
+        const stream = (video as HTMLVideoElement & { captureStream(): MediaStream }).captureStream();
+        const ctx    = new ACtx();
+        wire(ctx.createMediaStreamSource(stream), ctx);
+      } catch {}
     }
   }
 
@@ -302,7 +310,8 @@ export function DownPlayer({
 
   // ── CC recording — AssemblyAI real-time (primary), Groq batch (fallback) ──
   useEffect(() => {
-    if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); setAiCcVisible(false); return; }
+    // Can't capture audio from an iframe embed
+    if (!aiCcEnabled || audio !== "dub" || !!embedUrl) { setAiCcText(""); setAiCcVisible(false); return; }
 
     if (!audioConnectedRef.current) initAudioBoost();
     const audioCtx   = audioCtxRef.current;
@@ -321,6 +330,7 @@ export function DownPlayer({
       aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), hideAfter);
     }
 
+    // Send PCM16 at 16 kHz — downsample from native AudioContext rate
     function startScriptNode(ws: WebSocket) {
       if (!audioCtx || !gainNode) return null;
       const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -329,23 +339,25 @@ export function DownPlayer({
       gainNode.connect(scriptNode);
       scriptNode.connect(silentGain);
       silentGain.connect(audioCtx.destination);
+      const ratio = audioCtx.sampleRate / 16000;
       scriptNode.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
-        const f32 = e.inputBuffer.getChannelData(0);
-        const i16 = new Int16Array(f32.length);
-        for (let i = 0; i < f32.length; i++)
-          i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
+        const f32    = e.inputBuffer.getChannelData(0);
+        const outLen = Math.floor(f32.length / ratio);
+        const i16    = new Int16Array(outLen);
+        for (let i = 0; i < outLen; i++) {
+          const src = f32[Math.min(Math.round(i * ratio), f32.length - 1)];
+          i16[i] = Math.max(-32768, Math.min(32767, Math.round(src * 32768)));
+        }
         ws.send(i16.buffer);
       };
       return { scriptNode, silentGain };
     }
 
-    // ── Primary: AssemblyAI Universal-2 real-time ────────────────────────────
+    // ── Primary: AssemblyAI Universal-3.5 Pro real-time (v3) ─────────────────
     if (audioCtx && gainNode) {
       let wsRef: WebSocket | null = null;
       let nodes: { scriptNode: ScriptProcessorNode; silentGain: GainNode } | null = null;
-
-      const sampleRate = Math.round(audioCtx.sampleRate);
 
       fetch("/api/assemblyai-token")
         .then((r) => {
@@ -355,23 +367,22 @@ export function DownPlayer({
         .then(({ token }: { token?: string }) => {
           if (!token) throw new Error("no token");
           if (!active) return;
+          // v3 endpoint with single-use token — no Authorization header needed from browser
           const ws = new WebSocket(
-            `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${sampleRate}&token=${token}`,
+            `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&speech_model=universal-3-5-pro&mode=balanced&token=${token}`,
           );
           wsRef = ws;
 
           ws.onmessage = (e) => {
             try {
               const d = JSON.parse(e.data as string) as {
-                message_type?: string;
-                text?: string;
+                type?: string;
+                transcript?: string;
+                end_of_turn?: boolean;
               };
-              if (!d.text?.trim() || !active) return;
-              if (d.message_type === "PartialTranscript") {
-                showCaption(d.text.trim(), 2000);
-              } else if (d.message_type === "FinalTranscript") {
-                showCaption(d.text.trim(), 3500);
-              }
+              if (d.type !== "Turn" || !d.transcript?.trim() || !active) return;
+              // partial turn: short display; finalized turn: longer display
+              showCaption(d.transcript.trim(), d.end_of_turn ? 3500 : 2000);
             } catch {}
           };
 
@@ -391,6 +402,9 @@ export function DownPlayer({
           try { gainNode.disconnect(nodes.scriptNode); } catch {}
           nodes.scriptNode.disconnect();
           nodes.silentGain.disconnect();
+        }
+        if (wsRef && wsRef.readyState === WebSocket.OPEN) {
+          wsRef.send(JSON.stringify({ type: "Terminate" }));
         }
         if (wsRef && wsRef.readyState < WebSocket.CLOSING) wsRef.close(1000);
         setAiCcText(""); setAiCcVisible(false);
@@ -430,7 +444,7 @@ export function DownPlayer({
 
     runGroqFallback();
     return () => { active = false; setAiCcText(""); setAiCcVisible(false); };
-  }, [aiCcEnabled, audio]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [aiCcEnabled, audio, embedUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Always HD ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -881,32 +895,40 @@ export function DownPlayer({
         )}
 
         {/* AI CC overlay (dub captions) */}
-        {aiCcEnabled && captionsOn && !embedUrl && !error && (
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
-            style={{
-              opacity: aiCcVisible ? 1 : 0,
-              transform: aiCcVisible ? "translateY(0)" : "translateY(6px)",
-              transition: aiCcVisible
-                ? "opacity 0.15s ease, transform 0.15s ease"
-                : "opacity 0.35s ease, transform 0.35s ease",
-            }}
-          >
-            <span
-              className="rounded px-2 py-0.5 leading-relaxed"
+        {aiCcEnabled && captionsOn && !error && (
+          embedUrl ? (
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-8 text-center">
+              <span className="rounded bg-black/60 px-3 py-1 text-xs text-white/60">
+                CC unavailable for this source — switch server
+              </span>
+            </div>
+          ) : (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
               style={{
-                fontSize: `${parseFloat(captionSize) / 100}em`,
-                color: captionColor,
-                backgroundColor: captionBg,
-                fontFamily: captionFont === "inherit" ? "inherit" : captionFont,
-                textShadow: captionShadow
-                  ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)"
-                  : "none",
+                opacity: aiCcVisible ? 1 : 0,
+                transform: aiCcVisible ? "translateY(0)" : "translateY(6px)",
+                transition: aiCcVisible
+                  ? "opacity 0.15s ease, transform 0.15s ease"
+                  : "opacity 0.35s ease, transform 0.35s ease",
               }}
             >
-              {aiCcText}
-            </span>
-          </div>
+              <span
+                className="rounded px-2 py-0.5 leading-relaxed"
+                style={{
+                  fontSize: `${parseFloat(captionSize) / 100}em`,
+                  color: captionColor,
+                  backgroundColor: captionBg,
+                  fontFamily: captionFont === "inherit" ? "inherit" : captionFont,
+                  textShadow: captionShadow
+                    ? "0 1px 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9)"
+                    : "none",
+                }}
+              >
+                {aiCcText}
+              </span>
+            </div>
+          )
         )}
 
         {/* Error */}
@@ -1436,7 +1458,15 @@ export function DownPlayer({
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-white/80">{fmtRemaining(currentTime, duration)}</span>
                 <VolumeControl iconSize={18} sliderW="w-16" />
-                <button onClick={() => setCaptionsOn(!captionsOn)}
+                <button
+                  onClick={() => {
+                    if (audio === "dub") {
+                      if (captionsOn && aiCcEnabled) { setCaptionsOn(false); setAiCcEnabled(false); }
+                      else { setCaptionsOn(true); setAiCcEnabled(true); }
+                    } else {
+                      setCaptionsOn(!captionsOn);
+                    }
+                  }}
                   className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                     captionsOn ? "text-primary" : "text-white/40 hover:text-white/70"].join(" ")}>
                   {captionsOn ? <MI name="closed_caption" size={18} /> : <MI name="closed_caption_disabled" size={18} />}
