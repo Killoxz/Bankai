@@ -322,7 +322,7 @@ export function DownPlayer({
       const ws = new WebSocket(
         `wss://api.deepgram.com/v1/listen?` +
         `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
-        `&model=nova-2&language=en&punctuate=true&smart_format=true` +
+        `&model=nova-2-video&language=en&punctuate=true&smart_format=true` +
         `&interim_results=false&utterance_end_ms=1000`,
         ["token", dgKey],
       );
