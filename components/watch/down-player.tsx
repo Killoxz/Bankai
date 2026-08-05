@@ -300,7 +300,7 @@ export function DownPlayer({
     gainNodeRef.current.gain.value = 1 + volumeBoost / 100;
   }, [volumeBoost]);
 
-  // ── CC recording — Groq Whisper batch (primary), Deepgram fallback ────────
+  // ── CC recording — AssemblyAI real-time (primary), Groq batch (fallback) ──
   useEffect(() => {
     if (!aiCcEnabled || audio !== "dub") { setAiCcText(""); setAiCcVisible(false); return; }
 
@@ -313,68 +313,16 @@ export function DownPlayer({
 
     let active = true;
 
-    // ── Primary: Groq Whisper batch (3 s chunks — more accurate on anime audio) ──
-    if (streamDest) {
-      const runBatch = () => {
-        if (!active || !streamDest) return;
-        const chunks: Blob[] = [];
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
-        const recorder = new MediaRecorder(streamDest.stream, { mimeType });
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = async () => {
-          if (!active || chunks.length === 0) return;
-          const blob = new Blob(chunks, { type: mimeType });
-          if (blob.size < 1000) { if (active) runBatch(); return; }
-          try {
-            const form = new FormData();
-            form.append("audio", blob, "chunk.webm");
-            const res = await fetch("/api/ai-captions", { method: "POST", body: form });
-            if (res.ok) {
-              const data = await res.json() as { text?: string };
-              if (data.text && active) {
-                setAiCcText(data.text);
-                setAiCcVisible(true);
-                if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
-                aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 3000);
-              }
-            }
-          } catch {}
-          if (active) runBatch();
-        };
-        recorder.start();
-        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 3_000);
-      };
-      runBatch();
-      return () => { active = false; setAiCcText(""); setAiCcVisible(false); };
+    function showCaption(text: string, hideAfter: number) {
+      if (!active) return;
+      setAiCcText(text);
+      setAiCcVisible(true);
+      if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
+      aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), hideAfter);
     }
 
-    // ── Fallback: Deepgram real-time (when audio graph unavailable) ───────────
-    const dgKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
-    if (dgKey && audioCtx && gainNode) {
-      const sampleRate = audioCtx.sampleRate;
-      const ws = new WebSocket(
-        `wss://api.deepgram.com/v1/listen?` +
-        `encoding=linear16&sample_rate=${Math.round(sampleRate)}&channels=1` +
-        `&model=nova-2-video&language=en&punctuate=true&smart_format=true` +
-        `&interim_results=true`,
-        ["token", dgKey],
-      );
-      ws.onmessage = (e) => {
-        try {
-          const d = JSON.parse(e.data as string) as {
-            channel?: { alternatives?: Array<{ transcript: string }> };
-          };
-          if (!d.channel) return;
-          const text = d.channel?.alternatives?.[0]?.transcript?.trim();
-          if (!text || !active) return;
-          setAiCcText(text);
-          setAiCcVisible(true);
-          if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
-          aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), 2000);
-        } catch {}
-      };
+    function startScriptNode(ws: WebSocket) {
+      if (!audioCtx || !gainNode) return null;
       const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
       const silentGain = audioCtx.createGain();
       silentGain.gain.value = 0;
@@ -389,18 +337,94 @@ export function DownPlayer({
           i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
         ws.send(i16.buffer);
       };
+      return { scriptNode, silentGain };
+    }
+
+    // ── Primary: AssemblyAI Universal-2 real-time ────────────────────────────
+    if (audioCtx && gainNode) {
+      let wsRef: WebSocket | null = null;
+      let nodes: { scriptNode: ScriptProcessorNode; silentGain: GainNode } | null = null;
+
+      const sampleRate = Math.round(audioCtx.sampleRate);
+
+      fetch("/api/assemblyai-token")
+        .then((r) => r.json())
+        .then(({ token }: { token?: string }) => {
+          if (!token || !active) return;
+          const ws = new WebSocket(
+            `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${sampleRate}&token=${token}`,
+          );
+          wsRef = ws;
+
+          ws.onmessage = (e) => {
+            try {
+              const d = JSON.parse(e.data as string) as {
+                message_type?: string;
+                text?: string;
+              };
+              if (!d.text?.trim() || !active) return;
+              if (d.message_type === "PartialTranscript") {
+                showCaption(d.text.trim(), 2000);
+              } else if (d.message_type === "FinalTranscript") {
+                showCaption(d.text.trim(), 3500);
+              }
+            } catch {}
+          };
+
+          ws.onopen = () => { nodes = startScriptNode(ws); };
+          ws.onerror = () => { if (active) runGroqFallback(); };
+          ws.onclose = (ev) => {
+            // Abnormal close — fall back to Groq
+            if (active && ev.code !== 1000) runGroqFallback();
+          };
+        })
+        .catch(() => { if (active) runGroqFallback(); });
+
       return () => {
         active = false;
-        scriptNode.onaudioprocess = null as unknown as (e: AudioProcessingEvent) => void;
-        try { gainNode.disconnect(scriptNode); } catch {}
-        scriptNode.disconnect();
-        silentGain.disconnect();
-        if (ws.readyState < WebSocket.CLOSING) ws.close();
-        setAiCcText("");
-        setAiCcVisible(false);
+        if (nodes) {
+          nodes.scriptNode.onaudioprocess = null as unknown as (e: AudioProcessingEvent) => void;
+          try { gainNode.disconnect(nodes.scriptNode); } catch {}
+          nodes.scriptNode.disconnect();
+          nodes.silentGain.disconnect();
+        }
+        if (wsRef && wsRef.readyState < WebSocket.CLOSING) wsRef.close(1000);
+        setAiCcText(""); setAiCcVisible(false);
       };
     }
 
+    // ── Fallback: Groq Whisper batch (3 s chunks) ────────────────────────────
+    function runGroqFallback() {
+      if (!streamDest) return;
+      const runBatch = () => {
+        if (!active || !streamDest) return;
+        const chunks: Blob[] = [];
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus" : "audio/webm";
+        const recorder = new MediaRecorder(streamDest.stream, { mimeType });
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          if (!active || !chunks.length) return;
+          const blob = new Blob(chunks, { type: mimeType });
+          if (blob.size < 1000) { if (active) runBatch(); return; }
+          try {
+            const form = new FormData();
+            form.append("audio", blob, "chunk.webm");
+            const res = await fetch("/api/ai-captions", { method: "POST", body: form });
+            if (res.ok) {
+              const data = await res.json() as { text?: string };
+              if (data.text) showCaption(data.text, 3000);
+            }
+          } catch {}
+          if (active) runBatch();
+        };
+        recorder.start();
+        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 3_000);
+      };
+      runBatch();
+    }
+
+    runGroqFallback();
     return () => { active = false; setAiCcText(""); setAiCcVisible(false); };
   }, [aiCcEnabled, audio]); // eslint-disable-line react-hooks/exhaustive-deps
 
