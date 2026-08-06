@@ -27,9 +27,8 @@ export function BetaBanner() {
       <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
         Beta
       </span>
-      <span className="text-primary/50 text-xs">•</span>
       <p className="text-xs text-white/70">
-        Bankai is currently in early beta — some features may be incomplete, change, or break without notice. Thanks for trying it out.
+        Bankai is currently in early beta • some features may be incomplete, change, or break without notice. Thanks for trying it out.
       </p>
       <button
         onClick={dismiss}
