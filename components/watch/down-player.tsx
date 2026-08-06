@@ -922,7 +922,7 @@ export function DownPlayer({
               className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
               style={{
                 opacity: aiCcVisible ? 1 : 0,
-                transition: aiCcVisible ? "opacity 0.18s ease-in" : "opacity 0.35s ease-out",
+                transition: aiCcVisible ? "none" : "opacity 0.35s ease-out",
               }}
             >
               <span
