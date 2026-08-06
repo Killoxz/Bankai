@@ -4,6 +4,7 @@ import NextTopLoader from "nextjs-toploader";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SettingsSync } from "@/components/layout/settings-sync";
 import { Providers } from "@/components/layout/providers";
+import { BetaBanner } from "@/components/layout/beta-banner";
 import "./globals.css";
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
         <Providers>
+          <BetaBanner />
           <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
           <SettingsSync />
           {children}

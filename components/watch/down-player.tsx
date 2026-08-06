@@ -373,6 +373,7 @@ export function DownPlayer({
           );
           wsRef = ws;
 
+          let prevTranscript = "";
           ws.onmessage = (e) => {
             try {
               const d = JSON.parse(e.data as string) as {
@@ -380,9 +381,18 @@ export function DownPlayer({
                 transcript?: string;
                 end_of_turn?: boolean;
               };
-              // Only show finalized turns — partials grow word-by-word into long sentences
-              if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
-              showCaption(d.transcript.trim(), 400);
+              if (d.type !== "Turn" || !d.transcript?.trim() || !active) return;
+              const current = d.transcript.trim();
+              // Extract only the newest word(s) since the last update — word-by-word display
+              let newPart: string;
+              if (prevTranscript.length > 0 && current.startsWith(prevTranscript)) {
+                newPart = current.slice(prevTranscript.length).trim();
+              } else {
+                const words = current.split(/\s+/);
+                newPart = words[words.length - 1] ?? current;
+              }
+              if (newPart) showCaption(newPart, d.end_of_turn ? 1500 : 750);
+              prevTranscript = d.end_of_turn ? "" : current;
             } catch {}
           };
 
@@ -431,7 +441,12 @@ export function DownPlayer({
             const res = await fetch("/api/ai-captions", { method: "POST", body: form });
             if (res.ok) {
               const data = await res.json() as { text?: string };
-              if (data.text) showCaption(data.text, 3000);
+              if (data.text) {
+                const words = data.text.trim().split(/\s+/);
+                words.forEach((word, i) => {
+                  setTimeout(() => { if (active) showCaption(word, 750); }, i * 420);
+                });
+              }
             }
           } catch {}
           if (active) runBatch();
@@ -907,7 +922,7 @@ export function DownPlayer({
               className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
               style={{
                 opacity: aiCcVisible ? 1 : 0,
-                transition: "opacity 0.15s ease",
+                transition: aiCcVisible ? "opacity 0.18s ease-in" : "opacity 0.35s ease-out",
               }}
             >
               <span
