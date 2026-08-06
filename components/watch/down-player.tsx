@@ -322,12 +322,23 @@ export function DownPlayer({
 
     let active = true;
 
-    function showCaption(text: string, hideAfter: number) {
+    function cleanCaption(text: string): string {
+      return text
+        .replace(/\b(um+|uh+|hmm+|hm+|mhm|uh-huh|mm+)\b[,.]?\s*/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+
+    function showCaption(text: string) {
       if (!active) return;
-      setAiCcText(text);
+      const cleaned = cleanCaption(text);
+      if (!cleaned) return;
+      setAiCcText(cleaned);
       setAiCcVisible(true);
       if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
-      aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), hideAfter);
+      const wordCount = cleaned.split(/\s+/).length;
+      const displayMs = Math.max(1200, wordCount * 320);
+      aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), displayMs);
     }
 
     // Send PCM16 at 16 kHz — downsample from native AudioContext rate
@@ -373,7 +384,6 @@ export function DownPlayer({
           );
           wsRef = ws;
 
-          let prevTranscript = "";
           ws.onmessage = (e) => {
             try {
               const d = JSON.parse(e.data as string) as {
@@ -381,18 +391,8 @@ export function DownPlayer({
                 transcript?: string;
                 end_of_turn?: boolean;
               };
-              if (d.type !== "Turn" || !d.transcript?.trim() || !active) return;
-              const current = d.transcript.trim();
-              // Extract only the newest word(s) since the last update — word-by-word display
-              let newPart: string;
-              if (prevTranscript.length > 0 && current.startsWith(prevTranscript)) {
-                newPart = current.slice(prevTranscript.length).trim();
-              } else {
-                const words = current.split(/\s+/);
-                newPart = words[words.length - 1] ?? current;
-              }
-              if (newPart) showCaption(newPart, d.end_of_turn ? 1500 : 750);
-              prevTranscript = d.end_of_turn ? "" : current;
+              if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
+              showCaption(d.transcript.trim());
             } catch {}
           };
 
@@ -441,12 +441,7 @@ export function DownPlayer({
             const res = await fetch("/api/ai-captions", { method: "POST", body: form });
             if (res.ok) {
               const data = await res.json() as { text?: string };
-              if (data.text) {
-                const words = data.text.trim().split(/\s+/);
-                words.forEach((word, i) => {
-                  setTimeout(() => { if (active) showCaption(word, 750); }, i * 420);
-                });
-              }
+              if (data.text) showCaption(data.text);
             }
           } catch {}
           if (active) runBatch();
@@ -917,14 +912,8 @@ export function DownPlayer({
                 CC unavailable for this source — switch server
               </span>
             </div>
-          ) : (
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center"
-              style={{
-                opacity: aiCcVisible ? 1 : 0,
-                transition: aiCcVisible ? "none" : "opacity 0.35s ease-out",
-              }}
-            >
+          ) : aiCcVisible ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-20 flex justify-center px-8 text-center">
               <span
                 className="rounded px-2 py-0.5 leading-relaxed"
                 style={{
@@ -940,7 +929,7 @@ export function DownPlayer({
                 {aiCcText}
               </span>
             </div>
-          )
+          ) : null
         )}
 
         {/* Error */}
