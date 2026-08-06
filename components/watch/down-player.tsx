@@ -322,23 +322,20 @@ export function DownPlayer({
 
     let active = true;
 
-    function cleanCaption(text: string): string {
-      return text
-        .replace(/\b(um+|uh+|hmm+|hm+|mhm|uh-huh|mm+)\b[,.]?\s*/gi, "")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-    }
+    const FILLER = /^(um+|uh+|hmm+|hm+|mhm|mm+)$/i;
 
-    function showCaption(text: string) {
+    function showWord(raw: string, endOfTurn: boolean) {
       if (!active) return;
-      const cleaned = cleanCaption(text);
-      if (!cleaned) return;
-      setAiCcText(cleaned);
-      setAiCcVisible(true);
+      const word = raw.replace(/[.,!?;:]+$/, "").trim();
+      if (!word || FILLER.test(word)) return;
       if (aiCcClearTimer.current) clearTimeout(aiCcClearTimer.current);
-      const wordCount = cleaned.split(/\s+/).length;
-      const displayMs = Math.max(1200, wordCount * 320);
-      aiCcClearTimer.current = setTimeout(() => setAiCcVisible(false), displayMs);
+      setAiCcText(word);
+      setAiCcVisible(true);
+      // Hold the word until the next one arrives; clear after fallback timeout
+      aiCcClearTimer.current = setTimeout(
+        () => { if (active) setAiCcVisible(false); },
+        endOfTurn ? 900 : 1100,
+      );
     }
 
     // Send PCM16 at 16 kHz — downsample from native AudioContext rate
@@ -384,6 +381,7 @@ export function DownPlayer({
           );
           wsRef = ws;
 
+          let prevTranscript = "";
           ws.onmessage = (e) => {
             try {
               const d = JSON.parse(e.data as string) as {
@@ -391,8 +389,17 @@ export function DownPlayer({
                 transcript?: string;
                 end_of_turn?: boolean;
               };
-              if (d.type !== "Turn" || !d.end_of_turn || !d.transcript?.trim() || !active) return;
-              showCaption(d.transcript.trim());
+              if (d.type !== "Turn" || !d.transcript?.trim() || !active) return;
+              const current = d.transcript.trim();
+              // Diff against previous partial to extract only the newest word
+              let newWord = "";
+              if (prevTranscript.length > 0 && current.startsWith(prevTranscript)) {
+                newWord = current.slice(prevTranscript.length).trim().split(/\s+/)[0] ?? "";
+              } else {
+                newWord = current.split(/\s+/).pop() ?? "";
+              }
+              prevTranscript = d.end_of_turn ? "" : current;
+              showWord(newWord, !!d.end_of_turn);
             } catch {}
           };
 
@@ -441,7 +448,12 @@ export function DownPlayer({
             const res = await fetch("/api/ai-captions", { method: "POST", body: form });
             if (res.ok) {
               const data = await res.json() as { text?: string };
-              if (data.text) showCaption(data.text);
+              if (data.text) {
+                const words = data.text.trim().split(/\s+/);
+                words.forEach((w, i) => {
+                  setTimeout(() => { showWord(w, i === words.length - 1); }, i * 220);
+                });
+              }
             }
           } catch {}
           if (active) runBatch();
