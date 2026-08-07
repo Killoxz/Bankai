@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { Eye, Bookmark, CheckCircle2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { useCardAnimation } from "@/hooks/use-card-animation";
 
@@ -142,7 +141,6 @@ export function MyListView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <h1 className="mb-6 text-2xl font-bold text-foreground sm:text-3xl">My List</h1>
 

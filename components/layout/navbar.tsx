@@ -239,9 +239,14 @@ export function Navbar() {
         <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2">
           <div className="flex items-center rounded-2xl border border-gray-200/80 dark:border-white/[0.09] bg-white/95 dark:bg-[#1c1c1c]/90 px-2 py-1.5 shadow-lg backdrop-blur-xl">
             {/* Logo */}
-            <Link href="/" aria-label="Bankai home" className="flex shrink-0 items-center px-2 pr-3">
+            <Link href="/" aria-label="Bankai home" className="flex shrink-0 items-center px-2 pr-2">
               <Image src="/bankai-logo.svg" alt="Bankai" width={76} height={24} className="h-5 w-auto invert dark:invert-0" priority />
             </Link>
+
+            {/* Beta badge */}
+            <span className="mr-2 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary">
+              Beta
+            </span>
 
             {/* Separator */}
             <span className="mr-1 h-4 w-px shrink-0 rounded-full bg-gray-200 dark:bg-white/[0.1]" />

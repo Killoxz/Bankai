@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { BrowseView } from "@/components/browse/browse-view";
 import { getTagCollection, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
@@ -25,7 +24,6 @@ export default async function SeriesPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <h1 className="mb-6 text-2xl font-bold text-foreground sm:text-3xl">
           {sp.q ? `Results for "${sp.q}"` : "Series"}

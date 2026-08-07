@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Trash2, Clock } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 interface HistoryEntry {
@@ -100,7 +99,6 @@ export function HistoryView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <div className="mb-8 flex items-center justify-between">
           <div>

@@ -1,8 +1,6 @@
 export default function Loading() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar stub - mobile only; desktop nav is fixed and takes no layout space */}
-      <div className="h-14 border-b border-white/5 bg-background/80 md:hidden" />
 
       {/* Banner */}
       <div className="h-[34vh] min-h-[240px] w-full animate-pulse bg-white/5" />

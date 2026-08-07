@@ -11,7 +11,6 @@ import {
   ListChecks,
   MessagesSquare,
 } from "lucide-react";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 type Status = "operational" | "degraded" | "down" | "loading";
@@ -109,7 +108,6 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <div className="mx-auto max-w-xl px-6 pb-20 pt-12 sm:px-8 md:pt-20">
 

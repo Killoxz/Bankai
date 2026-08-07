@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { fetchEpisodesRaw } from "@/lib/streaming";
-import { Navbar }    from "@/components/layout/navbar";
 import { Footer }    from "@/components/layout/footer";
 import { WatchView } from "@/components/watch/watch-view";
 
@@ -47,7 +46,6 @@ export default async function WatchPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <Suspense>
           <WatchView

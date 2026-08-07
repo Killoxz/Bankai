@@ -20,7 +20,6 @@ import {
   type CardLayout, type CardSize, type EpisodeLayout,
 } from "@/store/settings-store";
 import { PROVIDER_LABELS } from "@/components/watch/episode-utils";
-import { Navbar }  from "@/components/layout/navbar";
 import { Footer }  from "@/components/layout/footer";
 import { cn }      from "@/lib/utils";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -777,7 +776,6 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       {inner}
       <Footer />
     </div>

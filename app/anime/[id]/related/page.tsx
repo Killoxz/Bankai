@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 export const revalidate = 3600;
@@ -27,7 +26,6 @@ export default async function RelatedPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8 md:pt-20">
         {/* Back */}
         <Link href={`/watch/${animeId}`} className="mb-6 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">

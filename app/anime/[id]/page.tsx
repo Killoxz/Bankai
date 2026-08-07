@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { Play } from "lucide-react";
 import { getAnimeDetail, preferredTitle } from "@/lib/anilist";
 import { getMalScore } from "@/lib/jikan";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { StatusButtons } from "@/components/anime/status-buttons";
 import { TrailerButton } from "@/components/anime/trailer-button";
@@ -42,7 +41,6 @@ export default async function AnimeDetailPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       {/* Banner */}
       <div className="relative h-[34vh] min-h-[240px] w-full overflow-hidden">

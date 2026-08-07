@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { ScheduleView } from "@/components/schedule/schedule-view";
 import { getWeeklySchedule } from "@/lib/anilist";
@@ -16,7 +15,6 @@ export default async function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-[900px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Airing Schedule</h1>

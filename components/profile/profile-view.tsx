@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, Bookmark, CheckCircle2, Folder, ChevronDown, Filter as FilterIcon, Camera, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { EditProfileModal } from "./edit-profile-modal";
 import { useCardAnimation } from "@/hooks/use-card-animation";
@@ -180,7 +179,6 @@ export function ProfileView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <div>
         {/* Banner — blank (site background) when nothing's set, no fake default */}

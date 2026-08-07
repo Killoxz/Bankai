@@ -6,6 +6,8 @@ import { SettingsSync } from "@/components/layout/settings-sync";
 import { Providers } from "@/components/layout/providers";
 import { BetaBanner } from "@/components/layout/beta-banner";
 import { SettingsModal } from "@/components/layout/settings-modal";
+import { Navbar } from "@/components/layout/navbar";
+import { PageTransition } from "@/components/layout/page-transition";
 import "./globals.css";
 
 const inter = Inter({
@@ -55,7 +57,10 @@ export default function RootLayout({
           <BetaBanner />
           <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
           <SettingsSync />
-          {children}
+          <Navbar />
+          <PageTransition>
+            {children}
+          </PageTransition>
           <SettingsModal />
           <MobileNav />
         </Providers>

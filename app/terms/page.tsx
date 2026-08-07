@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = { title: "Terms & Privacy • Bankai" };
@@ -86,7 +85,6 @@ const SECTIONS: { heading: string; body: string[] }[] = [
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <h1 className="text-3xl font-bold text-foreground">Terms &amp; Privacy</h1>
         <p className="mt-2 text-sm text-gray-500 dark:text-white/40">Last updated 2026-08-03.</p>
