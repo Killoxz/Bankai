@@ -14,11 +14,10 @@ import {
   type RelationEntry,
 } from "@/lib/anilist";
 
-type TabKey = "overview" | "episodes" | "relations" | "characters" | "staff" | "reviews";
+type TabKey = "overview" | "relations" | "characters" | "staff" | "reviews";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "episodes", label: "Episodes" },
   { key: "relations", label: "Relations" },
   { key: "characters", label: "Characters" },
   { key: "staff", label: "Staff" },
@@ -67,8 +66,7 @@ export function DetailTabs({ detail, animeId }: { detail: AnimeDetail; animeId: 
       </div>
 
       <div className="py-8">
-        {tab === "overview" && <OverviewTab detail={detail} />}
-        {tab === "episodes" && <DetailEpisodeList animeId={animeId} />}
+        {tab === "overview" && <OverviewTab detail={detail} animeId={animeId} />}
         {tab === "relations" && <RelationsTab edges={detail.relations.edges} />}
         {tab === "characters" && <PeopleGrid title="Anime Characters" edges={detail.characters.edges} />}
         {tab === "staff" && <PeopleGrid title="Staff" edges={detail.staff.edges} />}
@@ -78,7 +76,7 @@ export function DetailTabs({ detail, animeId }: { detail: AnimeDetail; animeId: 
   );
 }
 
-function OverviewTab({ detail }: { detail: AnimeDetail }) {
+function OverviewTab({ detail, animeId }: { detail: AnimeDetail; animeId: number }) {
   const aired = formatDate(detail.startDate);
   const airedEnd = formatDate(detail.endDate);
   const details: [string, string | null][] = [
@@ -131,6 +129,11 @@ function OverviewTab({ detail }: { detail: AnimeDetail }) {
               ))}
           </div>
         </div>
+      </div>
+
+      <div className="mt-10">
+        <h2 className="mb-4 text-xl font-bold text-foreground">Episodes</h2>
+        <DetailEpisodeList animeId={animeId} />
       </div>
 
       {recs.length > 0 && (
