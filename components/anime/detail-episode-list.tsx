@@ -11,6 +11,7 @@ import {
   mergedEpisodeList,
   type ProviderEpisode,
 } from "@/components/watch/episode-utils";
+import { useSettingsStore } from "@/store/settings-store";
 
 const BATCH = 50;
 
@@ -27,10 +28,18 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
   const [episodes, setEpisodes]     = useState<ProviderEpisode[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(false);
+  const defaultLayout   = useSettingsStore((s) => s.episodeLayout);
+  const setStoredLayout = useSettingsStore((s) => s.setEpisodeLayout);
+
   const [search, setSearch]         = useState("");
   const [batchStart, setBatchStart] = useState(1);
   const [batchOpen, setBatchOpen]   = useState(false);
-  const [viewMode, setViewMode]     = useState<"list" | "grid" | "image">("list");
+  const [viewMode, setViewMode]     = useState<"list" | "grid" | "image">(defaultLayout);
+
+  function changeView(mode: "list" | "grid" | "image") {
+    setViewMode(mode);
+    setStoredLayout(mode);
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -136,7 +145,7 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
           ] as const).map(({ mode, Icon }) => (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => changeView(mode)}
               aria-label={mode}
               className={[
                 "rounded-md p-1.5 transition-colors",
