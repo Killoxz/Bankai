@@ -10,7 +10,7 @@ import {
   User, Globe, Bell, Shield, LogOut, ChevronRight, Check,
   Moon, Sun, Monitor, Trash2, Layers, MousePointer2, Sparkles,
   Clapperboard, MessageSquare, Download, Link2, RefreshCw, Unlink,
-  Loader2,
+  Loader2, X,
 } from "lucide-react";
 import { useCardAnimationStore, type CardAnimation } from "@/store/card-animation-store";
 import { useAuthStore }      from "@/store/auth-store";
@@ -117,7 +117,7 @@ function ChipGroup<T extends string>({
   );
 }
 
-export function SettingsView() {
+export function SettingsView({ onClose, initialTab }: { onClose?: () => void; initialTab?: string } = {}) {
   const router      = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout      = useAuthStore((s) => s.logout);
@@ -164,7 +164,9 @@ export function SettingsView() {
   const setNotifTrending    = useSettingsStore((s) => s.setNotifTrending);
 
   const [mounted, setMounted]             = useState(false);
-  const [activeSection, setActiveSection] = useState<Section>("account");
+  const [activeSection, setActiveSection] = useState<Section>(
+    (initialTab as Section | undefined) ?? "account"
+  );
   const [exporting, setExporting]         = useState(false);
   const [clearingHistory, setClearingHistory] = useState(false);
   const [clearDone, setClearDone]         = useState(false);
@@ -178,9 +180,9 @@ export function SettingsView() {
 
   useEffect(() => setMounted(true), []);
 
-  // Read ?tab= and ?success= from URL on mount
+  // Read ?tab= and ?success= from URL on mount (page mode only)
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || onClose) return;
     const params  = new URLSearchParams(window.location.search);
     const tab     = params.get("tab");
     const success = params.get("success");
@@ -188,9 +190,14 @@ export function SettingsView() {
       setActiveSection(tab as Section);
     }
     if (success === "anilist") setSyncCount(null);
-  }, [mounted]);
+  }, [mounted, onClose]);
 
-  useEffect(() => { if (mounted && !currentUser) router.replace("/login"); }, [mounted, currentUser, router]);
+  useEffect(() => {
+    if (mounted && !currentUser) {
+      if (onClose) onClose();
+      else router.replace("/login");
+    }
+  }, [mounted, currentUser, router, onClose]);
 
   // Fetch AniList status when Connections tab is active
   useEffect(() => {
@@ -206,7 +213,10 @@ export function SettingsView() {
 
   if (!mounted) {
     return (
-      <div className="grid min-h-screen place-items-center bg-background">
+      <div className={cn(
+        "grid place-items-center bg-background",
+        onClose ? "min-h-[300px] rounded-2xl" : "min-h-screen"
+      )}>
         <div className="size-8 animate-spin rounded-full border-2 border-border border-t-primary" />
       </div>
     );
@@ -287,13 +297,22 @@ export function SettingsView() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
-        <h1 className="mb-8 text-2xl font-bold text-foreground sm:text-3xl">Settings</h1>
+  const inner = (
+    <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Settings</h1>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close settings"
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        )}
+      </div>
 
-        <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           {/* Sidebar */}
           <nav className="space-y-1">
             {SECTIONS.map(({ key, label, icon: Icon }) => (
@@ -340,7 +359,7 @@ export function SettingsView() {
 
                 <div className="mt-6 space-y-3 border-t border-border pt-6">
                   <button
-                    onClick={() => { logout(); router.replace("/"); }}
+                    onClick={() => { logout(); onClose?.(); router.replace("/"); }}
                     className="flex w-full items-center gap-2.5 rounded-xl border border-border px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <LogOut className="size-4" /> Sign out
@@ -746,6 +765,20 @@ export function SettingsView() {
           </motion.div>
         </div>
       </div>
+  );
+
+  if (onClose) {
+    return (
+      <div className="rounded-2xl bg-background shadow-2xl">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      {inner}
       <Footer />
     </div>
   );

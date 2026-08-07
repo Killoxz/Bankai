@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
+import { useSettingsModalStore } from "@/store/settings-modal-store";
 
 const NAV_LINKS = [
   { label: "Home",     href: "/" },
@@ -39,10 +40,11 @@ export function Navbar() {
   const [menuOpen, setMenuOpen]       = useState(false);
   const [mounted, setMounted]         = useState(false);
 
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const logout      = useAuthStore((s) => s.logout);
-  const avatar      = useAuthStore((s) => s.avatar);
-  const setAvatar   = useAuthStore((s) => s.setAvatar);
+  const currentUser    = useAuthStore((s) => s.currentUser);
+  const logout         = useAuthStore((s) => s.logout);
+  const avatar         = useAuthStore((s) => s.avatar);
+  const setAvatar      = useAuthStore((s) => s.setAvatar);
+  const openSettings   = useSettingsModalStore((s) => s.setOpen);
 
   useEffect(() => setMounted(true), []);
 
@@ -193,13 +195,12 @@ export function Navbar() {
                   >
                     <History className="size-4" /> History
                   </Link>
-                  <Link
-                    href="/settings"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-white/80 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                  <button
+                    onClick={() => { setMenuOpen(false); openSettings(true); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-white/80 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
                   >
                     <Settings className="size-4" /> Settings
-                  </Link>
+                  </button>
                   <div className="h-px bg-gray-100 dark:bg-white/10" />
                   <button
                     onClick={() => { logout(); setMenuOpen(false); }}
