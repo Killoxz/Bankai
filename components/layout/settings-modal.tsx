@@ -50,13 +50,11 @@ export function SettingsModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 16 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[201] overflow-y-auto"
+            className="fixed inset-0 z-[201] flex items-center justify-center p-4 sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex min-h-full items-start justify-center p-4 pt-12 sm:p-8 sm:pt-16">
-              <div className="w-full max-w-[1100px]">
-                <SettingsView onClose={close} initialTab={initialTab} />
-              </div>
+            <div className="h-[88vh] w-full max-w-[1100px] max-h-[820px]">
+              <SettingsView onClose={close} initialTab={initialTab} />
             </div>
           </motion.div>
         </>

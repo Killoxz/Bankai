@@ -298,9 +298,9 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
   }
 
   const inner = (
-    <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Settings</h1>
+    <div className={cn(onClose ? "flex h-full flex-col overflow-hidden" : "mx-auto max-w-[1100px] px-6 pb-16 pt-6 sm:px-10")}>
+      <div className={cn("flex items-center justify-between", onClose ? "shrink-0 border-b border-border px-6 py-4 sm:px-8" : "mb-8")}>
+        <h1 className={cn("font-bold text-foreground", onClose ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl")}>Settings</h1>
         {onClose && (
           <button
             onClick={onClose}
@@ -312,9 +312,9 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
         )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+      <div className={cn(onClose ? "grid min-h-0 flex-1 overflow-hidden md:grid-cols-[200px_1fr]" : "grid gap-6 md:grid-cols-[220px_1fr]")}>
           {/* Sidebar */}
-          <nav className="space-y-1">
+          <nav className={cn("space-y-1", onClose && "overflow-y-auto border-r border-border px-3 py-4")}>
             {SECTIONS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -338,7 +338,7 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="rounded-2xl border border-border bg-card p-6"
+            className={cn(onClose ? "overflow-y-auto p-6 sm:p-8" : "rounded-2xl border border-border bg-card p-6")}
           >
 
             {/* ── Account ───────────────────────────────────────────────── */}
@@ -769,7 +769,7 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
 
   if (onClose) {
     return (
-      <div className="rounded-2xl bg-background shadow-2xl">
+      <div className="h-full overflow-hidden rounded-2xl bg-background shadow-2xl">
         {inner}
       </div>
     );
