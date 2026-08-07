@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Home, Search, Tv, Bookmark, User, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
+import { useSettingsModalStore } from "@/store/settings-modal-store";
 
 interface NavItem {
   key: string;
@@ -97,6 +98,7 @@ interface SearchResult {
 }
 
 function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
+  const openSettings = useSettingsModalStore((s) => s.setOpen);
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
 
@@ -172,7 +174,6 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
                 { label: "Schedule", href: "/schedule" },
                 { label: "Movies",   href: "/browse?format=MOVIE" },
                 { label: "History",  href: "/history" },
-                { label: "Settings", href: "/settings" },
               ].map((l) => (
                 <Link
                   key={l.href}
@@ -184,6 +185,13 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
                   <span className="text-gray-300 dark:text-white/30">→</span>
                 </Link>
               ))}
+              <button
+                onClick={() => { onClose(); openSettings(true); }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
+              >
+                Settings
+                <span className="text-gray-300 dark:text-white/30">→</span>
+              </button>
             </div>
           </div>
         )}

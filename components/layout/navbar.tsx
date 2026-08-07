@@ -206,6 +206,7 @@ export function Navbar() {
   );
 
   return (
+    <>
     <header className="relative z-50 w-full md:fixed md:inset-x-0 md:top-0">
 
       {/* ── Mobile bar (hidden on desktop) ────────────────────────────── */}
@@ -219,7 +220,8 @@ export function Navbar() {
         </button>
         {mounted && currentUser ? (
           <button
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => setMenuOpen(true)}
+            aria-label="Account menu"
             className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-gray-200 dark:ring-white/15"
           >
             {avatar
@@ -265,6 +267,85 @@ export function Navbar() {
       </div>
 
     </header>
+
+      {/* ── Mobile account bottom-sheet ───────────────────────────────── */}
+      <AnimatePresence>
+        {menuOpen && mounted && currentUser && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="mobile-menu-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden"
+              onClick={() => setMenuOpen(false)}
+            />
+
+            {/* Sheet */}
+            <motion.div
+              key="mobile-menu-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", bounce: 0.08, duration: 0.38 }}
+              className="fixed inset-x-0 bottom-0 z-[91] rounded-t-2xl bg-white dark:bg-[#1c1c1c] pb-10 md:hidden"
+            >
+              {/* Drag handle */}
+              <div className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-gray-300 dark:bg-white/20" />
+
+              {/* User info */}
+              <div className="flex items-center gap-3 border-b border-gray-100 dark:border-white/10 px-5 pb-4">
+                <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black">
+                  {avatar
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={avatar} alt="" className="size-full object-cover" />
+                    : currentUser[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">{currentUser}</p>
+                  <p className="text-xs text-gray-400 dark:text-white/45">Signed in</p>
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div className="px-3 pt-2">
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-gray-700 dark:text-white/80 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                >
+                  <User className="size-5 text-gray-400 dark:text-white/40" /> Profile
+                </Link>
+                <Link
+                  href="/history"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-gray-700 dark:text-white/80 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                >
+                  <History className="size-5 text-gray-400 dark:text-white/40" /> History
+                </Link>
+                <button
+                  onClick={() => { setMenuOpen(false); openSettings(true); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-gray-700 dark:text-white/80 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                >
+                  <Settings className="size-5 text-gray-400 dark:text-white/40" /> Settings
+                </button>
+
+                <div className="my-2 h-px bg-gray-100 dark:bg-white/10" />
+
+                <button
+                  onClick={() => { logout(); setMenuOpen(false); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/8"
+                >
+                  <LogOut className="size-5" /> Sign out
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
