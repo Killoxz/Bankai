@@ -22,7 +22,7 @@ export default async function TrendingPage({
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
+      <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Trending Now</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-white/50">

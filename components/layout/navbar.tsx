@@ -206,7 +206,7 @@ export function Navbar() {
   );
 
   return (
-    <header className="relative z-50 w-full">
+    <header className="relative z-50 w-full md:fixed md:inset-x-0 md:top-0">
 
       {/* ── Mobile bar (hidden on desktop) ────────────────────────────── */}
       <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl md:hidden">
@@ -233,10 +233,10 @@ export function Navbar() {
       </div>
 
       {/* ── Desktop bar (hidden on mobile) ────────────────────────────── */}
-      <div className="relative hidden h-16 items-center px-6 md:flex">
+      <div className="pointer-events-none relative hidden h-16 items-center px-6 md:flex">
 
         {/* Centered floating pill — logo + nav items */}
-        <div className="absolute left-1/2 -translate-x-1/2">
+        <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2">
           <div className="flex items-center rounded-2xl border border-gray-200/80 dark:border-white/[0.09] bg-white/95 dark:bg-[#1c1c1c]/90 px-2 py-1.5 shadow-lg backdrop-blur-xl">
             {/* Logo */}
             <Link href="/" aria-label="Bankai home" className="flex shrink-0 items-center px-2 pr-3">
@@ -254,7 +254,7 @@ export function Navbar() {
         </div>
 
         {/* Right actions */}
-        <div className="ml-auto flex items-center gap-3">
+        <div className="pointer-events-auto ml-auto flex items-center gap-3">
           {rightActions}
         </div>
       </div>

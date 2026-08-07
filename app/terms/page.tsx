@@ -87,7 +87,7 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10">
+      <div className="mx-auto max-w-3xl px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <h1 className="text-3xl font-bold text-foreground">Terms &amp; Privacy</h1>
         <p className="mt-2 text-sm text-gray-500 dark:text-white/40">Last updated 2026-08-03.</p>
 

@@ -111,7 +111,7 @@ export default function StatusPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="mx-auto max-w-xl px-6 pb-20 pt-12 sm:px-8">
+      <div className="mx-auto max-w-xl px-6 pb-20 pt-12 sm:px-8 md:pt-20">
 
         {/* ── Header ── */}
         <div className="mb-8">

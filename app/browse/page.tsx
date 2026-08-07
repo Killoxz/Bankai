@@ -33,7 +33,7 @@ export default async function BrowsePage({
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10">
+      <div className="mx-auto max-w-[1600px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
         <h1 className="mb-6 text-2xl font-bold text-white sm:text-3xl">{heading}</h1>
         <BrowseView initial={filters} availableTags={availableTags} />
       </div>
