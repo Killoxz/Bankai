@@ -118,6 +118,14 @@ a, button, [role="button"], input[type="range"] {
   transition-delay: 0s !important;
 }
 
+/* Hard-guarantee the desktop nav header is always sticky — belt-and-suspenders with md:sticky */
+@media (min-width: 768px) {
+  .bankai-nav {
+    position: sticky !important;
+    top: 0 !important;
+  }
+}
+
 @keyframes card-float {
   0%, 100% {
     transform: translateY(0px) scale3d(1.04, 1.04, 1.04);
