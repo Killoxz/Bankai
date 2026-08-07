@@ -23,7 +23,7 @@ export function BetaBanner() {
   if (!visible) return null;
 
   return (
-    <div className="relative z-[55] flex items-center justify-center gap-3 bg-primary/10 px-4 py-2.5 text-center">
+    <div className="relative z-[55] flex items-center justify-center gap-3 bg-primary/10 px-4 py-2.5 text-center md:hidden">
       <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
         Beta
       </span>
