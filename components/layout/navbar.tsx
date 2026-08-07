@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, User, LogOut, ChevronDown, Settings, History } from "lucide-react";
+import {
+  Search, Bell, User, LogOut, Settings, History,
+  Home, TrendingUp, CalendarDays, Bookmark, Film, X, ChevronDown,
+} from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,17 +15,17 @@ import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 import { useSettingsModalStore } from "@/store/settings-modal-store";
 
 const NAV_LINKS = [
-  { label: "Home",     href: "/" },
-  { label: "Trending", href: "/trending" },
-  { label: "Schedule", href: "/schedule" },
-  { label: "My List",  href: "/my-list" },
-  { label: "Movie",    href: "/browse?format=MOVIE" },
+  { label: "Home",     href: "/",                   icon: Home        },
+  { label: "Trending", href: "/trending",            icon: TrendingUp  },
+  { label: "Schedule", href: "/schedule",            icon: CalendarDays},
+  { label: "My List",  href: "/my-list",             icon: Bookmark    },
+  { label: "Movies",   href: "/browse?format=MOVIE", icon: Film        },
 ];
 
 const LANGUAGE_OPTIONS: { label: string; value: TitleLanguage }[] = [
   { label: "English", value: "english" },
-  { label: "Romaji",  value: "romaji" },
-  { label: "Native",  value: "native" },
+  { label: "Romaji",  value: "romaji"  },
+  { label: "Native",  value: "native"  },
 ];
 
 interface SearchResult {
@@ -34,17 +37,17 @@ interface SearchResult {
 }
 
 export function Navbar() {
-  const [search, setSearch]           = useState("");
-  const [results, setResults]         = useState<SearchResult[]>([]);
+  const [search, setSearch]               = useState("");
+  const [results, setResults]             = useState<SearchResult[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [menuOpen, setMenuOpen]       = useState(false);
-  const [mounted, setMounted]         = useState(false);
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const [mounted, setMounted]             = useState(false);
 
-  const currentUser    = useAuthStore((s) => s.currentUser);
-  const logout         = useAuthStore((s) => s.logout);
-  const avatar         = useAuthStore((s) => s.avatar);
-  const setAvatar      = useAuthStore((s) => s.setAvatar);
-  const openSettings   = useSettingsModalStore((s) => s.setOpen);
+  const currentUser  = useAuthStore((s) => s.currentUser);
+  const logout       = useAuthStore((s) => s.logout);
+  const avatar       = useAuthStore((s) => s.avatar);
+  const setAvatar    = useAuthStore((s) => s.setAvatar);
+  const openSettings = useSettingsModalStore((s) => s.setOpen);
 
   useEffect(() => setMounted(true), []);
 
@@ -58,14 +61,13 @@ export function Navbar() {
     return () => { cancelled = true; };
   }, [currentUser, setAvatar]);
 
-
   // Debounced live search
   useEffect(() => {
     const q = search.trim();
     if (q.length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=6`);
+        const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=6`);
         const json = await res.json();
         setResults((json.results ?? []).map((a: Record<string, unknown> & { id: number; title?: Record<string, string>; coverImage?: Record<string, string>; seasonYear?: number; format?: string }) => ({
           id: a.id,
@@ -83,15 +85,16 @@ export function Navbar() {
 
   return (
     <header className="relative z-50 w-full">
-<div className="flex h-16 items-center gap-5 bg-white/80 dark:bg-background/80 px-8 backdrop-blur-md">
+      <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl">
+
         {/* Logo */}
-        <Link href="/" aria-label="Bankai home" className="shrink-0">
-          <Image src="/bankai-logo.svg" alt="Bankai" width={90} height={28} className="h-7 w-auto invert dark:invert-0" priority />
+        <Link href="/" aria-label="Bankai home" className="shrink-0 mr-2">
+          <Image src="/bankai-logo.svg" alt="Bankai" width={84} height={26} className="h-6 w-auto invert dark:invert-0" priority />
         </Link>
 
-        {/* Nav links */}
-        <Suspense fallback={<NavLinks pathname={null} searchParams={null} />}>
-          <NavLinksWithSearchParams />
+        {/* Desktop nav — icon + label pills with sliding indicator */}
+        <Suspense fallback={<NavPills pathname={null} searchParams={null} />}>
+          <NavPillsWithSearchParams />
         </Suspense>
 
         <div className="flex-1" />
@@ -102,17 +105,20 @@ export function Navbar() {
           onFocus={() => setSearchFocused(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false); }}
         >
-          <div className="flex w-52 items-center gap-2 rounded-full border border-gray-300 dark:border-white/15 bg-gray-100 dark:bg-white/5 px-3.5 py-2 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/35">
+          <div className="flex w-48 items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 px-3 py-1.5 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/25">
+            <Search className="size-3.5 shrink-0 text-gray-400 dark:text-white/40" />
             <input
               type="text"
-              placeholder="Search here ..."
+              placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:placeholder:text-white/40"
+              className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:placeholder:text-white/35"
             />
-            <Link href="/browse" aria-label="Advanced search" className="shrink-0 text-gray-400 dark:text-white/45 transition-colors hover:text-gray-700 dark:hover:text-white">
-              <Search className="size-4" />
-            </Link>
+            {search && (
+              <button onClick={() => setSearch("")} className="shrink-0 text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70">
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
 
           <AnimatePresence>
@@ -122,7 +128,7 @@ export function Navbar() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.97 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 top-12 w-80 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1.5 shadow-2xl"
+                className="absolute right-0 top-11 w-80 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1.5 shadow-2xl"
               >
                 {results.map((r) => (
                   <Link
@@ -144,8 +150,11 @@ export function Navbar() {
           </AnimatePresence>
         </div>
 
+        {/* Language */}
+        <LanguageDropdown />
+
         {/* Bell */}
-        <button aria-label="Notifications" className="text-gray-500 dark:text-white/60 transition-colors hover:text-gray-900 dark:hover:text-white">
+        <button aria-label="Notifications" className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white">
           <Bell className="size-5" />
         </button>
 
@@ -158,7 +167,7 @@ export function Navbar() {
             <button
               onClick={() => setMenuOpen((o) => !o)}
               aria-label="Account menu"
-              className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-gray-300 dark:ring-white/20 transition hover:ring-gray-400 dark:hover:ring-white/40"
+              className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-black ring-2 ring-gray-200 dark:ring-white/15 transition hover:ring-gray-300 dark:hover:ring-white/30"
             >
               {avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -213,8 +222,8 @@ export function Navbar() {
             </AnimatePresence>
           </div>
         ) : mounted ? (
-          <div className="flex shrink-0 items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-600 dark:text-white/70 transition-colors hover:text-gray-900 dark:hover:text-white">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Link href="/login" className="text-sm font-medium text-gray-500 dark:text-white/60 transition-colors hover:text-gray-900 dark:hover:text-white">
               Log In
             </Link>
             <Link href="/signup" className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-black transition hover:brightness-110">
@@ -222,22 +231,28 @@ export function Navbar() {
             </Link>
           </div>
         ) : (
-          <div className="h-8 w-[124px] shrink-0" aria-hidden />
+          <div className="h-8 w-[112px] shrink-0" aria-hidden />
         )}
       </div>
     </header>
   );
 }
 
-function NavLinksWithSearchParams() {
+function NavPillsWithSearchParams() {
   const pathname    = usePathname();
   const searchParams = useSearchParams();
-  return <NavLinks pathname={pathname} searchParams={searchParams} />;
+  return <NavPills pathname={pathname} searchParams={searchParams} />;
 }
 
-function NavLinks({ pathname, searchParams }: { pathname: string | null; searchParams: URLSearchParams | null }) {
+function NavPills({
+  pathname,
+  searchParams,
+}: {
+  pathname: string | null;
+  searchParams: URLSearchParams | null;
+}) {
   return (
-    <nav className="hidden items-center gap-5 md:flex">
+    <nav className="hidden items-center rounded-xl border border-gray-200/80 dark:border-white/[0.07] bg-gray-100/60 dark:bg-white/[0.04] p-1 md:flex">
       {NAV_LINKS.map((link) => {
         const [linkPath, linkQuery] = link.href.split("?");
         let active = false;
@@ -254,20 +269,39 @@ function NavLinks({ pathname, searchParams }: { pathname: string | null; searchP
             active = linkPath !== "#" && pathname.startsWith(linkPath);
           }
         }
+
+        const Icon = link.icon;
+
         return (
           <Link
             key={link.label}
             href={link.href}
-            className={cn(
-              "text-sm transition-colors",
-              active ? "font-semibold text-gray-900 dark:text-white" : "font-medium text-gray-500 dark:text-white/55 hover:text-gray-700 dark:hover:text-white/90"
-            )}
+            className="relative flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors"
           >
-            {link.label}
+            {active && (
+              <motion.span
+                layoutId="desktop-nav-pill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-white/10 shadow-sm"
+                transition={{ type: "spring", bounce: 0.18, duration: 0.38 }}
+              />
+            )}
+            <Icon
+              className={cn(
+                "relative z-10 size-4 transition-colors",
+                active ? "text-primary" : "text-gray-400 dark:text-white/40"
+              )}
+            />
+            <span
+              className={cn(
+                "relative z-10 transition-colors",
+                active ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-white/50"
+              )}
+            >
+              {link.label}
+            </span>
           </Link>
         );
       })}
-      <LanguageDropdown />
     </nav>
   );
 }
@@ -280,14 +314,15 @@ function LanguageDropdown() {
 
   return (
     <div
-      className="relative"
+      className="relative hidden md:block"
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-sm font-medium text-gray-500 dark:text-white/55 transition-colors hover:text-gray-700 dark:hover:text-white/90"
+        className="flex items-center gap-1 text-sm font-medium text-gray-400 dark:text-white/45 transition-colors hover:text-gray-700 dark:hover:text-white/80"
       >
-        Language <ChevronDown className="size-3.5" />
+        {current}
+        <ChevronDown className="size-3.5" />
       </button>
       <AnimatePresence>
         {open && (
@@ -296,7 +331,7 @@ function LanguageDropdown() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.12 }}
-            className="absolute left-0 top-8 z-20 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1 shadow-2xl"
+            className="absolute right-0 top-9 z-20 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-card py-1 shadow-2xl"
           >
             <p className="px-3.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-gray-400 dark:text-white/40">
               Title Language
