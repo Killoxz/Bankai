@@ -99,7 +99,7 @@ export function HistoryView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
+      <div className="mx-auto max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Watch History</h1>

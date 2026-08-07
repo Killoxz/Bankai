@@ -46,7 +46,7 @@ export default async function WatchPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10 md:pt-20">
+      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10">
         <Suspense>
           <WatchView
             detail={detail}

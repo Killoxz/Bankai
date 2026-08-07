@@ -109,7 +109,7 @@ export default function StatusPage() {
   return (
     <div className="min-h-screen bg-background">
 
-      <div className="mx-auto max-w-xl px-6 pb-20 pt-12 sm:px-8 md:pt-20">
+      <div className="mx-auto max-w-xl px-6 pb-20 pt-12 sm:px-8">
 
         {/* ── Header ── */}
         <div className="mb-8">

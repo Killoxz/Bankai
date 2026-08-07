@@ -14,7 +14,7 @@ const CHANNELS = [
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-6 pb-16 pt-6 text-center sm:px-10 md:pt-20">
+      <div className="mx-auto max-w-2xl px-6 pb-16 pt-6 text-center sm:px-10">
         <h1 className="text-3xl font-bold text-white">Get in Touch</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/60">
           Found a bug, have feedback, or just want to say hi? Reach out through any of these —

@@ -28,7 +28,7 @@ export default async function RecommendedPage({ params }: { params: Promise<{ id
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8 md:pt-20">
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
         {/* Back */}
         <Link href={`/watch/${animeId}`} className="mb-6 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_back</span>

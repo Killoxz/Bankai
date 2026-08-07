@@ -332,12 +332,13 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
           </nav>
 
           {/* Content */}
+          <div className={cn(onClose && "relative min-h-0 overflow-hidden")}>
           <motion.div
             key={activeSection}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className={cn(onClose ? "overflow-y-auto p-6 sm:p-8" : "rounded-2xl border border-border bg-card p-6")}
+            className={cn(onClose ? "h-full overflow-y-auto p-6 sm:p-8" : "rounded-2xl border border-border bg-card p-6")}
           >
 
             {/* ── Account ───────────────────────────────────────────────── */}
@@ -762,6 +763,10 @@ export function SettingsView({ onClose, initialTab }: { onClose?: () => void; in
             )}
 
           </motion.div>
+          {onClose && (
+            <div className="pointer-events-none absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-background to-transparent" />
+          )}
+          </div>
         </div>
       </div>
   );

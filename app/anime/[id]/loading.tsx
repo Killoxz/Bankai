@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background md:-mt-16">
 
       {/* Banner */}
       <div className="h-[34vh] min-h-[240px] w-full animate-pulse bg-white/5" />
