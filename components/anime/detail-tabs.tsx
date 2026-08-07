@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { ReviewsSection } from "./reviews-section";
+import { DetailEpisodeList } from "./detail-episode-list";
 import { AnimeCard } from "@/components/browse/anime-card";
 import { ScrollRow } from "@/components/home/scroll-row";
 import {
@@ -13,10 +14,11 @@ import {
   type RelationEntry,
 } from "@/lib/anilist";
 
-type TabKey = "overview" | "relations" | "characters" | "staff" | "reviews";
+type TabKey = "overview" | "episodes" | "relations" | "characters" | "staff" | "reviews";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "episodes", label: "Episodes" },
   { key: "relations", label: "Relations" },
   { key: "characters", label: "Characters" },
   { key: "staff", label: "Staff" },
@@ -66,6 +68,7 @@ export function DetailTabs({ detail, animeId }: { detail: AnimeDetail; animeId: 
 
       <div className="py-8">
         {tab === "overview" && <OverviewTab detail={detail} />}
+        {tab === "episodes" && <DetailEpisodeList animeId={animeId} />}
         {tab === "relations" && <RelationsTab edges={detail.relations.edges} />}
         {tab === "characters" && <PeopleGrid title="Anime Characters" edges={detail.characters.edges} />}
         {tab === "staff" && <PeopleGrid title="Staff" edges={detail.staff.edges} />}
