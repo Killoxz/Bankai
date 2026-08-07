@@ -4,6 +4,7 @@ export interface ProviderEpisode {
   id: string;            // e.g. "watch/kiwi/178005/sub/animepahe-1" — use directly as watch URL
   number: number;
   title?: string | null;
+  description?: string | null;
   thumbnail?: string | null;
   image?: string | null;
   airDate?: string | null;
@@ -157,6 +158,7 @@ export function mergedEpisodeList(providers: EpisodesMap, audio: "sub" | "dub"):
         byNumber.set(ep.number, { ...ep });
       } else {
         if (ep.title && ep.title !== `Episode ${ep.number}`) existing.title = ep.title;
+        if (ep.description) existing.description = ep.description;
         if (ep.thumbnail) existing.thumbnail = ep.thumbnail;
         if (ep.image)     existing.image     = ep.image;
         if (ep.airDate)   existing.airDate   = ep.airDate;

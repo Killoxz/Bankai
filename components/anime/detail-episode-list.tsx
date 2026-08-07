@@ -166,17 +166,18 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : filtered.map((n) => {
-            const meta    = metaByNum.get(n);
-            const title   = meta?.title && meta.title !== `Episode ${n}` ? meta.title : null;
-            const airDate = formatAirDate(meta?.airDate);
+            const meta        = metaByNum.get(n);
+            const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : null;
+            const description = meta?.description ?? null;
+            const airDate     = formatAirDate(meta?.airDate);
 
             return (
               <Link
                 key={n}
                 href={`/watch/${animeId}?ep=${n}`}
-                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-accent/40"
+                className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-accent/40"
               >
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-secondary-foreground">
+                <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-secondary-foreground">
                   {n}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -186,8 +187,13 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
                   {airDate && (
                     <p className="text-[11px] text-muted-foreground">{airDate}</p>
                   )}
+                  {description && (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                      {description}
+                    </p>
+                  )}
                 </div>
-                <Play className="size-4 shrink-0 text-muted-foreground" />
+                <Play className="mt-1 size-4 shrink-0 text-muted-foreground" />
               </Link>
             );
           })}
@@ -200,16 +206,34 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : (
-            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6">
-              {filtered.map((n) => (
-                <Link
-                  key={n}
-                  href={`/watch/${animeId}?ep=${n}`}
-                  className="flex items-center justify-center rounded-lg py-2.5 text-sm font-bold transition-colors bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground"
-                >
-                  {n}
-                </Link>
-              ))}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {filtered.map((n) => {
+                const meta        = metaByNum.get(n);
+                const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : null;
+                const description = meta?.description ?? null;
+                const airDate     = formatAirDate(meta?.airDate);
+
+                return (
+                  <Link
+                    key={n}
+                    href={`/watch/${animeId}?ep=${n}`}
+                    className="group flex flex-col gap-1 rounded-lg bg-secondary px-3 py-2.5 transition-colors hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <span className="text-xs font-bold">EP {n}</span>
+                    <span className="line-clamp-1 text-xs font-medium opacity-80">
+                      {title ?? `Episode ${n}`}
+                    </span>
+                    {description && (
+                      <span className="line-clamp-2 text-[11px] opacity-60 leading-relaxed">
+                        {description}
+                      </span>
+                    )}
+                    {airDate && (
+                      <span className="mt-auto pt-1 text-[10px] opacity-50">{airDate}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
@@ -217,55 +241,61 @@ export function DetailEpisodeList({ animeId }: { animeId: number }) {
 
       {/* Image view */}
       {viewMode === "image" && (
-        <div className="max-h-[560px] overflow-y-auto divide-y divide-border">
+        <div className="max-h-[560px] overflow-y-auto p-3">
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
-          ) : filtered.map((n) => {
-            const meta    = metaByNum.get(n);
-            const thumb   = meta?.thumbnail ?? meta?.image ?? null;
-            const title   = meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`;
-            const airDate = formatAirDate(meta?.airDate);
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {filtered.map((n) => {
+                const meta        = metaByNum.get(n);
+                const thumb       = meta?.thumbnail ?? meta?.image ?? null;
+                const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`;
+                const description = meta?.description ?? null;
+                const airDate     = formatAirDate(meta?.airDate);
 
-            return (
-              <Link
-                key={n}
-                href={`/watch/${animeId}?ep=${n}`}
-                className="flex w-full text-left transition-colors hover:bg-accent/40"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video w-[42%] shrink-0 overflow-hidden bg-muted">
-                  {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="flex size-full items-center justify-center bg-muted">
-                      <ImageIcon className="size-6 text-muted-foreground/40" />
+                return (
+                  <Link
+                    key={n}
+                    href={`/watch/${animeId}?ep=${n}`}
+                    className="group flex overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-accent/40"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video w-36 shrink-0 overflow-hidden bg-muted">
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center bg-muted">
+                          <ImageIcon className="size-5 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                        EP {n}
+                      </span>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                        <div className="flex size-7 items-center justify-center rounded-full bg-primary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                          <Play className="size-3 translate-x-px fill-primary-foreground text-primary-foreground" />
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
-                    EP {n}
-                  </span>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity hover:opacity-100">
-                    <div className="flex size-9 items-center justify-center rounded-full bg-primary shadow-lg">
-                      <Play className="size-4 translate-x-px fill-primary-foreground text-primary-foreground" />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Info */}
-                <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-3">
-                  <p className="line-clamp-1 text-sm font-bold leading-tight text-foreground">
-                    {title}
-                  </p>
-                  {airDate && (
-                    <p className="mt-auto text-[10px] text-muted-foreground">{airDate}</p>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                    {/* Info */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-2.5 py-2">
+                      <p className="line-clamp-1 text-xs font-bold text-foreground">{title}</p>
+                      {description && (
+                        <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                          {description}
+                        </p>
+                      )}
+                      {airDate && (
+                        <p className="mt-auto text-[10px] text-muted-foreground">{airDate}</p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
