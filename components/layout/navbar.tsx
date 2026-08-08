@@ -90,7 +90,7 @@ export function Navbar() {
         onFocus={() => setSearchFocused(true)}
         onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false); }}
       >
-        <div className="flex w-44 items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 px-3 py-1.5 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/25">
+        <div className="flex w-32 xl:w-44 items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 px-3 py-1.5 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/25">
           <Search className="size-3.5 shrink-0 text-gray-400 dark:text-white/40" />
           <input
             type="text"
@@ -134,8 +134,10 @@ export function Navbar() {
         </AnimatePresence>
       </div>
 
-      {/* Language */}
-      <LanguageDropdown />
+      {/* Language — hidden on lg to save space, visible on xl+ */}
+      <div className="hidden xl:block">
+        <LanguageDropdown />
+      </div>
 
       {/* Bell */}
       <button aria-label="Notifications" className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white">
@@ -235,10 +237,14 @@ export function Navbar() {
       </div>
 
       {/* ── Desktop bar (hidden on mobile) ────────────────────────────── */}
-      <div className="pointer-events-none relative hidden h-16 items-center px-6 lg:flex">
+      {/* 3-column grid keeps the pill truly centered without overlapping right actions */}
+      <div className="pointer-events-none hidden h-16 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+
+        {/* Left spacer (mirrors right actions so pill stays centered) */}
+        <div />
 
         {/* Centered floating pill — logo + nav items */}
-        <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2">
+        <div className="pointer-events-auto">
           <div className="flex items-center rounded-2xl border border-gray-200/80 dark:border-white/[0.09] bg-white/95 dark:bg-[#1c1c1c]/90 px-2 py-1.5 shadow-lg backdrop-blur-xl">
             {/* Logo */}
             <Link href="/" aria-label="Bankai home" className="flex shrink-0 items-center px-2 pr-2">
@@ -261,7 +267,7 @@ export function Navbar() {
         </div>
 
         {/* Right actions */}
-        <div className="pointer-events-auto ml-auto flex items-center gap-3">
+        <div className="pointer-events-auto flex items-center justify-end gap-2 xl:gap-3">
           {rightActions}
         </div>
       </div>
