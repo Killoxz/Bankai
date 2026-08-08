@@ -207,10 +207,10 @@ export function Navbar() {
 
   return (
     <>
-    <header className="bankai-nav z-50 w-full md:fixed md:inset-x-0 md:top-0">
+    <header className="bankai-nav z-50 w-full lg:fixed lg:inset-x-0 lg:top-0">
 
       {/* ── Mobile bar (hidden on desktop) ────────────────────────────── */}
-      <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl md:hidden">
+      <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl lg:hidden">
         <Link href="/" aria-label="Bankai home" className="shrink-0">
           <Image src="/bankai-logo.svg" alt="Bankai" width={84} height={26} className="h-6 w-auto invert dark:invert-0" priority />
         </Link>
@@ -235,7 +235,7 @@ export function Navbar() {
       </div>
 
       {/* ── Desktop bar (hidden on mobile) ────────────────────────────── */}
-      <div className="pointer-events-none relative hidden h-16 items-center px-6 md:flex">
+      <div className="pointer-events-none relative hidden h-16 items-center px-6 lg:flex">
 
         {/* Centered floating pill — logo + nav items */}
         <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2">
@@ -279,7 +279,7 @@ export function Navbar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm lg:hidden"
               onClick={() => setMenuOpen(false)}
             />
 
@@ -290,7 +290,7 @@ export function Navbar() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", bounce: 0.08, duration: 0.38 }}
-              className="fixed inset-x-0 bottom-0 z-[91] rounded-t-2xl bg-white dark:bg-[#1c1c1c] pb-10 md:hidden"
+              className="fixed inset-x-0 bottom-0 z-[91] rounded-t-2xl bg-white dark:bg-[#1c1c1c] pb-10 lg:hidden"
             >
               {/* Drag handle */}
               <div className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-gray-300 dark:bg-white/20" />

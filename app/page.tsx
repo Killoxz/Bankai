@@ -20,7 +20,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background md:-mt-16">
+    <div className="min-h-screen bg-background lg:-mt-16">
       <HeroCarousel items={heroItems} />
 
       <div className="relative z-10 -mt-4 space-y-10 px-6 pb-16 sm:px-10">

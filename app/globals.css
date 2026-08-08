@@ -118,7 +118,7 @@ a, button, [role="button"], input[type="range"] {
   transition-delay: 0s !important;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .bankai-nav {
     position: fixed !important;
     top: 0 !important;

@@ -52,13 +52,13 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="512x512" href="/bankai-icon-512.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/bankai-icon-192.png" />
       </head>
-      <body className={`${inter.variable} pb-24 font-sans md:pb-0`}>
+      <body className={`${inter.variable} pb-24 font-sans lg:pb-0`}>
         <Providers>
           <BetaBanner />
           <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
           <SettingsSync />
           <Navbar />
-          <div className="hidden md:block h-16" aria-hidden="true" />
+          <div className="hidden lg:block h-16" aria-hidden="true" />
           <PageTransition>
             {children}
           </PageTransition>

@@ -9,7 +9,7 @@ import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 import { stripHtml } from "@/lib/utils";
 
 const INTERVAL_MS = 7000;
-const heroClass = "h-[45vw] min-h-[260px] max-h-[380px] md:h-[min(72vh,720px)] md:min-h-[520px] md:max-h-none";
+const HERO_HEIGHT = { height: "min(72vh, 720px)", minHeight: 520 };
 
 export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   const [index, setIndex] = useState(0);
@@ -22,11 +22,11 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   }, [index, count]);
 
   if (count === 0) {
-    return <div className={`w-full bg-zinc-900 ${heroClass}`} />;
+    return <div style={HERO_HEIGHT} className="w-full bg-zinc-900" />;
   }
 
   return (
-    <section className={`relative w-full overflow-hidden ${heroClass}`}>
+    <section className="relative w-full overflow-hidden" style={HERO_HEIGHT}>
       <AnimatePresence mode="wait" initial={false}>
         <HeroSlide
           key={items[index].id}
@@ -73,7 +73,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
         fill
         priority={priority}
         sizes="100vw"
-        className="object-cover object-top"
+        className="object-cover object-center lg:object-top"
       />
 
       {/* Gradients — use CSS variable so they match the page background in both light and dark mode */}
