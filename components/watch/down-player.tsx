@@ -198,6 +198,7 @@ export function DownPlayer({
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [retryKey,  setRetryKey]  = useState(0);
+  const autoRetryRef = useRef(false);
   const [intro,     setIntro]     = useState<Timestamp | null>(null);
   const [outro,     setOutro]     = useState<Timestamp | null>(null);
   const [skipZone,  setSkipZone]  = useState<"intro" | "outro" | null>(null);
@@ -632,6 +633,11 @@ export function DownPlayer({
         throw new Error("Your browser does not support HLS playback.");
       }
     } catch (err: unknown) {
+      if (!autoRetryRef.current) {
+        autoRetryRef.current = true;
+        setTimeout(() => setRetryKey((k) => k + 1), 2500);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Streaming is unavailable.");
       setLoading(false);
       onErrorRef.current?.(selectedProvider);
@@ -639,6 +645,7 @@ export function DownPlayer({
   }, [animeId, episode, selectedProvider, audio, malId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    autoRetryRef.current = false;
     initPlayer();
     return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
   }, [initPlayer, retryKey]);

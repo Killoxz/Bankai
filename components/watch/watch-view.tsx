@@ -113,7 +113,7 @@ export function WatchView({
   const handleProviderError = useCallback((provider: string) => {
     setFailedProviders((prev) => new Set([...prev, provider]));
   }, []);
-  useEffect(() => { setFailedProviders(new Set()); }, [episode, audio]);
+  useEffect(() => { setFailedProviders(new Set()); }, [episode, audio, selectedProvider]);
 
   // Always ping the streaming API on mount so it starts waking up immediately —
   // even when SSR data exists, the user will likely switch episodes and need it warm.
