@@ -42,7 +42,6 @@ export function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [menuOpen, setMenuOpen]           = useState(false);
   const [mounted, setMounted]             = useState(false);
-  const [scrolled, setScrolled]           = useState(false);
 
   const currentUser  = useAuthStore((s) => s.currentUser);
   const logout       = useAuthStore((s) => s.logout);
@@ -51,13 +50,6 @@ export function Navbar() {
   const openSettings = useSettingsModalStore((s) => s.setOpen);
 
   useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     if (!currentUser) { setAvatar(null); return; }
@@ -243,10 +235,7 @@ export function Navbar() {
       </div>
 
       {/* ── Desktop bar (hidden on mobile) ────────────────────────────── */}
-      <div className={cn(
-        "pointer-events-none relative hidden h-16 items-center px-6 md:flex transition-colors duration-300",
-        scrolled && "bg-background/90 backdrop-blur-xl"
-      )}>
+      <div className="pointer-events-none relative hidden h-16 items-center px-6 md:flex">
 
         {/* Centered floating pill — logo + nav items */}
         <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2">
