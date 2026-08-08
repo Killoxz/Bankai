@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { DownPlayer }      from "./down-player";
+import { WatchParty }      from "./watch-party";
 import { CommentsSection } from "./comments-section";
 import { SeriesSidebar }   from "./series-sidebar";
 import { EpisodeList }     from "./episode-list";
@@ -97,6 +98,16 @@ export function WatchView({
   const [autoplay,  setAutoplay]  = useState(storeAutoPlay);
   const [autoSkip,  setAutoSkip]  = useState(storeAutoSkip);
   const [lightsOff, setLightsOff] = useState(false);
+
+  // ── Watch Party ───────────────────────────────────────────────────────────
+  const [seekToTime, setSeekToTime]         = useState<number | null>(null);
+  const videoCurrentTimeRef                 = useRef(0);
+  const videoIsPlayingRef                   = useRef(false);
+  const syncPlayingFnRef                    = useRef<((playing: boolean) => void) | null>(null);
+  const handleTimeUpdate = useCallback((time: number, playing: boolean) => {
+    videoCurrentTimeRef.current  = time;
+    videoIsPlayingRef.current    = playing;
+  }, []);
 
   // null = not yet measured (suppress comments until we know); avoids layout flash
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
@@ -260,6 +271,23 @@ export function WatchView({
               currentEpisode={episode}
               totalEpisodes={totalEpisodes}
               onError={handleProviderError}
+              seekTo={seekToTime}
+              onTimeUpdate={handleTimeUpdate}
+              onSyncPlaying={(fn) => { syncPlayingFnRef.current = fn; }}
+              watchPartySlot={
+                <WatchParty
+                  animeId={animeId}
+                  animeTitle={detail.title.english ?? detail.title.romaji ?? ""}
+                  animeCover={detail.coverImage.large ?? undefined}
+                  currentEpisode={episode}
+                  username={currentUser ?? null}
+                  getCurrentTime={() => videoCurrentTimeRef.current}
+                  getIsPlaying={() => videoIsPlayingRef.current}
+                  onEpisodeChange={handleSelectEpisode}
+                  onSeekTo={(t) => setSeekToTime(t)}
+                  onSyncPlaying={(playing) => syncPlayingFnRef.current?.(playing)}
+                />
+              }
             />
             <ServerSelector
               episode={episode}

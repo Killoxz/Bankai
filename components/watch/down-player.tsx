@@ -36,6 +36,10 @@ interface DownPlayerProps {
   onNextEpisode: () => void;
   onEpisodeEnd?: () => void;
   onError?: (provider: string) => void;
+  watchPartySlot?: React.ReactNode;
+  seekTo?: number | null;
+  onTimeUpdate?: (time: number, playing: boolean) => void;
+  onSyncPlaying?: (fn: (playing: boolean) => void) => void;
 }
 
 type SettingsView =
@@ -154,6 +158,7 @@ export function DownPlayer({
   autoplay, autoNext, autoSkip, lightsOff,
   onAutoplayChange, onAutoNextChange, onAutoSkipChange, onLightsOffChange,
   onPrevEpisode, onNextEpisode, onEpisodeEnd, onError,
+  watchPartySlot, seekTo, onTimeUpdate, onSyncPlaying,
 }: DownPlayerProps) {
   const videoRef     = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +197,10 @@ export function DownPlayer({
   useEffect(() => { audioRef.current            = audio;            }, [audio]);
   useEffect(() => { animeTitleRef.current       = animeTitle;       }, [animeTitle]);
   useEffect(() => { animeCoverRef.current       = animeCover;       }, [animeCover]);
+
+  // ── Download state ────────────────────────────────────────────────────────
+  const [rawStreamUrl,  setRawStreamUrl]  = useState<string | null>(null);
+  const [downloadOpen,  setDownloadOpen]  = useState(false);
 
   // ── Stream state ──────────────────────────────────────────────────────────
   const [embedUrl,  setEmbedUrl]  = useState<string | null>(null);
@@ -510,7 +519,7 @@ export function DownPlayer({
   const initPlayer = useCallback(async () => {
     if (!selectedProvider) return;
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    setEmbedUrl(null); setLoading(true); setError(null);
+    setEmbedUrl(null); setRawStreamUrl(null); setLoading(true); setError(null);
     setIntro(null); setOutro(null); setSkipZone(null); setSubtitles([]);
     setCurrentTime(0); setDuration(0); setPlaying(false);
     setSelectedTrack(0); setHlsLevels([]); setSelectedLevel(-1); setHoverX(null);
@@ -598,6 +607,7 @@ export function DownPlayer({
         const hls = new Hls({ maxMaxBufferLength: 30 });
         hlsRef.current = hls;
         hls.loadSource(streamUrl);
+        setRawStreamUrl(typeof window !== "undefined" ? window.location.origin + streamUrl : streamUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setLoading(false);
@@ -673,6 +683,34 @@ export function DownPlayer({
       video.removeEventListener("volumechange", onVolume); video.removeEventListener("timeupdate", onTime);
     };
   }, []);
+
+  // ── External seekTo prop ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (seekTo == null) return;
+    const video = videoRef.current;
+    if (video && isFinite(seekTo)) video.currentTime = seekTo;
+  }, [seekTo]);
+
+  // ── Register play/pause sync function with parent ────────────────────────
+  useEffect(() => {
+    if (!onSyncPlaying) return;
+    onSyncPlaying((playing: boolean) => {
+      const video = videoRef.current;
+      if (!video) return;
+      if (playing && video.paused) video.play().catch(() => {});
+      else if (!playing && !video.paused) video.pause();
+    });
+  }, [onSyncPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── onTimeUpdate callback for watch party ────────────────────────────────
+  useEffect(() => {
+    if (!onTimeUpdate) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const handler = () => onTimeUpdate(video.currentTime, !video.paused);
+    video.addEventListener("timeupdate", handler);
+    return () => video.removeEventListener("timeupdate", handler);
+  }, [onTimeUpdate]);
 
   // ── Skip zone detection + auto-skip ──────────────────────────────────────
   useEffect(() => {
@@ -1434,6 +1472,12 @@ export function DownPlayer({
                   className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                   <MI name="photo_camera" size={20} />
                 </button>
+                {rawStreamUrl && (
+                  <button onClick={(e) => { e.stopPropagation(); setDownloadOpen(true); }}
+                    className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
+                    <MI name="download" size={20} />
+                  </button>
+                )}
                 <button onClick={() => onLightsOffChange(!lightsOff)}
                   className={["flex size-9 items-center justify-center transition-colors [touch-action:manipulation]",
                     lightsOff ? "text-primary" : "text-white/70 hover:text-white"].join(" ")}>
@@ -1551,6 +1595,33 @@ export function DownPlayer({
             </div>
           );
         })()}
+
+        {/* ── Download modal ──────────────────────────────────────────────── */}
+        {downloadOpen && rawStreamUrl && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 px-6" onClick={() => setDownloadOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1c1c1c] p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-semibold text-white">Download Episode {episode}</h3>
+                <button onClick={() => setDownloadOpen(false)} className="text-white/50 hover:text-white"><MI name="close" size={20} /></button>
+              </div>
+              <p className="mb-4 text-xs leading-relaxed text-white/50">
+                This is an HLS stream. Copy the URL below and open it in VLC Media Player or any HLS-compatible downloader to save the episode.
+              </p>
+              <div className="mb-4 flex gap-2">
+                <input readOnly value={rawStreamUrl} className="flex-1 truncate rounded-lg bg-white/5 px-3 py-2 text-xs text-white/70 outline-none border border-white/10" />
+                <button
+                  onClick={() => { navigator.clipboard.writeText(rawStreamUrl).catch(() => {}); }}
+                  className="shrink-0 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white hover:bg-white/15 transition-colors [touch-action:manipulation]">
+                  Copy
+                </button>
+              </div>
+              <a href={`vlc://${rawStreamUrl.replace(/^https?:\/\//, "")}`}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-black hover:brightness-110 transition-all">
+                <MI name="play_circle" size={18} /> Open in VLC
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Bottom settings bar ───────────────────────────────────────────── */}
@@ -1567,6 +1638,7 @@ export function DownPlayer({
             <MI name="play_arrow" size={10} className="text-white/70" />
             {playerType}
           </button>
+          {watchPartySlot}
         </div>
         <div className="flex items-center gap-3 text-xs font-medium">
           <button onClick={onPrevEpisode} disabled={episode <= 1}

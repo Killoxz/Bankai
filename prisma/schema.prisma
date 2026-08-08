@@ -198,6 +198,22 @@ model ApiCache {
   updatedAt DateTime @updatedAt
 }
 
+model WatchParty {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  animeId     Int
+  animeTitle  String
+  animeCover  String?
+  episode     Int      @default(1)
+  currentTime Float    @default(0)
+  isPlaying   Boolean  @default(false)
+  hostName    String
+  memberNames String[] @default([])
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+}
+
 enum ListStatus {
   WATCHING
   COMPLETED
