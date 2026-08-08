@@ -178,6 +178,8 @@ export function EpisodeList({
             const servers  = serversForEpisode(n, currentAudio);
             const serverCount = servers.length;
 
+            const description = meta?.description ?? null;
+
             return (
               <div
                 key={n}
@@ -193,6 +195,9 @@ export function EpisodeList({
                     <span className={["text-sm font-bold leading-tight", isActive ? "text-primary" : "text-foreground"].join(" ")}>
                       {n}. {title ?? `Episode ${n}`}
                     </span>
+                    {description && (
+                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
+                    )}
                   </button>
                   <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
@@ -255,9 +260,13 @@ export function EpisodeList({
             <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6">
               {filtered.map((n) => {
                 const isActive = n === currentEpisode;
+                const meta = metaByNum.get(n);
+                const gridTitle = meta?.title && meta.title !== `Episode ${n}` ? `${n}. ${meta.title}` : `Episode ${n}`;
+                const gridDesc = meta?.description ? `\n\n${meta.description}` : "";
                 return (
                   <button
                     key={n}
+                    title={`${gridTitle}${gridDesc}`}
                     ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
                     onClick={() => { onSelectEpisode(n); setSearch(""); }}
                     className={[
@@ -282,11 +291,12 @@ export function EpisodeList({
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : filtered.map((n) => {
-            const meta     = metaByNum.get(n);
-            const isActive = n === currentEpisode;
-            const thumb    = meta?.thumbnail ?? meta?.image ?? null;
-            const title    = meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`;
-            const airDate  = formatAirDate(meta?.airDate);
+            const meta        = metaByNum.get(n);
+            const isActive    = n === currentEpisode;
+            const thumb       = meta?.thumbnail ?? meta?.image ?? null;
+            const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`;
+            const airDate     = formatAirDate(meta?.airDate);
+            const imgDesc     = meta?.description ?? null;
 
             return (
               <button
@@ -324,6 +334,9 @@ export function EpisodeList({
                   <p className={["line-clamp-1 text-sm font-bold leading-tight", isActive ? "text-primary" : "text-foreground"].join(" ")}>
                     {title}
                   </p>
+                  {imgDesc && (
+                    <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{imgDesc}</p>
+                  )}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                     <div className="flex items-center gap-1.5">
                       {hasSub && (
