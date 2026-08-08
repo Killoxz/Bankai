@@ -73,7 +73,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
         fill
         priority={priority}
         sizes="100vw"
-        className="object-cover object-top"
+        className="object-contain object-center"
       />
 
       {/* Gradients — use CSS variable so they match the page background in both light and dark mode */}
