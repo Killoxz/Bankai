@@ -9,7 +9,7 @@ import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 import { stripHtml } from "@/lib/utils";
 
 const INTERVAL_MS = 7000;
-const HERO_HEIGHT = { height: "min(90vh, 920px)", minHeight: 600 };
+const HERO_HEIGHT = { height: "min(72vh, 720px)", minHeight: 520 };
 
 export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   const [index, setIndex] = useState(0);
@@ -73,7 +73,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
         fill
         priority={priority}
         sizes="100vw"
-        className="object-contain object-center"
+        className="object-cover object-top"
       />
 
       {/* Gradients — use CSS variable so they match the page background in both light and dark mode */}
