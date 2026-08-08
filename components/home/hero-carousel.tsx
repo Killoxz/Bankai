@@ -10,6 +10,7 @@ import { stripHtml } from "@/lib/utils";
 
 const INTERVAL_MS = 7000;
 const HERO_HEIGHT = { height: "min(72vh, 720px)", minHeight: 520 };
+const heroClass = "h-[100vw] lg:h-auto";
 
 export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   const [index, setIndex] = useState(0);
@@ -22,11 +23,11 @@ export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   }, [index, count]);
 
   if (count === 0) {
-    return <div style={HERO_HEIGHT} className="w-full bg-zinc-900" />;
+    return <div style={HERO_HEIGHT} className={`w-full bg-zinc-900 ${heroClass}`} />;
   }
 
   return (
-    <section className="relative w-full overflow-hidden" style={HERO_HEIGHT}>
+    <section className={`relative w-full overflow-hidden ${heroClass}`} style={HERO_HEIGHT}>
       <AnimatePresence mode="wait" initial={false}>
         <HeroSlide
           key={items[index].id}
