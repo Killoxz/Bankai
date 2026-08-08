@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Headphones, Mic2, Zap, Flag, Download, Share2, Loader2 } from "lucide-react";
 import { providerLabel, type EpisodesMap, type ProviderEpisode } from "./episode-utils";
 import { SelectMenu } from "@/components/ui/select-menu";
 
 interface ServerSelectorProps {
   animeId: number;
+  animeTitle?: string;
   episode: number;
   episodeMeta: ProviderEpisode | null;
   audio: "sub" | "dub";
@@ -18,12 +18,14 @@ interface ServerSelectorProps {
   onProviderChange: (p: string) => void;
   failedProviders?: Set<string>;
   isLoading?: boolean;
+  streamUrl?: string | null;
 }
 
 const EXCLUDED = new Set(["allmanga"]);
 
 export function ServerSelector({
-  animeId,
+  animeId: _animeId,
+  animeTitle,
   episode,
   episodeMeta,
   audio,
@@ -35,30 +37,17 @@ export function ServerSelector({
   onProviderChange,
   failedProviders = new Set(),
   isLoading = false,
+  streamUrl,
 }: ServerSelectorProps) {
-  const [dlState, setDlState] = useState<"idle" | "loading" | "error">("idle");
-
-  async function handleDownload() {
-    if (!selectedProvider) return;
-    setDlState("loading");
-    try {
-      const params = new URLSearchParams({ id: String(animeId), ep: String(episode), provider: selectedProvider, audio });
-      const res = await fetch(`/api/stream?${params}`);
-      if (!res.ok) throw new Error(`${res.status}`);
-      const data = await res.json() as { stream_url?: string; error?: string };
-      if (!data.stream_url) throw new Error(data.error ?? "No stream URL");
-
-      const streamUrl = window.location.origin + data.stream_url;
-      const filename = `episode-${episode}.mp4`;
-      const a = document.createElement("a");
-      a.href = `/api/download?url=${encodeURIComponent(streamUrl)}&filename=${encodeURIComponent(filename)}`;
-      a.download = filename;
-      a.click();
-      setDlState("idle");
-    } catch {
-      setDlState("error");
-      setTimeout(() => setDlState("idle"), 3000);
-    }
+  function handleDownload() {
+    if (!streamUrl) return;
+    const safeName = (animeTitle ?? "Episode")
+      .replace(/[^\w\s]/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
+    const filename = `${safeName}-Episode-${episode}.mp4`;
+    const a = document.createElement("a");
+    a.href = `/api/download?url=${encodeURIComponent(streamUrl)}&filename=${encodeURIComponent(filename)}`;
+    a.download = filename;
+    a.click();
   }
   const servers = providersData
     ? Object.keys(providersData).filter((name) => {
@@ -178,18 +167,13 @@ export function ServerSelector({
           </button>
 
           <button
-            title={dlState === "error" ? "Failed — try a different server" : "Download MP4"}
+            title={streamUrl ? "Download MP4" : "Waiting for stream…"}
             onClick={handleDownload}
-            disabled={!selectedProvider || dlState === "loading"}
-            className={[
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40",
-              dlState === "error"
-                ? "text-red-400 hover:bg-red-500/10"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            ].join(" ")}
+            disabled={!streamUrl}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
           >
-            {dlState === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            {dlState === "error" ? "Failed" : "Download"}
+            <Download className="size-3.5" />
+            Download
           </button>
 
           <button

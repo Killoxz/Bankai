@@ -40,6 +40,7 @@ interface DownPlayerProps {
   seekTo?: number | null;
   onTimeUpdate?: (time: number, playing: boolean) => void;
   onSyncPlaying?: (fn: (playing: boolean) => void) => void;
+  onStreamUrl?: (url: string | null) => void;
 }
 
 type SettingsView =
@@ -158,7 +159,7 @@ export function DownPlayer({
   autoplay, autoNext, autoSkip, lightsOff,
   onAutoplayChange, onAutoNextChange, onAutoSkipChange, onLightsOffChange,
   onPrevEpisode, onNextEpisode, onEpisodeEnd, onError,
-  watchPartySlot, seekTo, onTimeUpdate, onSyncPlaying,
+  watchPartySlot, seekTo, onTimeUpdate, onSyncPlaying, onStreamUrl,
 }: DownPlayerProps) {
   const videoRef     = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -200,6 +201,7 @@ export function DownPlayer({
 
   // ── Download state ────────────────────────────────────────────────────────
   const [rawStreamUrl, setRawStreamUrl] = useState<string | null>(null);
+  useEffect(() => { onStreamUrl?.(rawStreamUrl); }, [rawStreamUrl, onStreamUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stream state ──────────────────────────────────────────────────────────
   const [embedUrl,  setEmbedUrl]  = useState<string | null>(null);
@@ -1475,9 +1477,12 @@ export function DownPlayer({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      const safeName = (animeTitle ?? "Episode")
+                        .replace(/[^\w\s]/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
+                      const filename = `${safeName}-Episode-${episode}.mp4`;
                       const a = document.createElement("a");
-                      a.href = `/api/download?url=${encodeURIComponent(rawStreamUrl)}&filename=episode-${episode}.mp4`;
-                      a.download = `episode-${episode}.mp4`;
+                      a.href = `/api/download?url=${encodeURIComponent(rawStreamUrl)}&filename=${encodeURIComponent(filename)}`;
+                      a.download = filename;
                       a.click();
                     }}
                     title="Download MP4"

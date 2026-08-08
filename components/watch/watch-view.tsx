@@ -98,6 +98,7 @@ export function WatchView({
   const [autoplay,  setAutoplay]  = useState(storeAutoPlay);
   const [autoSkip,  setAutoSkip]  = useState(storeAutoSkip);
   const [lightsOff, setLightsOff] = useState(false);
+  const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
 
   // ── Watch Party ───────────────────────────────────────────────────────────
   const [seekToTime, setSeekToTime]         = useState<number | null>(null);
@@ -274,6 +275,7 @@ export function WatchView({
               seekTo={seekToTime}
               onTimeUpdate={handleTimeUpdate}
               onSyncPlaying={(fn) => { syncPlayingFnRef.current = fn; }}
+              onStreamUrl={setCurrentStreamUrl}
               watchPartySlot={
                 <WatchParty
                   animeId={animeId}
@@ -291,6 +293,7 @@ export function WatchView({
             />
             <ServerSelector
               animeId={animeId}
+              animeTitle={detail.title.english ?? detail.title.romaji ?? undefined}
               episode={episode}
               episodeMeta={epListData.find((e) => e.number === episode) ?? null}
               audio={audio}
@@ -302,6 +305,7 @@ export function WatchView({
               onProviderChange={setSelectedProvider}
               failedProviders={failedProviders}
               isLoading={isLoadingSources}
+              streamUrl={currentStreamUrl}
             />
             <AnimeInfoCard detail={detail} animeId={animeId} />
             {/* Desktop only: comments directly below the info card */}
