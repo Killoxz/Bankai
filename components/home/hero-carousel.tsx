@@ -9,7 +9,7 @@ import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 import { stripHtml } from "@/lib/utils";
 
 const INTERVAL_MS = 7000;
-const HERO_HEIGHT = { height: "min(72vh, 720px)", minHeight: 520 };
+const HERO_HEIGHT = { height: "min(90vh, 920px)", minHeight: 600 };
 
 export function HeroCarousel({ items }: { items: AnimeMedia[] }) {
   const [index, setIndex] = useState(0);
