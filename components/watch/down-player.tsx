@@ -199,8 +199,7 @@ export function DownPlayer({
   useEffect(() => { animeCoverRef.current       = animeCover;       }, [animeCover]);
 
   // ── Download state ────────────────────────────────────────────────────────
-  const [rawStreamUrl,  setRawStreamUrl]  = useState<string | null>(null);
-  const [downloadOpen,  setDownloadOpen]  = useState(false);
+  const [rawStreamUrl, setRawStreamUrl] = useState<string | null>(null);
 
   // ── Stream state ──────────────────────────────────────────────────────────
   const [embedUrl,  setEmbedUrl]  = useState<string | null>(null);
@@ -1473,7 +1472,15 @@ export function DownPlayer({
                   <MI name="photo_camera" size={20} />
                 </button>
                 {rawStreamUrl && (
-                  <button onClick={(e) => { e.stopPropagation(); setDownloadOpen(true); }}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const a = document.createElement("a");
+                      a.href = `/api/download?url=${encodeURIComponent(rawStreamUrl)}&filename=episode-${episode}.mp4`;
+                      a.download = `episode-${episode}.mp4`;
+                      a.click();
+                    }}
+                    title="Download MP4"
                     className="flex size-9 items-center justify-center text-white/70 hover:text-white transition-colors [touch-action:manipulation]">
                     <MI name="download" size={20} />
                   </button>
@@ -1596,32 +1603,6 @@ export function DownPlayer({
           );
         })()}
 
-        {/* ── Download modal ──────────────────────────────────────────────── */}
-        {downloadOpen && rawStreamUrl && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 px-6" onClick={() => setDownloadOpen(false)}>
-            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1c1c1c] p-6" onClick={(e) => e.stopPropagation()}>
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-semibold text-white">Download Episode {episode}</h3>
-                <button onClick={() => setDownloadOpen(false)} className="text-white/50 hover:text-white"><MI name="close" size={20} /></button>
-              </div>
-              <p className="mb-4 text-xs leading-relaxed text-white/50">
-                This is an HLS stream. Copy the URL below and open it in VLC Media Player or any HLS-compatible downloader to save the episode.
-              </p>
-              <div className="mb-4 flex gap-2">
-                <input readOnly value={rawStreamUrl} className="flex-1 truncate rounded-lg bg-white/5 px-3 py-2 text-xs text-white/70 outline-none border border-white/10" />
-                <button
-                  onClick={() => { navigator.clipboard.writeText(rawStreamUrl).catch(() => {}); }}
-                  className="shrink-0 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white hover:bg-white/15 transition-colors [touch-action:manipulation]">
-                  Copy
-                </button>
-              </div>
-              <a href={`vlc://${rawStreamUrl.replace(/^https?:\/\//, "")}`}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-black hover:brightness-110 transition-all">
-                <MI name="play_circle" size={18} /> Open in VLC
-              </a>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Bottom settings bar ───────────────────────────────────────────── */}
