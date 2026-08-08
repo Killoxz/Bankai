@@ -290,6 +290,7 @@ export function WatchView({
               }
             />
             <ServerSelector
+              animeId={animeId}
               episode={episode}
               episodeMeta={epListData.find((e) => e.number === episode) ?? null}
               audio={audio}
