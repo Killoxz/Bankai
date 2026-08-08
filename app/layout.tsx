@@ -58,6 +58,7 @@ export default function RootLayout({
           <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
           <SettingsSync />
           <Navbar />
+          <div className="hidden md:block h-16" aria-hidden="true" />
           <PageTransition>
             {children}
           </PageTransition>

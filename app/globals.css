@@ -118,11 +118,12 @@ a, button, [role="button"], input[type="range"] {
   transition-delay: 0s !important;
 }
 
-/* Hard-guarantee the desktop nav header is always sticky — belt-and-suspenders with md:sticky */
 @media (min-width: 768px) {
   .bankai-nav {
-    position: sticky !important;
+    position: fixed !important;
     top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
   }
 }
 

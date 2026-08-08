@@ -207,7 +207,7 @@ export function Navbar() {
 
   return (
     <>
-    <header className="bankai-nav relative z-50 w-full md:sticky md:top-0">
+    <header className="bankai-nav relative z-50 w-full">
 
       {/* ── Mobile bar (hidden on desktop) ────────────────────────────── */}
       <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl md:hidden">
