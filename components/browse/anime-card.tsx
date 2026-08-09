@@ -25,7 +25,7 @@ export function AnimeCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.5) }}
     >
-      <Link href={`/anime/${anime.id}`} className="group block">
+      <Link href={`/anime/${anime.id}`} className="group block outline-none focus-visible:ring-4 focus-visible:ring-primary/70 rounded-xl" data-tv-focusable>
         <div
           ref={wrapRef}
           onMouseMove={onMove}

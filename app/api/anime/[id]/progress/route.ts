@@ -11,7 +11,7 @@ export async function POST(
     const anilistMediaId = Number(id);
     const { username, progress } = await req.json();
 
-    if (!username || typeof progress !== "number" || progress < 1) {
+    if (!username || typeof progress !== "number" || progress < 1 || progress > 10000 || !Number.isInteger(progress)) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 

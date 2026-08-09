@@ -748,6 +748,17 @@ export function DownPlayer({
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const video = videoRef.current;
       if (!video) return;
+
+      // In TV mode, only claim arrow keys when the player container is focused/hovered.
+      // This lets the spatial nav handle arrow keys when focus is on episode cards etc.
+      const isTvMode = document.documentElement.classList.contains("tv-mode");
+      const playerEl = containerRef.current;
+      const isArrow = e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "ArrowUp" || e.code === "ArrowDown";
+      if (isTvMode && isArrow) {
+        const playerActive = playerEl?.matches(":hover") || playerEl?.contains(document.activeElement);
+        if (!playerActive) return;
+      }
+
       if (e.code === "Space" || e.code === "KeyK") { e.preventDefault(); video.paused ? video.play().catch(() => {}) : video.pause(); }
       if (e.code === "ArrowLeft")  { e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 10); }
       if (e.code === "ArrowRight") { e.preventDefault(); video.currentTime = Math.min(video.duration || 0, video.currentTime + 10); }
@@ -909,7 +920,10 @@ export function DownPlayer({
     <div className="overflow-hidden rounded-xl bg-black shadow-2xl">
       <div
         ref={containerRef}
-        className="relative aspect-video w-full cursor-pointer select-none bg-black"
+        tabIndex={0}
+        data-tv-focusable
+        data-tv-player-zone
+        className="relative aspect-video w-full cursor-pointer select-none bg-black outline-none focus-visible:ring-4 focus-visible:ring-primary/60"
         onMouseMove={embedUrl ? undefined : bumpControls}
         onMouseLeave={embedUrl ? undefined : () => { if (!videoRef.current?.paused) setShowCtrl(false); }}
         onTouchStart={embedUrl ? undefined : bumpControls}

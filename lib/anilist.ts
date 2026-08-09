@@ -418,7 +418,7 @@ export const ANIME_GENRES = [
 ];
 
 export async function getTagCollection(): Promise<string[]> {
-  return [];
+  return [...ANIME_GENRES];
 }
 
 export async function browseAnime(filters: BrowseFilters): Promise<BrowsePage> {

@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
     data.memberNames = [...party.memberNames, username];
   }
   if (leave && username) {
-    data.memberNames = party.memberNames.filter((n) => n !== username);
+    data.memberNames = party.memberNames.filter((n: string) => n !== username);
   }
   if (username === party.hostName) {
     if (episode !== undefined) data.episode = episode;

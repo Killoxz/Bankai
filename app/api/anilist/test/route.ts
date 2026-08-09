@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       tokenWorks:      true,
     });
   } catch (err) {
-    return NextResponse.json({ connected: false, reason: "AniList unreachable", error: String(err) });
+    console.error("[anilist/test]", err);
+    return NextResponse.json({ connected: false, reason: "AniList unreachable" });
   }
 }

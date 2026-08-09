@@ -19,11 +19,12 @@ async function fetchSegment(proxiedUrl: string): Promise<Response> {
             Referer: ref || `${parsed.origin}/`,
             Origin: ref || parsed.origin,
           },
+          signal: AbortSignal.timeout(30_000),
         });
       }
     }
   } catch {}
-  return fetch(proxiedUrl, { headers: { "User-Agent": UA, Accept: "*/*" } });
+  return fetch(proxiedUrl, { headers: { "User-Agent": UA, Accept: "*/*" }, signal: AbortSignal.timeout(30_000) });
 }
 
 interface ParsedPlaylist {
@@ -112,10 +113,6 @@ export async function GET(req: NextRequest) {
     if (segmentUrls.length === 0) {
       return Response.json({ error: "No segments found in playlist" }, { status: 400 });
     }
-
-    // Stream all segments to the client as a single file
-    const encoder = new TextEncoder();
-    void encoder; // suppress lint
 
     const readable = new ReadableStream({
       async start(controller) {

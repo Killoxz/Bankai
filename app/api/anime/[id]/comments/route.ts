@@ -78,12 +78,15 @@ export async function POST(
         return NextResponse.json({ error: "Comment thread not found." }, { status: 404 });
     }
 
+    const episodeNum = typeof episode === "number" && Number.isInteger(episode) && episode >= 1 && episode <= 10000
+      ? episode : null;
+
     const comment = await prisma.comment.create({
       data: {
         userId:   user.id,
         animeId:  localId,
         parentId: parentId ?? null,
-        episode:  typeof episode === "number" ? episode : null,
+        episode:  episodeNum,
         body:     body.trim(),
       },
       select: COMMENT_SELECT,

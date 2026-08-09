@@ -16,9 +16,15 @@ export async function GET(req: NextRequest) {
 
   let username: string;
   try {
-    const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString()) as { username: string; ts: number };
-    if (Date.now() - state.ts > 10 * 60 * 1000) throw new Error("expired");
-    username = state.username;
+    const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString()) as unknown;
+    if (
+      typeof state !== "object" || state === null ||
+      typeof (state as Record<string, unknown>).username !== "string" ||
+      typeof (state as Record<string, unknown>).ts !== "number"
+    ) throw new Error("bad state");
+    const { username: stateUsername, ts } = state as { username: string; ts: number };
+    if (Date.now() - ts > 10 * 60 * 1000) throw new Error("expired");
+    username = stateUsername;
   } catch {
     return NextResponse.redirect(SETTINGS_REDIRECT(origin, "invalid_state"));
   }
@@ -43,7 +49,11 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) return NextResponse.redirect(SETTINGS_REDIRECT(origin, "token_exchange"));
-  const { access_token } = await tokenRes.json() as { access_token: string };
+  const tokenJson = await tokenRes.json() as { access_token?: unknown };
+  const access_token = tokenJson.access_token;
+  if (typeof access_token !== "string" || !access_token) {
+    return NextResponse.redirect(SETTINGS_REDIRECT(origin, "token_exchange"));
+  }
 
   // Get AniList viewer info
   const viewerRes = await fetch("https://graphql.anilist.co", {

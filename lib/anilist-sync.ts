@@ -81,6 +81,8 @@ export async function syncAniListList(
   const entries: ALEntry[] = lists.flatMap((l) => l.entries ?? []);
 
   let synced = 0;
+  const errors: string[] = [];
+
   for (const entry of entries) {
     const status = toListStatus(entry.status);
     if (!status) continue;
@@ -89,31 +91,41 @@ export async function syncAniListList(
     const slug    = `anilist-${entry.media.id}`;
     const title   = entry.media.title.english ?? entry.media.title.romaji ?? `Anime ${entry.media.id}`;
 
-    await prisma.anime.upsert({
-      where:  { id: animeId },
-      create: {
-        id:         animeId,
-        slug,
-        title,
-        titleNative: entry.media.title.native ?? null,
-        coverImage:  entry.media.coverImage.large ?? null,
-        bannerImage: entry.media.bannerImage ?? null,
-        format:      entry.media.format ?? null,
-        status:      entry.media.status ?? null,
-        episodes:    entry.media.episodes ?? null,
-        seasonYear:  entry.media.seasonYear ?? null,
-        genres:      entry.media.genres ?? [],
-      },
-      update: {},
-    });
+    try {
+      await prisma.anime.upsert({
+        where:  { id: animeId },
+        create: {
+          id:         animeId,
+          slug,
+          title,
+          titleNative: entry.media.title.native ?? null,
+          coverImage:  entry.media.coverImage.large ?? null,
+          bannerImage: entry.media.bannerImage ?? null,
+          format:      entry.media.format ?? null,
+          status:      entry.media.status ?? null,
+          episodes:    entry.media.episodes ?? null,
+          seasonYear:  entry.media.seasonYear ?? null,
+          genres:      entry.media.genres ?? [],
+        },
+        update: {},
+      });
 
-    await prisma.listEntry.upsert({
-      where:  { userId_animeId: { userId, animeId } },
-      create: { userId, animeId, status, score: entry.score ? Math.round(entry.score) : null },
-      update: { status, score: entry.score ? Math.round(entry.score) : null },
-    });
+      await prisma.listEntry.upsert({
+        where:  { userId_animeId: { userId, animeId } },
+        create: { userId, animeId, status, score: entry.score ? Math.round(entry.score) : null },
+        update: { status, score: entry.score ? Math.round(entry.score) : null },
+      });
 
-    synced++;
+      synced++;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`${animeId}: ${msg}`);
+      console.error("[anilist-sync] failed to sync entry", animeId, err);
+    }
+  }
+
+  if (errors.length) {
+    console.warn(`[anilist-sync] partial sync: ${synced} succeeded, ${errors.length} failed`);
   }
 
   return synced;

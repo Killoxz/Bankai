@@ -21,12 +21,19 @@ function isM3U8(contentType: string, url: string) {
 function rewritePlaylist(text: string, originalUrl: string, proxyOrigin: string): string {
   const base = new URL(originalUrl);
 
-  function toAbsolute(href: string): string {
-    try { return new URL(href, base).href; } catch { return href; }
+  function toAbsolute(href: string): string | null {
+    try {
+      const abs = new URL(href, base).href;
+      // Block anything that resolved to a non-http(s) scheme
+      const parsed = new URL(abs);
+      if (!["http:", "https:"].includes(parsed.protocol)) return null;
+      return abs;
+    } catch { return null; }
   }
 
   function proxyUrl(href: string): string {
     const abs = toAbsolute(href);
+    if (!abs) return href; // leave unchanged if URL is invalid
     return `${proxyOrigin}/api/hls?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(base.origin)}`;
   }
 

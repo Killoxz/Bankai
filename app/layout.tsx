@@ -8,6 +8,8 @@ import { BetaBanner } from "@/components/layout/beta-banner";
 import { SettingsModal } from "@/components/layout/settings-modal";
 import { Navbar } from "@/components/layout/navbar";
 import { PageTransition } from "@/components/layout/page-transition";
+import { TvProvider } from "@/components/tv/tv-provider";
+import { TvNav } from "@/components/tv/tv-nav";
 import "./globals.css";
 
 const inter = Inter({
@@ -54,16 +56,19 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} pb-24 font-sans lg:pb-0`}>
         <Providers>
-          <BetaBanner />
-          <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
-          <SettingsSync />
-          <Navbar />
-          <div className="hidden lg:block h-16" aria-hidden="true" />
-          <PageTransition>
-            {children}
-          </PageTransition>
-          <SettingsModal />
-          <MobileNav />
+          <TvProvider>
+            <BetaBanner />
+            <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
+            <SettingsSync />
+            <TvNav />
+            <Navbar />
+            <div className="hidden lg:block h-16" aria-hidden="true" />
+            <PageTransition>
+              {children}
+            </PageTransition>
+            <SettingsModal />
+            <MobileNav />
+          </TvProvider>
         </Providers>
       </body>
     </html>

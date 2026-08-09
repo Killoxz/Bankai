@@ -59,19 +59,14 @@ export default async function AnimeDetailPage({
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/50 to-black/20" />
 
         {detail.trailer?.id && (
-          // z-20: the main content wrapper below is also z-10 and, being
-          // later in the DOM, wins ties in the region where its negative
-          // margin pulls it up over the banner — silently swallowing clicks
-          // meant for this button (same category of bug as the profile
-          // page's avatar/banner stacking issue).
-          <div className="absolute bottom-6 right-6 z-20 hidden sm:block">
+          <div className="absolute bottom-6 right-6 z-30 hidden sm:block">
             <TrailerButton site={detail.trailer.site} trailerId={detail.trailer.id} />
           </div>
         )}
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-[1400px] px-6 pb-16 sm:px-10">
-        {/* Poster + info row */}
+        {/* Poster + info row — negative margin pulls poster up into banner; trailer button is z-30 so it stays above */}
         <div className="-mt-24 flex flex-col gap-6 sm:flex-row sm:items-end">
           <div className="relative aspect-[2/3] w-36 shrink-0 overflow-hidden rounded-xl border-4 border-[#141414] bg-white/5 shadow-2xl sm:w-48">
             {detail.coverImage.large && (

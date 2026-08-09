@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Search, Bell, User, LogOut, Settings, History,
-  Home, TrendingUp, CalendarDays, Bookmark, Film, X, ChevronDown,
+  Home, TrendingUp, CalendarDays, Bookmark, Film, X, ChevronDown, Tv2,
 } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useLanguageStore, type TitleLanguage } from "@/store/language-store";
 import { useSettingsModalStore } from "@/store/settings-modal-store";
+import { useTvContext } from "@/components/tv/tv-provider";
 
 const NAV_LINKS = [
   { label: "Home",     href: "/",                   icon: Home         },
@@ -48,6 +49,7 @@ export function Navbar() {
   const avatar       = useAuthStore((s) => s.avatar);
   const setAvatar    = useAuthStore((s) => s.setAvatar);
   const openSettings = useSettingsModalStore((s) => s.setOpen);
+  const { toggle: toggleTv } = useTvContext();
 
   useEffect(() => setMounted(true), []);
 
@@ -138,6 +140,16 @@ export function Navbar() {
       <div className="hidden xl:block">
         <LanguageDropdown />
       </div>
+
+      {/* TV Mode toggle */}
+      <button
+        onClick={toggleTv}
+        aria-label="Toggle TV mode"
+        title="TV Mode"
+        className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white"
+      >
+        <Tv2 className="size-5" />
+      </button>
 
       {/* Bell */}
       <button aria-label="Notifications" className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white">

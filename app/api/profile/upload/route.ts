@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const previousUrl = kind === "image" ? user.image : user.banner;
     if (previousUrl) {
-      del(previousUrl).catch(() => {});
+      del(previousUrl).catch((err) => console.error("[profile/upload] blob cleanup failed:", err));
     }
 
     await prisma.user.update({
