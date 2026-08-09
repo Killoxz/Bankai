@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 import { usePreferredTitle, type AnimeMedia } from "@/lib/anilist";
 import { useCardAnimation } from "@/hooks/use-card-animation";
+import { useTvContext } from "@/components/tv/tv-provider";
 
 export function AnimeCard({
   anime,
@@ -17,21 +18,17 @@ export function AnimeCard({
   index?: number;
 }) {
   const title = usePreferredTitle(anime);
+  const { isTvMode } = useTvContext();
   const { wrapRef, cardRef, glareRef, bgRef, onMove, onLeave } = useCardAnimation();
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.5) }}
-    >
-      <Link href={`/anime/${anime.id}`} className="group block outline-none focus-visible:ring-4 focus-visible:ring-primary/70 rounded-xl" data-tv-focusable>
-        <div
-          ref={wrapRef}
-          onMouseMove={onMove}
-          onMouseLeave={onLeave}
-          style={{ perspective: "700px" }}
-        >
+  const cardInner = (
+    <Link href={`/anime/${anime.id}`} className="group block outline-none focus-visible:ring-4 focus-visible:ring-primary/70 rounded-xl" data-tv-focusable>
+      <div
+        ref={wrapRef}
+        onMouseMove={isTvMode ? undefined : onMove}
+        onMouseLeave={isTvMode ? undefined : onLeave}
+        style={{ perspective: "700px" }}
+      >
           <div
             ref={cardRef}
             className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-200 dark:bg-white/5"
@@ -97,6 +94,19 @@ export function AnimeCard({
           {[anime.seasonYear, anime.genres[0]].filter(Boolean).join(", ")}
         </p>
       </Link>
+  );
+
+  if (isTvMode) {
+    return <div>{cardInner}</div>;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.5) }}
+    >
+      {cardInner}
     </motion.div>
   );
 }

@@ -749,14 +749,17 @@ export function DownPlayer({
       const video = videoRef.current;
       if (!video) return;
 
-      // In TV mode, only claim arrow keys when the player container is focused/hovered.
-      // This lets the spatial nav handle arrow keys when focus is on episode cards etc.
       const isTvMode = document.documentElement.classList.contains("tv-mode");
       const playerEl = containerRef.current;
-      const isArrow = e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "ArrowUp" || e.code === "ArrowDown";
-      if (isTvMode && isArrow) {
-        const playerActive = playerEl?.matches(":hover") || playerEl?.contains(document.activeElement);
-        if (!playerActive) return;
+      if (isTvMode) {
+        // Never intercept UP/DOWN — let spatial nav move focus between page elements so
+        // the user can always navigate away from the player with their D-pad.
+        if (e.code === "ArrowUp" || e.code === "ArrowDown") return;
+        // Only intercept LEFT/RIGHT (seek) when the player is focused or hovered.
+        if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
+          const playerActive = playerEl?.matches(":hover") || playerEl?.contains(document.activeElement);
+          if (!playerActive) return;
+        }
       }
 
       if (e.code === "Space" || e.code === "KeyK") { e.preventDefault(); video.paused ? video.play().catch(() => {}) : video.pause(); }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Home, TrendingUp, CalendarDays, Bookmark, Film, History, Settings, Tv2 } from "lucide-react";
+import { Home, TrendingUp, CalendarDays, Bookmark, Film, History, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTvContext } from "./tv-provider";
 import { useSettingsModalStore } from "@/store/settings-modal-store";
@@ -61,7 +61,7 @@ function NavLinks() {
 }
 
 export function TvNav() {
-  const { isTvMode, toggle } = useTvContext();
+  const { isTvMode } = useTvContext();
   const openSettings = useSettingsModalStore((s) => s.setOpen);
 
   if (!isTvMode) return null;
@@ -109,16 +109,6 @@ export function TvNav() {
           <span className="text-[10px] font-medium">Settings</span>
         </button>
 
-        {/* Exit TV mode */}
-        <button
-          onClick={toggle}
-          data-tv-focusable
-          aria-label="Exit TV mode"
-          className="flex w-16 flex-col items-center gap-1 rounded-xl px-2 py-3 text-white/50 transition-all hover:bg-white/10 hover:text-white outline-none focus-visible:ring-4 focus-visible:ring-primary/70 focus-visible:bg-white/10 focus-visible:text-white"
-        >
-          <Tv2 className="size-5 shrink-0" />
-          <span className="text-[10px] font-medium">Exit TV</span>
-        </button>
       </div>
     </nav>
   );
