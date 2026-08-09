@@ -35,7 +35,10 @@ export async function GET(req: NextRequest) {
     if (!res.ok) return NextResponse.json({ results: [] }, { status: 502 });
 
     const json = await res.json() as { data?: { Page?: { media?: unknown[] } } };
-    return NextResponse.json({ results: json.data?.Page?.media ?? [] });
+    return NextResponse.json(
+      { results: json.data?.Page?.media ?? [] },
+      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } },
+    );
   } catch {
     return NextResponse.json({ results: [] }, { status: 502 });
   }

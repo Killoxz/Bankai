@@ -3,6 +3,8 @@ import { Footer } from "@/components/layout/footer";
 import { BrowseView } from "@/components/browse/browse-view";
 import { getTagCollection, type AnimeMedia, type BrowseFilters } from "@/lib/anilist";
 
+export const revalidate = 1800;
+
 export const metadata: Metadata = { title: "Browse • Bankai" };
 
 const TITLES: Record<string, string> = {
