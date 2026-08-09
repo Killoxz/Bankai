@@ -208,8 +208,7 @@ export function DownPlayer({
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [retryKey,  setRetryKey]  = useState(0);
-  const autoRetryRef    = useRef(false);
-  const lastAutoSkipRef = useRef(0);
+  const autoRetryRef = useRef(false);
   const [intro,     setIntro]     = useState<Timestamp | null>(null);
   const [outro,     setOutro]     = useState<Timestamp | null>(null);
   const [skipZone,  setSkipZone]  = useState<"intro" | "outro" | null>(null);
@@ -630,12 +629,6 @@ export function DownPlayer({
             setSelectedLevel(sorted[0].index);
           }
         });
-        // LEVEL_LOADED gives the real totalduration from the HLS playlist, which is
-        // reliable even when video.duration reports Infinity (live-like VOD streams).
-        hls.on(Hls.Events.LEVEL_LOADED, (_e, data) => {
-          const total = (data as unknown as { details?: { totalduration?: number } }).details?.totalduration;
-          if (total && isFinite(total) && total > 0) setDuration(total);
-        });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) { setError("Playback error — try a different source."); setLoading(false); onErrorRef.current?.(selectedProvider); }
         });
@@ -675,7 +668,7 @@ export function DownPlayer({
     const onPlay   = () => setPlaying(true);
     const onPause  = () => setPlaying(false);
     const onEnded  = () => { setPlaying(false); onEpisodeEndRef.current?.(); };
-    const onDur    = () => { const d = video.duration; if (isFinite(d) && d > 0) setDuration(d); };
+    const onDur    = () => setDuration(video.duration || 0);
     const onVolume = () => { setVolume(video.volume); setMuted(video.muted); };
     const onTime   = () => {
       setCurrentTime(video.currentTime);
@@ -730,16 +723,8 @@ export function DownPlayer({
       else if (outro && t >= outro.start && t < outro.end) setSkipZone("outro");
       else setSkipZone(null);
       if (autoSkipRef.current) {
-        const now = Date.now();
-        if (now - lastAutoSkipRef.current > 2000) {
-          if (intro && t >= intro.start && t < intro.end) {
-            lastAutoSkipRef.current = now;
-            video.currentTime = intro.end;
-          } else if (outro && t >= outro.start && t < outro.end) {
-            lastAutoSkipRef.current = now;
-            video.currentTime = outro.end;
-          }
-        }
+        if (intro && t >= intro.start && t < intro.end) video.currentTime = intro.end;
+        else if (outro && t >= outro.start && t < outro.end) video.currentTime = outro.end;
       }
     };
     video.addEventListener("timeupdate", handler);
@@ -865,14 +850,14 @@ export function DownPlayer({
 
   function seek(clientX: number) {
     const bar = progressRef.current; const v = videoRef.current;
-    if (!bar || !v || !v.duration || !isFinite(v.duration)) return;
+    if (!bar || !v || !v.duration) return;
     const rect = bar.getBoundingClientRect();
     v.currentTime = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * v.duration;
   }
 
   function seekTouch(e: React.TouchEvent) {
     const bar = progressRef.current; const v = videoRef.current;
-    if (!bar || !v || !v.duration || !isFinite(v.duration)) return;
+    if (!bar || !v || !v.duration) return;
     const touch = e.touches[0] ?? e.changedTouches[0];
     if (!touch) return;
     const rect = bar.getBoundingClientRect();
