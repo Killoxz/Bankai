@@ -6,21 +6,10 @@ const TV_UA_PATTERNS = [
   /SmartTV/i, /SMART-TV/i, /HbbTV/i, /WebOS/i, /Tizen/i,
   /CrKey/i, /AFTS/i, /Roku/i, /PlayStation/i, /Xbox/i,
   /AppleTV/i, /googletv/i, /Android TV/i, /OPR\/.*TV/i,
-  /BRAVIA/i,       // Sony Bravia
-  /SHIELD/i,       // NVIDIA Shield TV
-  /Vizio/i,        // Vizio Smart TV
-  /NetCast/i,      // LG NetCast
-  /SmartHub/i,     // Samsung SmartHub
-  /PhilipsTV/i,    // Philips TV
-  /MiTV/i,         // Xiaomi Mi TV
-  /Android.*Box/i, // Generic Android TV boxes
-  /Foxxum/i,       // Foxxum Smart TV platform
-  /ZEASN/i,        // Whale TV browser
-  /Vewd/i,         // Opera TV / Vewd browser
-  /FreeSat/i,      // FreeSat STB
-  /Kylo/i,         // Hillcrest Labs TV browser
-  /AmazonWebAppPlatform/i, // Fire TV web apps
-  /TV Safari/i,    // Apple TV Safari
+  /BRAVIA/i, /SHIELD/i, /Vizio/i, /NetCast/i, /SmartHub/i,
+  /PhilipsTV/i, /MiTV/i, /Android.*Box/i, /Foxxum/i,
+  /ZEASN/i, /Vewd/i, /FreeSat/i, /Kylo/i,
+  /AmazonWebAppPlatform/i, /TV Safari/i,
 ];
 
 function detectTvUserAgent(): boolean {
@@ -28,7 +17,7 @@ function detectTvUserAgent(): boolean {
   return TV_UA_PATTERNS.some((re) => re.test(navigator.userAgent));
 }
 
-// Large screen + no touch + coarse pointer (remote control) = likely a TV
+// Large screen + no touchscreen + coarse pointer (remote) = very likely a TV
 function detectTvScreen(): boolean {
   if (typeof window === "undefined") return false;
   const noTouch   = navigator.maxTouchPoints === 0;
@@ -62,14 +51,20 @@ export function setPromptDismissed() {
 
 export function useTvMode(): {
   isTvMode: boolean;
+  isTvDevice: boolean;
   toggle: () => void;
   showPrompt: boolean;
   dismissPrompt: () => void;
 } {
-  const [isTvMode,    setIsTvMode]    = useState(false);
-  const [showPrompt,  setShowPrompt]  = useState(false);
+  const [isTvMode,   setIsTvMode]   = useState(false);
+  const [isTvDevice, setIsTvDevice] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Detect TV device regardless of mode state — drives UI visibility
+    const isTV = detectTvUserAgent() || detectTvScreen();
+    setIsTvDevice(isTV);
+
     // URL param overrides everything — ?tv=1 or ?tv=0
     const params = new URLSearchParams(window.location.search);
     if (params.has("tv")) {
@@ -79,21 +74,21 @@ export function useTvMode(): {
       return;
     }
 
-    // Stored user preference (explicit toggle or prior session)
+    // Stored user preference
     const stored = getStoredTvMode();
     if (stored !== null) {
       setIsTvMode(stored);
       return;
     }
 
-    // Auto-enable on known TV user agents or TV-like screen characteristics
-    if (detectTvUserAgent() || detectTvScreen()) {
+    // Auto-enable on detected TV
+    if (isTV) {
       setIsTvMode(true);
       setStoredTvMode(true);
       return;
     }
 
-    // No TV signal yet — listen for the first D-pad arrow press and show a prompt
+    // No TV signal — show prompt on first D-pad arrow press
     if (getPromptDismissed()) return;
     const onFirstDpad = (e: KeyboardEvent) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
@@ -123,5 +118,5 @@ export function useTvMode(): {
     setPromptDismissed();
   };
 
-  return { isTvMode, toggle, showPrompt, dismissPrompt };
+  return { isTvMode, isTvDevice, toggle, showPrompt, dismissPrompt };
 }

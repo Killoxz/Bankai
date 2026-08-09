@@ -49,7 +49,7 @@ export function Navbar() {
   const avatar       = useAuthStore((s) => s.avatar);
   const setAvatar    = useAuthStore((s) => s.setAvatar);
   const openSettings = useSettingsModalStore((s) => s.setOpen);
-  const { toggle: toggleTv } = useTvContext();
+  const { toggle: toggleTv, isTvDevice, isTvMode } = useTvContext();
 
   useEffect(() => setMounted(true), []);
 
@@ -141,15 +141,17 @@ export function Navbar() {
         <LanguageDropdown />
       </div>
 
-      {/* TV Mode toggle */}
-      <button
-        onClick={toggleTv}
-        aria-label="Toggle TV mode"
-        title="TV Mode"
-        className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white"
-      >
-        <Tv2 className="size-5" />
-      </button>
+      {/* TV Mode toggle — only shown on detected TV devices */}
+      {(isTvDevice || isTvMode) && (
+        <button
+          onClick={toggleTv}
+          aria-label="Toggle TV mode"
+          title="TV Mode"
+          className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white"
+        >
+          <Tv2 className="size-5" />
+        </button>
+      )}
 
       {/* Bell */}
       <button aria-label="Notifications" className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white">
@@ -229,14 +231,16 @@ export function Navbar() {
           <Image src="/bankai-logo.svg" alt="Bankai" width={84} height={26} className="h-6 w-auto invert dark:invert-0" priority />
         </Link>
         <div className="flex-1" />
-        <button
-          onClick={toggleTv}
-          aria-label="Toggle TV mode"
-          title="TV Mode"
-          className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white"
-        >
-          <Tv2 className="size-5" />
-        </button>
+        {(isTvDevice || isTvMode) && (
+          <button
+            onClick={toggleTv}
+            aria-label="Toggle TV mode"
+            title="TV Mode"
+            className="text-gray-400 dark:text-white/50 transition-colors hover:text-gray-700 dark:hover:text-white"
+          >
+            <Tv2 className="size-5" />
+          </button>
+        )}
         <button aria-label="Notifications" className="text-gray-400 dark:text-white/50">
           <Bell className="size-5" />
         </button>

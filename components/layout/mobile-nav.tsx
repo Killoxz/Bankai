@@ -100,7 +100,7 @@ interface SearchResult {
 
 function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
   const openSettings = useSettingsModalStore((s) => s.setOpen);
-  const { toggle: toggleTv, isTvMode } = useTvContext();
+  const { toggle: toggleTv, isTvMode, isTvDevice } = useTvContext();
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
 
@@ -194,16 +194,18 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
                 Settings
                 <span className="text-gray-300 dark:text-white/30">→</span>
               </button>
-              <button
-                onClick={() => { toggleTv(); onClose(); }}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
-              >
-                <span className="flex items-center gap-2">
-                  <Tv2 className="size-4" />
-                  {isTvMode ? "Exit TV Mode" : "TV Mode"}
-                </span>
-                <span className="text-gray-300 dark:text-white/30">→</span>
-              </button>
+              {(isTvDevice || isTvMode) && (
+                <button
+                  onClick={() => { toggleTv(); onClose(); }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <span className="flex items-center gap-2">
+                    <Tv2 className="size-4" />
+                    {isTvMode ? "Exit TV Mode" : "TV Mode"}
+                  </span>
+                  <span className="text-gray-300 dark:text-white/30">→</span>
+                </button>
+              )}
             </div>
           </div>
         )}

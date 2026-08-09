@@ -6,6 +6,7 @@ import { useSpatialNav } from "@/hooks/use-spatial-nav";
 
 interface TvContext {
   isTvMode: boolean;
+  isTvDevice: boolean;
   toggle: () => void;
   showPrompt: boolean;
   dismissPrompt: () => void;
@@ -13,17 +14,18 @@ interface TvContext {
 
 const TvCtx = createContext<TvContext>({
   isTvMode: false,
+  isTvDevice: false,
   toggle: () => {},
   showPrompt: false,
   dismissPrompt: () => {},
 });
 
 export function TvProvider({ children }: { children: ReactNode }) {
-  const { isTvMode, toggle, showPrompt, dismissPrompt } = useTvMode();
+  const { isTvMode, isTvDevice, toggle, showPrompt, dismissPrompt } = useTvMode();
   useSpatialNav(isTvMode);
 
   return (
-    <TvCtx.Provider value={{ isTvMode, toggle, showPrompt, dismissPrompt }}>
+    <TvCtx.Provider value={{ isTvMode, isTvDevice, toggle, showPrompt, dismissPrompt }}>
       {children}
     </TvCtx.Provider>
   );

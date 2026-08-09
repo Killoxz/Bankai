@@ -139,29 +139,15 @@ a, button, [role="button"], input[type="range"] {
 }
 
 /* ─────────────────────────── TV MODE ─────────────────────────────
-   Applied to <html> when TV mode is active.  The experience is
-   designed for 10-foot viewing with a D-pad remote:
-   • Larger base font so text reads at ~3 m
-   • Bright, oversized focus rings on every interactive element
-   • Hidden desktop/mobile navbars (replaced by tv-sidebar)
-   • Content area shifts right to make room for the sidebar
+   Applied to <html> when TV mode is active.
+   zoom: 0.6 on the root element is exactly equivalent to pressing
+   Ctrl+- in the browser four times: the CSS layout viewport widens
+   to viewport/0.6 so the full desktop layout always renders, then
+   everything is scaled to 60% to fit the physical screen.
    ──────────────────────────────────────────────────────────────── */
 
-.tv-mode {
-  font-size: 18px;
-}
-
-/* Scale base font up on 1080p+ TV screens */
-@media (min-width: 1280px) {
-  .tv-mode {
-    font-size: 20px;
-  }
-}
-
-@media (min-width: 1920px) {
-  .tv-mode {
-    font-size: 22px;
-  }
+html.tv-mode {
+  zoom: 0.6;
 }
 
 /* Hide normal navbars & mobile nav in TV mode */
@@ -170,7 +156,7 @@ a, button, [role="button"], input[type="range"] {
   display: none !important;
 }
 
-/* Shift content right to clear the 80 px sidebar; remove mobile bottom padding */
+/* Shift content right to clear the sidebar; remove mobile bottom padding */
 .tv-mode body {
   padding-left: 5rem !important;
   padding-bottom: 0 !important;
@@ -181,33 +167,23 @@ a, button, [role="button"], input[type="range"] {
   display: none !important;
 }
 
-/* Oversized focus ring — overrides both Tailwind ring utilities and outline:none */
+/* Focus ring — values are in CSS px so they appear at 60% on screen,
+   which is still clearly visible on a large TV at distance */
 .tv-mode *:focus-visible {
-  outline: 4px solid hsl(var(--primary)) !important;
-  outline-offset: 3px !important;
-  box-shadow: 0 0 0 8px hsl(var(--background) / 0.8) !important;
+  outline: 6px solid hsl(var(--primary)) !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 12px hsl(var(--background) / 0.85) !important;
   border-radius: 0.5rem;
-  z-index: 1;
   position: relative;
+  z-index: 1;
 }
 
-/* Larger click/tap targets in TV mode */
-.tv-mode button,
-.tv-mode a {
-  min-height: 2.75rem;
-}
-
-/* Scale up text slightly for 10-foot readability */
-.tv-mode .text-sm   { font-size: 1rem !important;    }
-.tv-mode .text-xs   { font-size: 0.85rem !important; }
-.tv-mode .text-base { font-size: 1.1rem !important;  }
-
-/* Anime card focus highlight in TV mode */
+/* Card image brightens on focus */
 .tv-mode a:focus-visible img {
   filter: brightness(1.15);
 }
 
-/* TV sidebar visible only in TV mode */
+/* TV sidebar: hidden by default, shown only in TV mode */
 .tv-sidebar {
   display: none;
 }
