@@ -10,6 +10,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { PageTransition } from "@/components/layout/page-transition";
 import { TvProvider } from "@/components/tv/tv-provider";
 import { TvNav } from "@/components/tv/tv-nav";
+import { TvModePrompt } from "@/components/tv/tv-mode-prompt";
 import "./globals.css";
 
 const inter = Inter({
@@ -61,6 +62,7 @@ export default function RootLayout({
             <NextTopLoader color="var(--primary)" height={3} showSpinner={false} />
             <SettingsSync />
             <TvNav />
+            <TvModePrompt />
             <Navbar />
             <div className="hidden lg:block h-16" aria-hidden="true" />
             <PageTransition>

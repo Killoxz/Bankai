@@ -148,7 +148,20 @@ a, button, [role="button"], input[type="range"] {
    ──────────────────────────────────────────────────────────────── */
 
 .tv-mode {
-  font-size: 20px;
+  font-size: 18px;
+}
+
+/* Scale base font up on 1080p+ TV screens */
+@media (min-width: 1280px) {
+  .tv-mode {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .tv-mode {
+    font-size: 22px;
+  }
 }
 
 /* Hide normal navbars & mobile nav in TV mode */
@@ -172,8 +185,10 @@ a, button, [role="button"], input[type="range"] {
 .tv-mode *:focus-visible {
   outline: 4px solid hsl(var(--primary)) !important;
   outline-offset: 3px !important;
-  box-shadow: 0 0 0 7px hsl(var(--background)) !important;
+  box-shadow: 0 0 0 8px hsl(var(--background) / 0.8) !important;
   border-radius: 0.5rem;
+  z-index: 1;
+  position: relative;
 }
 
 /* Larger click/tap targets in TV mode */
@@ -183,11 +198,19 @@ a, button, [role="button"], input[type="range"] {
 }
 
 /* Scale up text slightly for 10-foot readability */
-.tv-mode .text-sm   { font-size: 1rem !important;   }
+.tv-mode .text-sm   { font-size: 1rem !important;    }
 .tv-mode .text-xs   { font-size: 0.85rem !important; }
 .tv-mode .text-base { font-size: 1.1rem !important;  }
 
 /* Anime card focus highlight in TV mode */
 .tv-mode a:focus-visible img {
   filter: brightness(1.15);
+}
+
+/* TV sidebar visible only in TV mode */
+.tv-sidebar {
+  display: none;
+}
+.tv-mode .tv-sidebar {
+  display: flex;
 }

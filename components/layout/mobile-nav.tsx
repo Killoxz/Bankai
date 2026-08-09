@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Search, Tv, Bookmark, User, X } from "lucide-react";
+import { Home, Search, Tv, Bookmark, User, X, Tv2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsModalStore } from "@/store/settings-modal-store";
+import { useTvContext } from "@/components/tv/tv-provider";
 
 interface NavItem {
   key: string;
@@ -99,6 +100,7 @@ interface SearchResult {
 
 function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
   const openSettings = useSettingsModalStore((s) => s.setOpen);
+  const { toggle: toggleTv, isTvMode } = useTvContext();
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
 
@@ -190,6 +192,16 @@ function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
                 className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
               >
                 Settings
+                <span className="text-gray-300 dark:text-white/30">→</span>
+              </button>
+              <button
+                onClick={() => { toggleTv(); onClose(); }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-gray-600 dark:text-white/70 transition-colors hover:bg-gray-50 dark:hover:bg-white/6 hover:text-gray-900 dark:hover:text-white"
+              >
+                <span className="flex items-center gap-2">
+                  <Tv2 className="size-4" />
+                  {isTvMode ? "Exit TV Mode" : "TV Mode"}
+                </span>
                 <span className="text-gray-300 dark:text-white/30">→</span>
               </button>
             </div>
