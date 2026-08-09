@@ -51,7 +51,14 @@ export async function POST(req: NextRequest) {
       episodeThumbnail, animeTitle, animeCover,
     } = await req.json();
     const un = (typeof username === "string" ? username : "").trim();
+    const epNum  = typeof episodeNumber === "number" ? episodeNumber : Number(episodeNumber);
+    const prog   = typeof progress  === "number" ? progress  : Number(progress  ?? 0);
+    const dur    = typeof duration  === "number" ? duration  : Number(duration  ?? 0);
     if (!un || !animeId) return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    if (!Number.isFinite(epNum) || epNum < 1 || !Number.isInteger(epNum))
+      return NextResponse.json({ error: "Invalid episode number." }, { status: 400 });
+    if (!Number.isFinite(prog) || prog < 0)
+      return NextResponse.json({ error: "Invalid progress." }, { status: 400 });
 
     const user = await prisma.user.findFirst({
       where: { username: { equals: un, mode: "insensitive" } },
@@ -77,21 +84,21 @@ export async function POST(req: NextRequest) {
     });
 
     const entry = await prisma.watchHistory.upsert({
-      where: { userId_animeId_episodeNumber: { userId: user.id, animeId, episodeNumber } },
+      where: { userId_animeId_episodeNumber: { userId: user.id, animeId, episodeNumber: epNum } },
       create: {
         userId: user.id,
         animeId,
-        episodeNumber,
-        progress: progress ?? 0,
-        duration: duration ?? 0,
-        completed: completed ?? false,
+        episodeNumber: epNum,
+        progress: prog,
+        duration: Math.max(0, dur),
+        completed: completed === true,
         watchedAt: new Date(),
         episodeThumbnail: episodeThumbnail ?? null,
       },
       update: {
-        progress: progress ?? 0,
-        duration: duration ?? 0,
-        completed: completed ?? false,
+        progress: prog,
+        duration: Math.max(0, dur),
+        completed: completed === true,
         watchedAt: new Date(),
         ...(episodeThumbnail ? { episodeThumbnail } : {}),
       },

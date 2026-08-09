@@ -69,7 +69,7 @@ function HeroSlide({ anime, priority }: { anime: AnimeMedia; priority: boolean }
       transition={{ duration: 0.6, ease: "easeInOut" }}
     >
       <Image
-        src={anime.bannerImage!}
+        src={anime.bannerImage ?? anime.coverImage.extraLarge ?? anime.coverImage.large ?? ""}
         alt={title}
         fill
         priority={priority}

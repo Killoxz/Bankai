@@ -72,12 +72,51 @@ function findBest(
 /**
  * When TV mode is active, intercepts arrow keys to move focus between
  * interactive elements. Must be mounted once (e.g. in the root layout).
+ *
+ * Key bindings:
+ *   ArrowLeft/Right/Up/Down — spatial navigation (skipped if another handler
+ *                             already consumed the event via e.preventDefault())
+ *   Enter / Space           — click the focused element (for custom focusable divs)
+ *   Escape                  — navigate back in browser history
  */
 export function useSpatialNav(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
 
     function onKeyDown(e: KeyboardEvent) {
+      // If another handler (e.g. the video player) already consumed this event,
+      // don't also move focus — that would fight with the player's seek controls.
+      if (e.defaultPrevented) return;
+
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName ?? "";
+
+      // ── Escape → browser back ───────────────────────────────────────────
+      if (e.key === "Escape") {
+        history.back();
+        e.preventDefault();
+        return;
+      }
+
+      // ── Enter / Space → trigger click on custom focusable elements ──────
+      if (e.key === "Enter" || e.key === " ") {
+        // Native buttons/links handle Enter/Space themselves; only step in for
+        // custom elements (divs with data-tv-focusable, tabindex, etc.)
+        if (
+          active &&
+          tag !== "BUTTON" &&
+          tag !== "A" &&
+          tag !== "INPUT" &&
+          tag !== "SELECT" &&
+          tag !== "TEXTAREA"
+        ) {
+          active.click();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // ── Arrow keys → spatial navigation ─────────────────────────────────
       const dir =
         e.key === "ArrowRight" ? "right" :
         e.key === "ArrowLeft"  ? "left"  :
@@ -87,24 +126,26 @@ export function useSpatialNav(enabled: boolean) {
 
       if (!dir) return;
 
-      const active = document.activeElement;
+      // Don't hijack arrow keys inside text inputs
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
       if (!active || active === document.body) {
         // Focus first visible focusable element
         const first = Array.from(document.querySelectorAll<HTMLElement>(FOCUSABLE))
           .find(isVisible);
-        first?.focus();
+        if (first) {
+          first.focus();
+          first.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
         e.preventDefault();
         return;
       }
-
-      // Don't hijack arrow keys inside inputs/textareas
-      const tag = (active as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
       const candidates = Array.from(document.querySelectorAll<HTMLElement>(FOCUSABLE));
       const target = findBest(active, candidates, dir);
       if (target) {
         (target as HTMLElement).focus();
+        target.scrollIntoView({ block: "nearest", behavior: "smooth" });
         e.preventDefault();
       }
     }

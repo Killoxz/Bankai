@@ -42,6 +42,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
     if (isPlaying !== undefined) data.isPlaying = isPlaying;
   }
 
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json(party);
+  }
   const updated = await prisma.watchParty.update({ where: { code: code.toUpperCase() }, data });
   return NextResponse.json(updated);
 }

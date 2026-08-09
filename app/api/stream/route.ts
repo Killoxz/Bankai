@@ -109,6 +109,7 @@ export async function GET(request: Request) {
     const upstream = await fetch(targetUrl, {
       headers: { Accept: "application/json" },
       next: { revalidate: 0 },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!upstream.ok) {

@@ -144,13 +144,11 @@ a, button, [role="button"], input[type="range"] {
    • Larger base font so text reads at ~3 m
    • Bright, oversized focus rings on every interactive element
    • Hidden desktop/mobile navbars (replaced by tv-sidebar)
-   • No mouse cursor (TV remotes don't move a pointer)
    • Content area shifts right to make room for the sidebar
    ──────────────────────────────────────────────────────────────── */
 
 .tv-mode {
   font-size: 20px;
-  cursor: none;
 }
 
 /* Hide normal navbars & mobile nav in TV mode */
@@ -159,69 +157,37 @@ a, button, [role="button"], input[type="range"] {
   display: none !important;
 }
 
-/* Shift content right to clear the 80 px sidebar */
+/* Shift content right to clear the 80 px sidebar; remove mobile bottom padding */
 .tv-mode body {
-  padding-left: 5rem;
-  padding-bottom: 0;
+  padding-left: 5rem !important;
+  padding-bottom: 0 !important;
 }
 
-/* Remove the spacer that reserves nav height */
-.tv-mode [aria-hidden="true"].h-16 {
-  display: none;
+/* Remove the spacer div that reserves height for the fixed navbar */
+.tv-mode .lg\:block.h-16[aria-hidden="true"] {
+  display: none !important;
 }
 
-/* Oversized focus ring on every focusable element */
+/* Oversized focus ring — overrides both Tailwind ring utilities and outline:none */
 .tv-mode *:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px hsl(var(--background)),
-    0 0 0 6px hsl(var(--primary));
+  outline: 4px solid hsl(var(--primary)) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 7px hsl(var(--background)) !important;
   border-radius: 0.5rem;
 }
 
-/* Larger click/tap targets */
+/* Larger click/tap targets in TV mode */
 .tv-mode button,
-.tv-mode a,
-.tv-mode [role="button"] {
-  min-height: 3rem;
+.tv-mode a {
+  min-height: 2.75rem;
 }
 
-/* Slightly larger text in cards */
-.tv-mode .text-sm   { font-size: 1rem;   }
-.tv-mode .text-xs   { font-size: 0.9rem; }
-.tv-mode .text-base { font-size: 1.1rem; }
+/* Scale up text slightly for 10-foot readability */
+.tv-mode .text-sm   { font-size: 1rem !important;   }
+.tv-mode .text-xs   { font-size: 0.85rem !important; }
+.tv-mode .text-base { font-size: 1.1rem !important;  }
 
-/* Scale up anime card thumbnails a bit for readability */
-.tv-mode .tv-card-scale {
-  transform: scale(1.04);
-  transform-origin: center;
-}
-
-/* D-pad hint overlay — shown when no element is focused */
-.tv-dpad-hint {
-  pointer-events: none;
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 200;
-  display: flex;
-  gap: 0.25rem;
-  flex-direction: column;
-  align-items: center;
-  opacity: 0.35;
-  font-size: 0.65rem;
-  color: #fff;
-}
-
-.tv-dpad-hint kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 0.7rem;
-  font-family: inherit;
+/* Anime card focus highlight in TV mode */
+.tv-mode a:focus-visible img {
+  filter: brightness(1.15);
 }

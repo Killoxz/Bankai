@@ -23,9 +23,10 @@ export async function GET(
   const mode = url.searchParams.get("mode");
 
   // episode=N → episode-specific; mode=anime → episode IS NULL (general discussion)
+  const parsedEpisode = episodeParam !== null ? parseInt(episodeParam, 10) : null;
   const episodeFilter =
-    episodeParam !== null ? { episode: parseInt(episodeParam, 10) } :
-    mode === "anime"      ? { episode: null }                       :
+    parsedEpisode !== null && Number.isFinite(parsedEpisode) ? { episode: parsedEpisode } :
+    mode === "anime"                                          ? { episode: null }          :
     {};
 
   const all = await prisma.comment.findMany({

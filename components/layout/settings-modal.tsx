@@ -14,7 +14,7 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
