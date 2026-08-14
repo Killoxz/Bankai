@@ -783,7 +783,7 @@ export function DownPlayer({
     if (!video) return;
     let lastSave = 0;
     const ssKey = `bankai-progress-${animeId}-${episode}`;
-    function saveProgress(completed = false) {
+    function saveProgress(completed = false, useBeacon = false) {
       if (!video || !video.duration) return;
       const pos = Math.floor(video.currentTime);
       try { sessionStorage.setItem(ssKey, String(pos)); } catch {}
@@ -794,22 +794,32 @@ export function DownPlayer({
       const epData =
         pData?.[provider]?.episodes?.[aud]?.find((e) => e.number === episode) ??
         Object.values(pData ?? {}).flatMap((p) => p.episodes?.[aud] ?? []).find((e) => e.number === episode);
-      fetch("/api/history", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: currentUserRef.current, animeId: `anilist:${animeId}`,
-          episodeNumber: episode, progress: pos, duration: Math.floor(video.duration), completed,
-          episodeThumbnail: epData?.thumbnail ?? epData?.image ?? null,
-          animeTitle: animeTitleRef.current, animeCover: animeCoverRef.current }) }).catch(() => {});
+      const payload = JSON.stringify({ username: currentUserRef.current, animeId: `anilist:${animeId}`,
+        episodeNumber: episode, progress: pos, duration: Math.floor(video.duration), completed,
+        episodeThumbnail: epData?.thumbnail ?? epData?.image ?? null,
+        animeTitle: animeTitleRef.current, animeCover: animeCoverRef.current });
+      if (useBeacon && typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon("/api/history", new Blob([payload], { type: "application/json" }));
+      } else {
+        fetch("/api/history", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload }).catch(() => {});
+      }
     }
-    const onTime  = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
-    const onPause = () => saveProgress();
-    const onEnded = () => saveProgress(true);
+    const onTime             = () => { const n = Date.now(); if (n - lastSave > 30000) { lastSave = n; saveProgress(); } };
+    const onPause            = () => saveProgress();
+    const onEnded            = () => saveProgress(true);
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") saveProgress(false, true); };
+    const onPageHide         = () => saveProgress(false, true);
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("pause", onPause);
     video.addEventListener("ended", onEnded);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("ended", onEnded);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
     };
   }, [animeId, episode]); // eslint-disable-line react-hooks/exhaustive-deps
 
