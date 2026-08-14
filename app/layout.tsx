@@ -66,7 +66,7 @@ export default function RootLayout({
             <TvNav />
             <TvModePrompt />
             <Navbar />
-            <div className="hidden lg:block h-16" aria-hidden="true" />
+            <div className="bankai-nav-spacer h-14 lg:h-16" aria-hidden="true" />
             <PageTransition>
               {children}
             </PageTransition>

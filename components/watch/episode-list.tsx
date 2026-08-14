@@ -171,26 +171,26 @@ export function EpisodeList({
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">No episodes match.</p>
           ) : filtered.map((n) => {
-            const meta     = metaByNum.get(n);
-            const isActive = n === currentEpisode;
-            const title    = meta?.title && meta.title !== `Episode ${n}` ? meta.title : null;
-            const airDate  = formatAirDate(meta?.airDate);
-            const servers  = serversForEpisode(n, currentAudio);
+            const meta        = metaByNum.get(n);
+            const isActive    = n === currentEpisode;
+            const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : null;
+            const airDate     = formatAirDate(meta?.airDate);
+            const servers     = serversForEpisode(n, currentAudio);
             const serverCount = servers.length;
-
             const description = meta?.description ?? null;
+            const isFiller    = meta?.filler === true;
 
             return (
               <div
                 key={n}
                 className={["px-4 py-3.5 transition-colors", isActive ? "bg-primary/10" : "hover:bg-accent/40"].join(" ")}
               >
-                {/* Row 1: title + AUDIO / SERVER labels */}
-                <div className="flex items-start justify-between gap-3">
+                {/* Row 1: title + AUDIO/SERVER labels (labels hidden for active episode) */}
+                <div className={["flex gap-3", description ? "items-start" : "items-center", "justify-between"].join(" ")}>
                   <button
                     ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
                     onClick={() => { onSelectEpisode(n); setSearch(""); }}
-                    className="text-left"
+                    className="min-w-0 text-left"
                   >
                     <span className={["text-sm font-bold leading-tight", isActive ? "text-primary" : "text-foreground"].join(" ")}>
                       {n}. {title ?? `Episode ${n}`}
@@ -199,10 +199,12 @@ export function EpisodeList({
                       <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
                     )}
                   </button>
-                  <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
-                    <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
-                  </div>
+                  {!isActive && (
+                    <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
+                      <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Row 2: meta badges + controls */}
@@ -217,6 +219,11 @@ export function EpisodeList({
                     {hasDub && (
                       <span className="flex items-center gap-0.5 rounded border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                         <Mic2 className="size-2.5" /> DUB
+                      </span>
+                    )}
+                    {isFiller && (
+                      <span className="rounded border border-yellow-500/40 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-yellow-500">
+                        FILLER
                       </span>
                     )}
                   </div>
@@ -259,21 +266,24 @@ export function EpisodeList({
           ) : (
             <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6">
               {filtered.map((n) => {
-                const isActive = n === currentEpisode;
-                const meta = metaByNum.get(n);
+                const isActive  = n === currentEpisode;
+                const meta      = metaByNum.get(n);
+                const isFiller  = meta?.filler === true;
                 const gridTitle = meta?.title && meta.title !== `Episode ${n}` ? `${n}. ${meta.title}` : `Episode ${n}`;
-                const gridDesc = meta?.description ? `\n\n${meta.description}` : "";
+                const gridDesc  = meta?.description ? `\n\n${meta.description}` : "";
                 return (
                   <button
                     key={n}
-                    title={`${gridTitle}${gridDesc}`}
+                    title={`${gridTitle}${isFiller ? " [FILLER]" : ""}${gridDesc}`}
                     ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
                     onClick={() => { onSelectEpisode(n); setSearch(""); }}
                     className={[
                       "flex items-center justify-center rounded-lg py-2.5 text-sm font-bold transition-colors",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                        : isFiller
+                          ? "bg-yellow-500/15 text-yellow-500 ring-1 ring-yellow-500/30 hover:bg-yellow-500/25"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
                     ].join(" ")}
                   >
                     {isActive ? <Play className="size-3.5 fill-primary-foreground" /> : n}
@@ -297,6 +307,7 @@ export function EpisodeList({
             const title       = meta?.title && meta.title !== `Episode ${n}` ? meta.title : `Episode ${n}`;
             const airDate     = formatAirDate(meta?.airDate);
             const imgDesc     = meta?.description ?? null;
+            const isFiller    = meta?.filler === true;
 
             return (
               <button
@@ -345,6 +356,11 @@ export function EpisodeList({
                         </span>
                       )}
                       {hasDub && <Mic2 className="size-3.5 text-muted-foreground" />}
+                      {isFiller && (
+                        <span className="rounded border border-yellow-500/40 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-yellow-500">
+                          FILLER
+                        </span>
+                      )}
                     </div>
                     {airDate && <span className="text-[10px] text-muted-foreground">{airDate}</span>}
                   </div>

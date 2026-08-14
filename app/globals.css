@@ -118,13 +118,11 @@ a, button, [role="button"], input[type="range"] {
   transition-delay: 0s !important;
 }
 
-@media (min-width: 1024px) {
-  .bankai-nav {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-  }
+.bankai-nav {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
 }
 
 @keyframes card-float {
@@ -163,7 +161,7 @@ html.tv-mode {
 }
 
 /* Remove the spacer div that reserves height for the fixed navbar */
-.tv-mode .lg\:block.h-16[aria-hidden="true"] {
+.tv-mode .bankai-nav-spacer {
   display: none !important;
 }
 
