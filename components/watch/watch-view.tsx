@@ -222,18 +222,20 @@ export function WatchView({
 
   const totalEpisodes = detail.episodes ?? epListData.length;
   function handlePrevEp() { if (episode > 1) handleSelectEpisode(episode - 1); }
+
+  // Push the completed episode number to AniList (only fires if anime is set to Watching)
+  function pushAniListProgress(completedEp: number) {
+    if (!currentUser) return;
+    fetch(`/api/anime/${animeId}/progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: currentUser, progress: completedEp }),
+    }).catch(() => {});
+  }
+
   function handleNextEp() {
-    if (episode < totalEpisodes) {
-      // Mark completed episode on AniList before advancing
-      if (currentUser) {
-        fetch(`/api/anime/${animeId}/progress`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: currentUser, progress: episode }),
-        }).catch(() => {});
-      }
-      handleSelectEpisode(episode + 1);
-    }
+    pushAniListProgress(episode); // always mark current ep done before advancing
+    if (episode < totalEpisodes) handleSelectEpisode(episode + 1);
   }
 
   const recs = detail.recommendations.nodes
@@ -284,7 +286,7 @@ export function WatchView({
               onLightsOffChange={setLightsOff}
               onPrevEpisode={handlePrevEp}
               onNextEpisode={handleNextEp}
-              onEpisodeEnd={autoNext ? handleNextEp : undefined}
+              onEpisodeEnd={autoNext ? handleNextEp : () => pushAniListProgress(episode)}
               currentEpisode={episode}
               totalEpisodes={totalEpisodes}
               onError={handleProviderError}

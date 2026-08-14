@@ -64,13 +64,33 @@ export async function pushStatusToAniList(
 
 /**
  * Update the watched episode count (progress) on AniList.
- * Only bumps progress — never lowers it.
+ * Only fires when the anime is actively set to CURRENT (Watching) by the user.
+ * Never lowers progress (safe to call even when rewatching an earlier episode).
  */
 export async function pushProgressToAniList(
   token:          string,
   anilistMediaId: number,
   progress:       number,
 ): Promise<void> {
+  // Check the user's current list entry before mutating anything
+  let entry: { status?: string; progress?: number } | null = null;
+  try {
+    const check = await gql(token, `
+      query ($mediaId: Int) {
+        MediaList(mediaId: $mediaId, type: ANIME) { status progress }
+      }
+    `, { mediaId: anilistMediaId });
+    entry = (check.data?.MediaList as typeof entry) ?? null;
+  } catch {
+    return; // if the check fails, don't risk accidental list changes
+  }
+
+  // Only update when the user has the anime set to Watching
+  if (!entry || entry.status !== "CURRENT") return;
+
+  // Never lower the episode count (e.g. rewatching an earlier episode)
+  if (typeof entry.progress === "number" && progress <= entry.progress) return;
+
   const res = await gql(token, `
     mutation ($mediaId: Int, $progress: Int) {
       SaveMediaListEntry(mediaId: $mediaId, progress: $progress) { id progress }
