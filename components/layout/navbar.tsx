@@ -92,7 +92,7 @@ export function Navbar() {
         onFocus={() => setSearchFocused(true)}
         onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSearchFocused(false); }}
       >
-        <div className="flex w-32 xl:w-44 items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 px-3 py-1.5 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/25">
+        <div className="flex w-24 lg:w-28 xl:w-44 items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 px-3 py-1.5 transition-colors focus-within:border-gray-400 dark:focus-within:border-white/25">
           <Search className="size-3.5 shrink-0 text-gray-400 dark:text-white/40" />
           <input
             type="text"
@@ -223,7 +223,7 @@ export function Navbar() {
 
   return (
     <>
-    <header className="bankai-nav z-50 w-full">
+    <header className="bankai-nav fixed inset-x-0 top-0 z-50 w-full">
 
       {/* ── Mobile bar (hidden on desktop) ────────────────────────────── */}
       <div className="flex h-14 items-center gap-4 border-b border-gray-200/70 dark:border-white/[0.06] bg-white/90 dark:bg-[#141414]/90 px-5 backdrop-blur-xl lg:hidden">
@@ -262,7 +262,7 @@ export function Navbar() {
 
       {/* ── Desktop bar (hidden on mobile) ────────────────────────────── */}
       {/* 3-column grid keeps the pill truly centered without overlapping right actions */}
-      <div className="pointer-events-none hidden h-16 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+      <div className="pointer-events-none hidden h-16 px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center xl:px-6">
 
         {/* Left spacer (mirrors right actions so pill stays centered) */}
         <div />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { DownPlayer }      from "./down-player";
@@ -122,6 +122,16 @@ export function WatchView({
 
   const [isLoadingSources, setIsLoadingSources] = useState(!initialEpisodesRaw);
   const [failedProviders, setFailedProviders]   = useState<Set<string>>(new Set());
+
+  // Accurate filler data from Jikan (MAL-sourced), keyed by episode number
+  const [fillerSet, setFillerSet] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    if (!detail.idMal) return;
+    fetch(`/api/filler?malId=${detail.idMal}`)
+      .then((r) => r.ok ? r.json() : { fillerSet: [] })
+      .then((d: { fillerSet: number[] }) => setFillerSet(new Set(d.fillerSet)))
+      .catch(() => {});
+  }, [detail.idMal]);
   const handleProviderError = useCallback((provider: string) => {
     setFailedProviders((prev) => new Set([...prev, provider]));
   }, []);
@@ -232,6 +242,12 @@ export function WatchView({
 
   const currentCover = detail.coverImage.extraLarge ?? detail.coverImage.large;
 
+  // Overlay accurate Jikan filler flags onto provider episode data
+  const epListWithFiller = useMemo(() => {
+    if (fillerSet.size === 0) return epListData;
+    return epListData.map((ep) => ({ ...ep, filler: fillerSet.has(ep.number) }));
+  }, [epListData, fillerSet]);
+
   return (
     <>
       {lightsOff && (
@@ -330,7 +346,7 @@ export function WatchView({
               totalEpisodes={totalEpisodes}
               currentEpisode={episode}
               onSelectEpisode={handleSelectEpisode}
-              episodeData={epListData}
+              episodeData={epListWithFiller}
               hasSub={providersData ? hasAudio(providersData, "sub", episode) : true}
               hasDub={providersData ? hasAudio(providersData, "dub", episode) : false}
               currentAudio={audio}

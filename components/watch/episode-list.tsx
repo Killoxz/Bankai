@@ -185,7 +185,7 @@ export function EpisodeList({
                 key={n}
                 className={["px-4 py-3.5 transition-colors", isActive ? "bg-primary/10" : "hover:bg-accent/40"].join(" ")}
               >
-                {/* Row 1: title + AUDIO/SERVER labels (labels hidden for active episode) */}
+                {/* Row 1: title (left) + controls always on right (dropdowns for active, labels for inactive) */}
                 <div className={["flex gap-3", description ? "items-start" : "items-center", "justify-between"].join(" ")}>
                   <button
                     ref={isActive ? (el) => { (activeRef as React.MutableRefObject<HTMLButtonElement | null>).current = el; } : undefined}
@@ -199,17 +199,42 @@ export function EpisodeList({
                       <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
                     )}
                   </button>
-                  {!isActive && (
-                    <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
-                      <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
-                    </div>
-                  )}
+
+                  {/* Right-side controls — dropdowns when active, text labels when not */}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {isActive && onAudioChange && onProviderChange ? (
+                      <>
+                        <SelectMenu
+                          value={currentAudio}
+                          options={[
+                            ...(hasSub ? [{ value: "sub", label: "Sub" }] : []),
+                            ...(hasDub ? [{ value: "dub", label: "Dub" }] : []),
+                          ]}
+                          onChange={(v) => onAudioChange(v as "sub" | "dub")}
+                          icon={<Mic2 className="size-3" />}
+                        />
+                        {servers.length > 0 && (
+                          <SelectMenu
+                            value={selectedProvider ?? ""}
+                            options={servers.map((s) => ({ value: s, label: providerLabel(s) }))}
+                            onChange={onProviderChange}
+                            icon={<Zap className="size-3" />}
+                            maxHeight={180}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1"><Zap className="size-3" /> AUDIO</span>
+                        <span className="flex items-center gap-1"><Zap className="size-3" /> SERVER{serverCount > 0 ? ` (${serverCount})` : ""}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Row 2: meta badges + controls */}
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                {/* Row 2: meta badges only */}
+                {(airDate || hasSub || hasDub || isFiller) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {airDate && <span className="text-[11px] text-muted-foreground">{airDate}</span>}
                     {hasSub && (
                       <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">
@@ -227,30 +252,7 @@ export function EpisodeList({
                       </span>
                     )}
                   </div>
-
-                  {isActive && onAudioChange && onProviderChange && (
-                    <div className="flex items-center gap-1.5">
-                      <SelectMenu
-                        value={currentAudio}
-                        options={[
-                          ...(hasSub ? [{ value: "sub", label: "Sub" }] : []),
-                          ...(hasDub ? [{ value: "dub", label: "Dub" }] : []),
-                        ]}
-                        onChange={(v) => onAudioChange(v as "sub" | "dub")}
-                        icon={<Mic2 className="size-3" />}
-                      />
-                      {servers.length > 0 && (
-                        <SelectMenu
-                          value={selectedProvider ?? ""}
-                          options={servers.map((s) => ({ value: s, label: providerLabel(s) }))}
-                          onChange={onProviderChange}
-                          icon={<Zap className="size-3" />}
-                          maxHeight={180}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
+                )}
 
               </div>
             );

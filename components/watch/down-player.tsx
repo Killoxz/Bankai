@@ -534,7 +534,7 @@ export function DownPlayer({
         : `/api/stream?id=${animeId}&ep=${episode}&provider=${encodeURIComponent(selectedProvider)}&audio=${audio}`;
 
       const ssKey = `bankai-progress-${animeId}-${episode}`;
-      const localProgress = (() => { try { return parseInt(sessionStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; } })();
+      const localProgress = (() => { try { return parseInt(localStorage.getItem(ssKey) ?? "0", 10) || 0; } catch { return 0; } })();
 
       const [res, apiProgress] = await Promise.all([
         fetch(apiUrl),
@@ -786,7 +786,7 @@ export function DownPlayer({
     function saveProgress(completed = false, useBeacon = false) {
       if (!video || !video.duration) return;
       const pos = Math.floor(video.currentTime);
-      try { sessionStorage.setItem(ssKey, String(pos)); } catch {}
+      try { localStorage.setItem(ssKey, String(pos)); } catch {}
       if (!currentUserRef.current) return;
       const pData = providersDataRef.current;
       const provider = selectedProviderRef.current ?? "";
